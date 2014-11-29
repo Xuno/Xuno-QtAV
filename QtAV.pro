@@ -61,7 +61,7 @@ runConfigTests()
 
 
 PACKAGE_VERSION = 1.4.1
-PACKAGE_NAME= QtAV
+PACKAGE_NAME= Xuno-QtAV
 
 include(pack.pri)
 #packageSet(1.4.1, QtAV)
