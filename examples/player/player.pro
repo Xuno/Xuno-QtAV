@@ -1,13 +1,15 @@
 TEMPLATE = app
 QT += opengl
+QT += network
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+greaterThan(QT_MAJOR_VERSION, 4): QT += webkitwidgets
 TRANSLATIONS = res/player_zh_CN.ts
 
 STATICLINK = 0
 PROJECTROOT = $$PWD/../..
 include($$PROJECTROOT/src/libQtAV.pri)
 include($$PWD/../common/libcommon.pri)
-preparePaths($$OUT_PWD/../../out)
+preparePaths($$OUT_PWD/../..)
 INCLUDEPATH += $$PWD
 mac: RC_FILE = $$PROJECTROOT/src/QtAV.icns
 
@@ -33,7 +35,8 @@ SOURCES += main.cpp \
     config/PropertyEditor.cpp \
     config/AVFormatConfigPage.cpp \
     config/AVFilterConfigPage.cpp \
-    filters/AVFilterSubtitle.cpp
+    filters/AVFilterSubtitle.cpp \
+    XunoBrowser.cpp
 
 HEADERS += \
     MainWindow.h \
@@ -57,7 +60,8 @@ HEADERS += \
     config/PropertyEditor.h \
     config/AVFormatConfigPage.h \
     config/AVFilterConfigPage.h \
-    filters/AVFilterSubtitle.h
+    filters/AVFilterSubtitle.h \
+    XunoBrowser.h
 
 
 unix:!android:!mac {
@@ -90,8 +94,8 @@ RESOURCES += \
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
-RC_ICONS = $$PROJECTROOT/src/QtAV.ico
+RC_ICONS = $$PROJECTROOT/src/Xuno-QtAV.ico
 QMAKE_TARGET_COMPANY = "Shanghai University->S3 Graphics->Deepin | wbsecg1@gmail.com"
-QMAKE_TARGET_DESCRIPTION = "Multimedia playback framework based on Qt & FFmpeg. http://www.qtav.org"
-QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2014 WangBin, wbsecg1@gmail.com"
-QMAKE_TARGET_PRODUCT = "QtAV player"
+QMAKE_TARGET_DESCRIPTION = "Multimedia playback framework based on Qt & FFmpeg. https://github.com/Xuno/Xuno-QtAV"
+QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2014 WangBin, wbsecg1@gmail.com, http://www.xuno.com"
+QMAKE_TARGET_PRODUCT = "Xuno-QtAV player"
