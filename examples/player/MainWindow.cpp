@@ -64,6 +64,7 @@
 #include <QUrl>
 #include "config/ImageSequenceConfigPage.h"
 
+
 //#include <QWebView>
 
 /*
@@ -511,6 +512,9 @@ void MainWindow::setupUi()
     pWA = new QWidgetAction(0);
     pWA->setDefaultWidget(mpVideoEQ);
     subMenu->addAction(pWA);
+    //TODO LEXXAI
+    //mpVideoEQ->setSaveFile(Config::instance().defaultDir() + "/presets.ini");
+    //mpVideoEQ->loadLocalPresets();
 
     mpVideoEQ->setSaveFile(Config::instance().defaultDir() + "/presets.ini");
     mpVideoEQ->loadLocalPresets();
@@ -1579,5 +1583,6 @@ void MainWindow::setPlayerPosFromRepeat(){
         }
     }
 }
+
 
 

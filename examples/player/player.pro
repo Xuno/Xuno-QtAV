@@ -105,3 +105,4 @@ QMAKE_TARGET_DESCRIPTION = "Multimedia playback framework based on Qt & FFmpeg. 
 QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2014 WangBin, wbsecg1@gmail.com,  http://www.xuno.com"
 QMAKE_TARGET_PRODUCT = "Xuno-QtAV player"
 
+
