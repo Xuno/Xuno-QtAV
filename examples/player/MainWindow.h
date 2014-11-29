@@ -48,6 +48,7 @@ class VideoEQConfigPage;
 class StatisticsView;
 class OSDFilter;
 class AVFilterSubtitle;
+class XunoBrowser;
 class MainWindow : public QWidget
 {
     Q_OBJECT
@@ -58,6 +59,7 @@ public:
     void setAudioOutput(QtAV::AudioOutput* ao);
     void setRenderer(QtAV::VideoRenderer* renderer);
     void setVideoDecoderNames(const QStringList& vd);
+    void loadRemoteUrlPresset(const QString& url);
 
 public slots:
     void play(const QString& name);
@@ -114,6 +116,8 @@ private slots:
     void onContrastChanged(int c);
     void onHueChanged(int h);
     void onSaturationChanged(int s);
+    void onGammaRGBChanged(int s);
+    void onFilterSharpChanged(int s);
 
     void onCaptureConfigChanged();
     void onAVFilterConfigChanged();
@@ -122,11 +126,15 @@ private slots:
     void setup();
 
     void handleFullscreenChange();
+    void onFullScreen();
     void toggoleSubtitleEnabled(bool value);
     void toggleSubtitleAutoLoad(bool value);
     void openSubtitle();
     void setSubtitleCharset(const QString& charSet);
     void setSubtitleEngine(const QString& value);
+
+    void onXunoBrowser();
+    void onClickXunoBrowser();
 
 protected:
     virtual void closeEvent(QCloseEvent *e);
@@ -135,11 +143,13 @@ protected:
     virtual void keyPressEvent(QKeyEvent *e);
     virtual void keyReleaseEvent(QKeyEvent *e);
     void mousePressEvent(QMouseEvent *e);
+    void mouseReleaseEvent(QMouseEvent *e);
     void mouseMoveEvent(QMouseEvent *e);
     void wheelEvent(QWheelEvent *e);
 
 private:
     void workaroundRendererSize();
+    void reSizeByMovie();
 
 private:
     bool mIsReady, mHasPendingPlay;
@@ -158,6 +168,7 @@ private:
     Button *mpVolumeBtn;
     Button *mpPlayPauseBtn, *mpStopBtn, *mpForwardBtn, *mpBackwardBtn;
     Button *mpOpenBtn;
+    Button *mpXunoBtn, *mpFullScreenBtn;
     Button *mpInfoBtn, *mpMenuBtn, *mpSetupBtn, *mpCaptureBtn;
     QMenu *mpMenu;
     QAction *mpVOAction, *mpARAction; //remove mpVOAction if vo.id() is supported
@@ -192,6 +203,11 @@ private:
 
     OSDFilter *mpOSD;
     QtAV::SubtitleFilter *mpSubtitle;
+
+    QString XUNOserverUrl;
+    QString XUNOpresetUrl;
+
+    XunoBrowser *mpXunoBrowser;
 };
 
 

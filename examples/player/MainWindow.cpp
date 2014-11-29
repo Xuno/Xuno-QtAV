@@ -60,6 +60,10 @@
 //#include "filters/AVFilterSubtitle.h"
 #include "playlist/PlayList.h"
 #include "../common/common.h"
+#include "XunoBrowser.h"
+#include <QUrl>
+
+//#include <QWebView>
 
 /*
  *TODO:
@@ -105,13 +109,17 @@ MainWindow::MainWindow(QWidget *parent) :
   , mpStatisticsView(0)
   , mpOSD(0)
   , mpSubtitle(0)
+  , mpXunoBrowser(0)
 {
-    setWindowIcon(QIcon(":/QtAV.svg"));
+    XUNOserverUrl="http://www.xuno.com";
+    XUNOpresetUrl=XUNOserverUrl+"/getpreset.php?";
+    setWindowIcon(QIcon(":/Xuno-QtAV.ico"));
     mpOSD = new OSDFilterQPainter(this);
     mpSubtitle = new SubtitleFilter(this);
     mpChannelAction = 0;
     mpChannelMenu = 0;
     mpAudioTrackAction = 0;
+    mGlobalMouse = QPointF();
     setMouseTracking(true); //mouseMoveEvent without press.
     connect(this, SIGNAL(ready()), SLOT(processPendingActions()));
     //QTimer::singleShot(10, this, SLOT(setupUi()));
@@ -134,6 +142,10 @@ MainWindow::~MainWindow()
     if (mpStatisticsView) {
         delete mpStatisticsView;
         mpStatisticsView = 0;
+    }
+    if (mpXunoBrowser) {
+        delete mpXunoBrowser;
+        mpXunoBrowser = 0;
     }
 }
 
@@ -172,6 +184,9 @@ void MainWindow::initPlayer()
     connect(mpVideoEQ, SIGNAL(contrastChanged(int)), this, SLOT(onContrastChanged(int)));
     connect(mpVideoEQ, SIGNAL(hueChanegd(int)), this, SLOT(onHueChanged(int)));
     connect(mpVideoEQ, SIGNAL(saturationChanged(int)), this, SLOT(onSaturationChanged(int)));
+    connect(mpVideoEQ, SIGNAL(gammaRGBChanged(int)),  this, SLOT(onGammaRGBChanged(int)));
+    connect(mpVideoEQ, SIGNAL(filterSharpChanged(int)),  this, SLOT(onFilterSharpChanged(int)));
+
 
     emit ready(); //emit this signal after connection. otherwise the slots may not be called for the first time
 }
@@ -210,10 +225,10 @@ void MainWindow::setupUi()
     mpEnd->setToolTip(tr("Duration"));
     mpEnd->setMargin(2);
     mpEnd->setText("00:00:00");
-    mpTitle = new QLabel(mpControl);
-    mpTitle->setToolTip(tr("Render engine"));
-    mpTitle->setText("QPainter");
-    mpTitle->setIndent(8);
+//    mpTitle = new QLabel(mpControl);
+//    mpTitle->setToolTip(tr("Render engine"));
+//    mpTitle->setText("QPainter");
+//    mpTitle->setIndent(8);
     mpSpeed = new QLabel("1.00");
     mpSpeed->setMargin(1);
     mpSpeed->setToolTip(tr("Speed. Ctrl+Up/Down"));
@@ -264,19 +279,39 @@ void MainWindow::setupUi()
     mpVolumeBtn->setMaximumSize(a+kMaxButtonIconMargin+2, a+kMaxButtonIconMargin);
 
     mpVolumeSlider = new Slider();
-    mpVolumeSlider->hide();
+    //mpVolumeSlider->hide();
     mpVolumeSlider->setOrientation(Qt::Horizontal);
     mpVolumeSlider->setMinimum(0);
     const int kVolumeSliderMax = 100;
     mpVolumeSlider->setMaximum(kVolumeSliderMax);
     mpVolumeSlider->setMaximumHeight(8);
     mpVolumeSlider->setMaximumWidth(88);
-    mpVolumeSlider->setValue(int(1.0/kVolumeInterval*qreal(kVolumeSliderMax)/100.0));
+    //mpVolumeSlider->setValue(int(1.0/kVolumeInterval*qreal(kVolumeSliderMax)/100.0));
+    mpVolumeSlider->setValue(80);
     setVolume();
 
+    mpXunoBtn = new Button();
+    mpXunoBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    mpXunoBtn->setText(tr("Xuno"));
+    mpXunoBtn->setMaximumHeight(a+kMaxButtonIconMargin);
+    mpXunoBtn->setToolTip(tr("Open Xuno playlist browser"));
+    mpXunoBtn->setStyleSheet("color:grey;");
+
+    mpFullScreenBtn = new Button();
+    mpFullScreenBtn->setIconWithSates(QPixmap(":/theme/fullscreen.png"));
+    mpFullScreenBtn->setIconSize(QSize(a, a));
+    mpFullScreenBtn->setMaximumSize(a+kMaxButtonIconMargin+2, a+kMaxButtonIconMargin);
+    mpFullScreenBtn->setToolTip(tr("Full Screen"));
+
     mpMenuBtn = new Button();
-    mpMenuBtn->setAutoRaise(true);
+    //mpMenuBtn->setAutoRaise(true);
     mpMenuBtn->setPopupMode(QToolButton::InstantPopup);
+    mpMenuBtn->setPopupMode(QToolButton::InstantPopup);
+    mpMenuBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    mpMenuBtn->setMaximumHeight(a+kMaxButtonIconMargin);
+    mpMenuBtn->setText(tr("Menu "));
+    mpMenuBtn->setToolTip(tr("Configuratrion menu"));
+    mpMenuBtn->setStyleSheet("color:grey;");
 
 /*
     mpMenuBtn->setIconWithSates(QPixmap(":/theme/search-arrow.png"));
@@ -464,6 +499,9 @@ void MainWindow::setupUi()
     pWA = new QWidgetAction(0);
     pWA->setDefaultWidget(mpVideoEQ);
     subMenu->addAction(pWA);
+    //TODO LEXXAI
+    //mpVideoEQ->setSaveFile(Config::instance().defaultDir() + "/presets.ini");
+    //mpVideoEQ->loadLocalPresets();
 
     subMenu = new ClickableMenu(tr("Decoder"));
     mpMenu->addMenu(subMenu);
@@ -499,7 +537,7 @@ void MainWindow::setupUi()
     controlLayout->setMargin(1);
     mpControl->setLayout(controlLayout);
     controlLayout->addWidget(mpCurrent);
-    controlLayout->addWidget(mpTitle);
+    //controlLayout->addWidget(mpTitle);
     QSpacerItem *space = new QSpacerItem(mpPlayPauseBtn->width(), mpPlayPauseBtn->height(), QSizePolicy::MinimumExpanding);
     controlLayout->addSpacerItem(space);
     controlLayout->addWidget(mpVolumeSlider);
@@ -509,14 +547,21 @@ void MainWindow::setupUi()
     controlLayout->addWidget(mpStopBtn);
     controlLayout->addWidget(mpBackwardBtn);
     controlLayout->addWidget(mpForwardBtn);
+    space = new QSpacerItem(mpPlayPauseBtn->width()/2, mpPlayPauseBtn->height(), QSizePolicy::Fixed);
+    controlLayout->addSpacerItem(space);
+    controlLayout->addWidget(mpXunoBtn);
+    controlLayout->addWidget(mpMenuBtn);
     controlLayout->addWidget(mpOpenBtn);
     controlLayout->addWidget(mpInfoBtn);
-    controlLayout->addWidget(mpSpeed);
+    //controlLayout->addWidget(mpSpeed);
     //controlLayout->addWidget(mpSetupBtn);
-    controlLayout->addWidget(mpMenuBtn);
+    //controlLayout->addWidget(mpMenuBtn);
+    controlLayout->addWidget(mpFullScreenBtn);
+    space = new QSpacerItem(mpPlayPauseBtn->width(), mpPlayPauseBtn->height(), QSizePolicy::Expanding);
+    controlLayout->addSpacerItem(space);
     controlLayout->addWidget(mpEnd);
 
-    connect(pSpeedBox, SIGNAL(valueChanged(double)), SLOT(onSpinBoxChanged(double)));
+    //connect(pSpeedBox, SIGNAL(valueChanged(double)), SLOT(onSpinBoxChanged(double)));
     connect(mpOpenBtn, SIGNAL(clicked()), SLOT(openFile()));
     connect(mpPlayPauseBtn, SIGNAL(clicked()), SLOT(togglePlayPause()));
     connect(mpCaptureBtn, SIGNAL(clicked()), this, SLOT(capture()));
@@ -527,6 +572,9 @@ void MainWindow::setupUi()
     connect(mpTimeSlider, SIGNAL(sliderPressed()), SLOT(seek()));
     connect(mpTimeSlider, SIGNAL(sliderReleased()), SLOT(seek()));
     connect(mpTimeSlider, SIGNAL(onHover(int,int)), SLOT(onTimeSliderHover(int,int)));
+    connect(mpXunoBtn, SIGNAL(clicked()), SLOT(onXunoBrowser()));
+    connect(mpFullScreenBtn, SIGNAL(clicked()), SLOT(onFullScreen()));
+
     QTimer::singleShot(0, this, SLOT(initPlayer()));
 }
 
@@ -655,7 +703,7 @@ void MainWindow::setRenderer(QtAV::VideoRenderer *renderer)
         }
     }
     mpVOAction->setChecked(true);
-    mpTitle->setText(mpVOAction->text());
+    //mpTitle->setText(mpVOAction->text());
     if (mpPlayer->renderer()->id() == VideoRendererId_GLWidget
             || mpPlayer->renderer()->id() == VideoRendererId_GLWidget2
             ) {
@@ -685,6 +733,9 @@ void MainWindow::play(const QString &name)
     }
     if (!mFile.contains("://") || mFile.startsWith("file://")) {
         mTitle = QFileInfo(mFile).fileName();
+    }
+    if (mFile.startsWith("http://")){
+        mTitle = QString("http://%1/.../%2").arg(QUrl(mFile).host(),QString(QUrl(mFile).fileName()));
     }
     setWindowTitle(mTitle);
     mpPlayer->enableAudio(!mNullAO);
@@ -855,7 +906,8 @@ void MainWindow::showHideVolumeBar()
 void MainWindow::setVolume()
 {
     AudioOutput *ao = mpPlayer ? mpPlayer->audio() : 0;
-    qreal v = qreal(mpVolumeSlider->value())*kVolumeInterval;
+    //qreal v = qreal(mpVolumeSlider->value())*kVolumeInterval;
+    qreal v = qreal(mpVolumeSlider->value())/100.;
     if (ao) {
         ao->setVolume(v);
     }
@@ -923,9 +975,15 @@ void MainWindow::keyReleaseEvent(QKeyEvent *e)
 
 void MainWindow::mousePressEvent(QMouseEvent *e)
 {
-    if (!mControlOn)
-        return;
+    //if (!mControlOn)
+    //    return;
     mGlobalMouse = e->globalPos();
+}
+
+void MainWindow::mouseReleaseEvent(QMouseEvent *e)
+{
+    Q_UNUSED(e);
+    mGlobalMouse = QPointF();
 }
 
 void MainWindow::mouseMoveEvent(QMouseEvent *e)
@@ -942,14 +1000,17 @@ void MainWindow::mouseMoveEvent(QMouseEvent *e)
             QTimer::singleShot(3000, this, SLOT(tryHideControlBar()));
         }
     }
-    if (mControlOn && e->button() == Qt::LeftButton) {
+    if (!mGlobalMouse.isNull()  && (e->buttons() & Qt::LeftButton) ) {
         if (!mpRenderer || !mpRenderer->widget())
             return;
         QRectF roi = mpRenderer->realROI();
-        QPointF delta = e->pos() - mGlobalMouse;
-        roi.moveLeft(-delta.x());
-        roi.moveTop(-delta.y());
-        mpRenderer->setRegionOfInterest(roi);
+        QPointF delta = e->globalPos() - mGlobalMouse;
+        mGlobalMouse=e->globalPos();
+        QPointF center=roi.center()-delta;
+        roi.moveCenter(center);
+        if (roi.top()>1 && roi.left()>1 && roi.right()<mpRenderer->frameSize().width() && roi.bottom()<mpRenderer->frameSize().height()){
+            mpRenderer->setRegionOfInterest(roi);
+        }
     }
 }
 
@@ -1029,6 +1090,7 @@ void MainWindow::openUrl()
         return;
     play(url);
 }
+
 
 void MainWindow::updateChannelMenu()
 {
@@ -1239,54 +1301,85 @@ void MainWindow::onVideoEQEngineChanged()
     onContrastChanged(mpVideoEQ->contrast()*100.0);
     onHueChanged(mpVideoEQ->hue()*100.0);
     onSaturationChanged(mpVideoEQ->saturation()*100.0);
+    //TODO LEXXAI
+    //onGammaRGBChanged(mpVideoEQ->gammaRGB()*100.0);
+    //onFilterSharpChanged(mpVideoEQ->filterSharp()*100.0);
 }
 
 void MainWindow::onBrightnessChanged(int b)
 {
+//    VideoRenderer *vo = mpPlayer->renderer();
+//    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
+//            && vo->setBrightness(mpVideoEQ->brightness())) {
+//        mpPlayer->setBrightness(0);
+//    } else {
+//        vo->setBrightness(0);
+//        mpPlayer->setBrightness(b);
+//    }
+    Q_UNUSED(b);
     VideoRenderer *vo = mpPlayer->renderer();
-    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
-            && vo->setBrightness(mpVideoEQ->brightness())) {
-        mpPlayer->setBrightness(0);
-    } else {
-        vo->setBrightness(0);
-        mpPlayer->setBrightness(b);
-    }
+    vo->setBrightness(mpVideoEQ->brightness());
 }
 
 void MainWindow::onContrastChanged(int c)
 {
+//    VideoRenderer *vo = mpPlayer->renderer();
+//    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
+//            && vo->setContrast(mpVideoEQ->contrast())) {
+//        mpPlayer->setContrast(0);
+//    } else {
+//        vo->setContrast(0);
+//        mpPlayer->setContrast(c);
+//    }
+    Q_UNUSED(c);
     VideoRenderer *vo = mpPlayer->renderer();
-    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
-            && vo->setContrast(mpVideoEQ->contrast())) {
-        mpPlayer->setContrast(0);
-    } else {
-        vo->setContrast(0);
-        mpPlayer->setContrast(c);
-    }
+    vo->setContrast(mpVideoEQ->contrast());
 }
 
 void MainWindow::onHueChanged(int h)
 {
+//    VideoRenderer *vo = mpPlayer->renderer();
+//    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
+//            && vo->setHue(mpVideoEQ->hue())) {
+//        mpPlayer->setHue(0);
+//    } else {
+//        vo->setHue(0);
+//        mpPlayer->setHue(h);
+//    }
+    Q_UNUSED(h);
     VideoRenderer *vo = mpPlayer->renderer();
-    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
-            && vo->setHue(mpVideoEQ->hue())) {
-        mpPlayer->setHue(0);
-    } else {
-        vo->setHue(0);
-        mpPlayer->setHue(h);
-    }
+    vo->setHue(mpVideoEQ->hue());
 }
 
 void MainWindow::onSaturationChanged(int s)
 {
+//    VideoRenderer *vo = mpPlayer->renderer();
+//    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
+//            && vo->setSaturation(mpVideoEQ->saturation())) {
+//        mpPlayer->setSaturation(0);
+//    } else {
+//        vo->setSaturation(0);
+//        mpPlayer->setSaturation(s);
+//    }
+    Q_UNUSED(s);
     VideoRenderer *vo = mpPlayer->renderer();
-    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
-            && vo->setSaturation(mpVideoEQ->saturation())) {
-        mpPlayer->setSaturation(0);
-    } else {
-        vo->setSaturation(0);
-        mpPlayer->setSaturation(s);
-    }
+    vo->setSaturation(mpVideoEQ->saturation());
+}
+
+void MainWindow::onGammaRGBChanged(int g)
+{
+    Q_UNUSED(g);
+    VideoRenderer *vo = mpPlayer->renderer();
+    //TODO LEXXAI
+    //vo->setGammaRGB(mpVideoEQ->gammaRGB());
+}
+
+void MainWindow::onFilterSharpChanged(int fs)
+{
+    Q_UNUSED(fs);
+    VideoRenderer *vo = mpPlayer->renderer();
+    //TODO LEXXAI
+    //vo->setFilterSharp(mpVideoEQ->filterSharp());
 }
 
 void MainWindow::onCaptureConfigChanged()
@@ -1387,3 +1480,54 @@ void MainWindow::workaroundRendererSize()
     mpRenderer->widget()->resize(QSize(s.width()+1, s.height()+1));
     mpRenderer->widget()->resize(s);
 }
+
+void MainWindow::loadRemoteUrlPresset(const QString& url){
+    QString lurl=url;
+    qDebug("MainWindow::loadRemoteUrlPresset url: %s",qPrintable(url));
+    if (lurl.startsWith(XUNOserverUrl,Qt::CaseInsensitive)){
+        QString surl=XUNOpresetUrl;
+        QByteArray ba;
+        ba.append("m="+lurl.remove(XUNOserverUrl+"/",Qt::CaseInsensitive));
+        surl.append("q="+ba.toBase64());
+        qDebug("MainWindow::openUrl surl: %s",qPrintable(surl));
+        //TODO LEXXAI
+        //mpVideoEQ->setRemoteUrlPresset(surl);
+        //mpVideoEQ->getRemotePressets();
+    }
+}
+
+void MainWindow::reSizeByMovie()
+{
+    if (isFullScreen()) return;
+    QSize t=mpRenderer->frameSize();
+    if ((t.width()+t.height())==0){
+      Statistics st=mpPlayer->statistics();
+      t.setWidth(st.video_only.width);
+      t.setHeight(st.video_only.height);
+    }
+    if (t.isValid() && (!t.isNull())) resize(t);
+}
+
+void MainWindow::onXunoBrowser(){
+  if (!mpXunoBrowser){
+      mpXunoBrowser = new XunoBrowser();
+      mpXunoBrowser->setXUNOContentUrl(QString(XUNOserverUrl).append("/content/"));
+      connect(mpXunoBrowser, SIGNAL(clicked()), SLOT(onClickXunoBrowser()));
+  }
+  if (mpXunoBrowser->isHidden()) mpXunoBrowser->show();
+  mpXunoBrowser->setUrl(QUrl(QString(XUNOserverUrl).append("/playlist_8bit.php")));
+}
+
+void MainWindow::onClickXunoBrowser(){
+  QUrl url=mpXunoBrowser->getClikedUrl();
+  if (url.isValid()) play(url.toString());
+}
+
+void MainWindow::onFullScreen(){
+    if (isFullScreen())
+        showNormal();
+    else
+        showFullScreen();
+}
+
+
