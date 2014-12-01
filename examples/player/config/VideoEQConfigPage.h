@@ -22,6 +22,7 @@
 #define VIDEOEQCONFIGPAGE_H
 
 #include <QWidget>
+#include <QNetworkReply>
 
 class QCheckBox;
 class QComboBox;
@@ -36,15 +37,52 @@ public:
         GLSL,
         XV,
     };
+    struct ColorSpacePreset {
+        QString name;
+        qreal brightness;
+        qreal contrast;
+        qreal hue;
+        qreal saturation;
+        qreal gammaRGB;
+        qreal filterSharp;
+        ColorSpacePreset() : name(""),brightness(0.0),contrast(0.0),hue(0.0),saturation(0.0),gammaRGB(0.0),filterSharp(0.0) {}
+    };
     explicit VideoEQConfigPage(QWidget *parent = 0);
     void setEngines(const QVector<Engine>& engines);
+    void setListPreset(int id);
+    void setListPresets();
+    void fillCurrentPreset();
+    void readCurrentPreset();
+    void fillPreset(int id);
+    void initPresets();
+    void loadPresets();
+    void savePresets();
+    void setSaveFile(const QString &file);
+    QList<ColorSpacePreset> presetItems() const;
+    QString saveFile() const;
+    void loadLocalPresets();
+    void saveLocalPresets();
+    void setRemoteUrlPresset(const QString &file);
+    void getRemotePressets ();
+
     void setEngine(Engine engine);
+
     Engine engine() const;
 
     qreal brightness() const;
     qreal contrast() const;
     qreal hue() const;
     qreal saturation() const;
+    qreal gammaRGB() const;
+    qreal filterSharp() const;
+    void brightness(qreal val);
+    void contrast(qreal val) const;
+    void hue(qreal val) const;
+    void saturation(qreal val) const;
+    void gammaRGB(qreal val) const;
+    void filterSharp(qreal val) const;
+
+
 
 signals:
     void engineChanged();
@@ -52,20 +90,37 @@ signals:
     void contrastChanged(int);
     void hueChanegd(int);
     void saturationChanged(int);
+    void listPresetChanged();
+    void gammaRGBChanged(int);
+    void filterSharpChanged(int);
 
 private slots:
     void onGlobalSet(bool);
     void onReset();
     void onEngineChangedByUI();
+    void onLoadPreset();
+    void onSavePreset();
+    void onListPresetChangedByUI();
+    void onPresetRequestFinished(QNetworkReply* reply);
 
 private:
+    qreal brightness_p() const;
+    qreal contrast_p() const;
+    qreal hue_p() const;
+    qreal saturation_p() const;
+    qreal gammaRGB_p() const;
+    qreal filterSharp_p() const;
     QCheckBox *mpGlobal;
-    QComboBox *mpEngine;
-    QSlider *mpBSlider, *mpCSlider, *mpSSlider;
+    QComboBox *mpEngine, *mpListPreset;
+    QSlider *mpBSlider, *mpCSlider, *mpSSlider, *mpGSlider, *mpFSSlider;
     QSlider *mpHSlider;
-    QPushButton *mpResetButton;
+    QPushButton *mpResetButton, *mpSavePreset, *mpLoadPreset;
     Engine mEngine;
     QVector<Engine> mEngines;
+    int mPresetID;
+    QList <ColorSpacePreset> mPreset;
+    ColorSpacePreset mRemotePreset;
+    QString mFile,mURL,presetUrl;
 };
 
 #endif // VIDEOEQCONFIGPAGE_H
