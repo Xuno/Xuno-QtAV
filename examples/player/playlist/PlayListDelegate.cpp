@@ -27,7 +27,7 @@
 
 static const int kMarginLeft = 4;
 static const int kMarginTop = 2;
-static const int kWidth = 320;
+static const int kWidth = 380;
 static const int kHeightMax = 30;
 static const int kHeightMin = 20;
 

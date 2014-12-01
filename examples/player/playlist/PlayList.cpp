@@ -129,6 +129,7 @@ void PlayList::insertItemAt(const PlayListItem &item, int row)
     if (!mpModel->insertRow(row))
         return;
     setItemAt(item, row);
+    changedWidhtRows();
 }
 
 void PlayList::setItemAt(const PlayListItem &item, int row)
@@ -146,8 +147,12 @@ void PlayList::insert(const QString &url, int row)
     if (!url.contains("://") || url.startsWith("file://")) {
         title = QFileInfo(url).fileName();
     }
+    if (url.startsWith("http://")){
+        title = QString("http://%1/.../%2").arg(QUrl(url).host(),QUrl(url).fileName());
+    }
     item.setTitle(title);
     insertItemAt(item, row);
+    changedWidhtRows();
 }
 
 void PlayList::remove(const QString &url)
@@ -179,6 +184,7 @@ void PlayList::removeSelectedItems()
     for (int i = s.size()-1; i >= 0; --i) {
         mpModel->removeRow(s.at(i).row());
     }
+    changedWidhtRows();
 }
 
 void PlayList::clearItems()
@@ -199,11 +205,17 @@ void PlayList::addItems()
             continue;
         insert(file, i);
     }
+    changedWidhtRows();
 }
 
 void PlayList::onAboutToPlay(const QModelIndex &index)
 {
     emit aboutToPlay(index.data(Qt::DisplayRole).value<PlayListItem>().url());
+}
+
+void PlayList::changedWidhtRows(){
+   mpListView->setMinimumWidth(mpListView->sizeHintForColumn(0)+2);
+   mpListView->updateGeometry();
 }
 
 
