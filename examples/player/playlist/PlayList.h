@@ -50,6 +50,7 @@ public:
     void insert(const QString& url, int row = 0);
     void setMaxRows(int r);
     int maxRows() const;
+    void changedWidhtRows();
 
 signals:
     void aboutToPlay(const QString& url);
