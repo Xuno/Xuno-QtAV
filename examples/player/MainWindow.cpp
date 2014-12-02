@@ -499,9 +499,9 @@ void MainWindow::setupUi()
     pWA = new QWidgetAction(0);
     pWA->setDefaultWidget(mpVideoEQ);
     subMenu->addAction(pWA);
-    //TODO LEXXAI
-    //mpVideoEQ->setSaveFile(Config::instance().defaultDir() + "/presets.ini");
-    //mpVideoEQ->loadLocalPresets();
+
+    mpVideoEQ->setSaveFile(Config::instance().defaultDir() + "/presets.ini");
+    mpVideoEQ->loadLocalPresets();
 
     subMenu = new ClickableMenu(tr("Decoder"));
     mpMenu->addMenu(subMenu);
@@ -1308,9 +1308,8 @@ void MainWindow::onVideoEQEngineChanged()
     onContrastChanged(mpVideoEQ->contrast()*100.0);
     onHueChanged(mpVideoEQ->hue()*100.0);
     onSaturationChanged(mpVideoEQ->saturation()*100.0);
-    //TODO LEXXAI
-    //onGammaRGBChanged(mpVideoEQ->gammaRGB()*100.0);
-    //onFilterSharpChanged(mpVideoEQ->filterSharp()*100.0);
+    onGammaRGBChanged(mpVideoEQ->gammaRGB()*100.0);
+    onFilterSharpChanged(mpVideoEQ->filterSharp()*100.0);
 }
 
 void MainWindow::onBrightnessChanged(int b)
@@ -1377,7 +1376,6 @@ void MainWindow::onGammaRGBChanged(int g)
 {
     Q_UNUSED(g);
     VideoRenderer *vo = mpPlayer->renderer();
-    //TODO LEXXAI
     //vo->setGammaRGB(mpVideoEQ->gammaRGB());
 }
 
@@ -1385,7 +1383,6 @@ void MainWindow::onFilterSharpChanged(int fs)
 {
     Q_UNUSED(fs);
     VideoRenderer *vo = mpPlayer->renderer();
-    //TODO LEXXAI
     //vo->setFilterSharp(mpVideoEQ->filterSharp());
 }
 

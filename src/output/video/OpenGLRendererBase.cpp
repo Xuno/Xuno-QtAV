@@ -214,4 +214,18 @@ bool OpenGLRendererBase::onSetSaturation(qreal s)
     return true;
 }
 
+bool OpenGLRendererBase::onSetGammaRGB(qreal gammaRGB)
+{
+    //qDebug("OpenGLRendererBase::onSetGammaRGB: %f",gammaRGB);
+    d_func().glv.setGammaRGB(gammaRGB);
+    return true;
+}
+
+bool OpenGLRendererBase::onSetFilterSharp(qreal filterSharp)
+{
+    //qDebug("OpenGLRendererBase::onSetFilterSharp: %f",filterSharp);
+    d_func().glv.setFilterSharp(filterSharp);
+    return true;
+}
+
 } //namespace QtAV

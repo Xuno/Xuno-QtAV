@@ -29,6 +29,7 @@
 #include "utils/Logger.h"
 
 #define YUVA_DONE 0
+#define GLSL_BICUBIC 0  // if used in GLSL own function for BICUBIC Interpolation
 /*
  * TODO: glActiveTexture for Qt4
  * texture target (rectangle for VDA)
@@ -149,6 +150,9 @@ const char* VideoShader::fragmentShader() const
         else
             frag.prepend("#define LA_16BITS_LE\n");
     }
+#if (GLSL_BICUBIC)
+            frag.prepend("#define USED_BiCubic\n");
+#endif
     return frag.constData();
 }
 
@@ -170,6 +174,9 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
     d.u_colorMatrix = shaderProgram->uniformLocation("u_colorMatrix");
     d.u_bpp = shaderProgram->uniformLocation("u_bpp");
     d.u_opacity = shaderProgram->uniformLocation("u_opacity");
+    d.u_gammaRGB = shaderProgram->uniformLocation("u_gammaRGB");
+    d.u_pix = shaderProgram->uniformLocation("u_pix");
+    d.u_filterkernel = shaderProgram->uniformLocation("u_filterkernel");
     d.u_Texture.resize(textureLocationCount());
     for (int i = 0; i < d.u_Texture.size(); ++i) {
         QString tex_var = QString("u_Texture%1").arg(i);
@@ -180,6 +187,9 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
     qDebug("glGetUniformLocation(\"u_colorMatrix\") = %d", d.u_colorMatrix);
     qDebug("glGetUniformLocation(\"u_bpp\") = %d", d.u_bpp);
     qDebug("glGetUniformLocation(\"u_opacity\") = %d", d.u_opacity);
+    qDebug("glGetUniformLocation(\"u_gammaRGB\") = %d", d.u_gammaRGB);
+    qDebug("glGetUniformLocation(\"u_pix\") = %d", d.u_pix);
+    qDebug("glGetUniformLocation(\"u_filterkernel\") = %d", d.u_filterkernel);
 }
 
 int VideoShader::textureLocationCount() const
@@ -218,6 +228,21 @@ int VideoShader::opacityLocation() const
     return d_func().u_opacity;
 }
 
+int VideoShader::gammaRGBLocation() const
+{
+    return d_func().u_gammaRGB;
+}
+
+int VideoShader::pixeloffsetLocation() const
+{
+    return d_func().u_pix;
+}
+
+int VideoShader::filterkernelLocation() const
+{
+    return d_func().u_filterkernel;
+}
+
 VideoFormat VideoShader::videoFormat() const
 {
     return d_func().video_format;
@@ -245,6 +270,15 @@ bool VideoShader::update(VideoMaterial *material)
     if (!material->bind())
         return false;
 
+    GLfloat fs=(GLfloat)material->filterSharp();
+    GLfloat fsa=(GLfloat)-((fs-(qreal)1.0)/(qreal)4.0);
+
+    GLfloat kernel[9] =  {
+                 0.,fsa ,0.,
+               fsa, fs ,fsa,
+                 0.,fsa ,0.
+     };
+
     const VideoFormat fmt(material->currentFormat());
     //format is out of date because we may use the same shader for different formats
     setVideoFormat(fmt);
@@ -268,6 +302,9 @@ bool VideoShader::update(VideoMaterial *material)
         program()->setUniformValue(bppLocation(), (GLfloat)material->bpp());
     //program()->setUniformValue(matrixLocation(), material->matrix()); //what about sgnode? state.combindMatrix()?
     // uniform end. attribute begins
+    program()->setUniformValue(gammaRGBLocation(), (GLfloat)material->gammaRGB());
+    program()->setUniformValue(pixeloffsetLocation(), material->pixeloffset());
+    program()->setUniformValueArray(filterkernelLocation(),kernel,9,1);
     return true;
 }
 
@@ -327,6 +364,7 @@ void VideoMaterial::setCurrentFrame(const VideoFrame &frame)
     DPTR_D(VideoMaterial);
     d.update_texure = true;
     // TODO: move to another function before rendering?
+    d.bpp = frame.format().bitsPerPixel(0);
     d.width = frame.width();
     d.height = frame.height();
     const VideoFormat fmt(frame.format());
@@ -506,6 +544,16 @@ int VideoMaterial::bpp() const
     return d_func().bpp;
 }
 
+qreal VideoMaterial::gammaRGB() const
+{
+    return d_func().gammaRGB;
+}
+
+qreal VideoMaterial::filterSharp() const
+{
+    return d_func().filterSharp;
+}
+
 int VideoMaterial::planeCount() const
 {
     return d_func().frame.planeCount();
@@ -529,6 +577,27 @@ void VideoMaterial::setHue(qreal value)
 void VideoMaterial::setSaturation(qreal value)
 {
     d_func().colorTransform.setSaturation(value);
+}
+
+void VideoMaterial::setGammaRGB(qreal value)
+{
+    //qDebug("VideoShader.cpp VideoMaterial::setGammaRGB: %f",value);
+    //0-2
+    const qreal min=0.,max=2.,w=(max-min)/2.,of=w+min;
+    qreal g = ((qreal)value)*w+of;
+    g=(g>0)?g:0.000001; // prevent values less than 0
+    //qDebug("VideoShader.cpp VideoMaterial::setGammaRGB (corr): %f",g);
+    d_func().gammaRGB=g;
+}
+
+void VideoMaterial::setFilterSharp(qreal value)
+{
+    //qDebug("VideoShader.cpp VideoMaterial::setFilterSgarp: %f",value);
+    //1-10  W=MAX-MIN,   fs=(value/100.0)*w/2+w+min
+    const qreal min=1.,max=10.,w=(max-min)/2.,of=w+min;
+    qreal fs=((qreal)value)*w+of;
+    //qDebug("VideoShader.cpp VideoMaterial::setFilterSgarp: (corr) %f",fs);
+    d_func().filterSharp=fs;
 }
 
 qreal VideoMaterial::validTextureWidth() const
@@ -556,6 +625,14 @@ QRectF VideoMaterial::normalizedROI(const QRectF &roi) const
     if (qAbs(h) > 1)
         h /= (float)d.height;
     return QRectF(x, y, w, h);
+}
+
+QVector2D VideoMaterial::pixeloffset () const
+{
+    DPTR_D(const VideoMaterial);
+    float w=1.f/d.width;
+    float h=1.f/d.height;
+    return QVector2D(w,h);
 }
 
 bool VideoMaterialPrivate::initTexture(GLuint tex, GLint internal_format, GLenum format, GLenum dataType, int width, int height)
@@ -736,8 +813,13 @@ bool VideoMaterialPrivate::updateTexturesIfNeeded()
 void VideoMaterialPrivate::setupQuality()
 {
 #ifndef QT_OPENGL_DYNAMIC
+#if (GLSL_BICUBIC)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+#else
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+#endif
 #else
     QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
     f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);

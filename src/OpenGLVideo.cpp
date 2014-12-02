@@ -154,6 +154,16 @@ void OpenGLVideo::setSaturation(qreal value)
     d_func().material->setSaturation(value);
 }
 
+void OpenGLVideo::setGammaRGB(qreal value)
+{
+    d_func().material->setGammaRGB(value);
+}
+
+void OpenGLVideo::setFilterSharp(qreal value)
+{
+    d_func().material->setFilterSharp(value);
+}
+
 void OpenGLVideo::render(const QRectF &target, const QRectF& roi, const QMatrix4x4& transform)
 {
     DPTR_D(OpenGLVideo);

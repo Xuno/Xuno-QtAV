@@ -49,6 +49,7 @@ public:
         , u_colorMatrix(-1)
         , u_bpp(-1)
         , u_opacity(-1)
+        , u_gammaRGB(-1)
     {}
     virtual ~VideoShaderPrivate() {
         if (owns_program && program) {
@@ -68,6 +69,9 @@ public:
     int u_colorMatrix;
     int u_bpp;
     int u_opacity;
+    int u_gammaRGB;
+    int u_pix;
+    int u_filterkernel;
     QVector<int> u_Texture;
     VideoFormat video_format;
     mutable QByteArray planar_frag, packed_frag;
@@ -85,6 +89,7 @@ public:
         , video_format(VideoFormat::Format_Invalid)
         , plane1_linesize(0)
         , effective_tex_width_ratio(1.0)
+        , gammaRGB(1.0)
     {
         colorTransform.setOutputColorSpace(ColorTransform::RGB);
     }
@@ -140,6 +145,8 @@ public:
     QVector<GLfloat> texture_coords;
     ColorTransform colorTransform;
     QMatrix4x4 matrix;
+    qreal gammaRGB;
+    qreal filterSharp;
 };
 
 } //namespace QtAV
