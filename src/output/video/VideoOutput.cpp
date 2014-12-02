@@ -57,13 +57,8 @@ public:
         contrast = impl->contrast();
         hue = impl->hue();
         saturation = impl->saturation();
-<<<<<<< HEAD
         gammaRGB = impl->gammaRGB();
         filterSharp = impl->filterSharp();
-=======
-        gammaRGB = impl->saturation();
-        filterSharp = impl->saturation();
->>>>>>> player: try implement OpenGL filters
     }
     ~VideoOutputPrivate() {
         if (impl) {

@@ -1406,22 +1406,14 @@ void MainWindow::onGammaRGBChanged(int g)
 {
     Q_UNUSED(g);
     VideoRenderer *vo = mpPlayer->renderer();
-<<<<<<< HEAD
     vo->setGammaRGB(mpVideoEQ->gammaRGB());
-=======
-    //vo->setGammaRGB(mpVideoEQ->gammaRGB());
->>>>>>> player: try implement OpenGL filters
 }
 
 void MainWindow::onFilterSharpChanged(int fs)
 {
     Q_UNUSED(fs);
     VideoRenderer *vo = mpPlayer->renderer();
-<<<<<<< HEAD
     vo->setFilterSharp(mpVideoEQ->filterSharp());
-=======
-    //vo->setFilterSharp(mpVideoEQ->filterSharp());
->>>>>>> player: try implement OpenGL filters
 }
 
 void MainWindow::onCaptureConfigChanged()
