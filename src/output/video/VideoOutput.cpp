@@ -57,8 +57,8 @@ public:
         contrast = impl->contrast();
         hue = impl->hue();
         saturation = impl->saturation();
-        gammaRGB = impl->saturation();
-        filterSharp = impl->saturation();
+        gammaRGB = impl->gammaRGB();
+        filterSharp = impl->filterSharp();
     }
     ~VideoOutputPrivate() {
         if (impl) {

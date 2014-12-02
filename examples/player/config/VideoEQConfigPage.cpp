@@ -298,7 +298,7 @@ void VideoEQConfigPage::gammaRGB(qreal val) const
 
 qreal VideoEQConfigPage::filterSharp() const
 {
-    qDebug("VideoEQConfigPage::filterSharp return bar:%f bar+remote:%f,remote: %f",filterSharp_p(),filterSharp_p()+mRemotePreset.filterSharp,mRemotePreset.filterSharp);
+    //qDebug("VideoEQConfigPage::filterSharp return bar:%f bar+remote:%f,remote: %f",filterSharp_p(),filterSharp_p()+mRemotePreset.filterSharp,mRemotePreset.filterSharp);
     return filterSharp_p()+mRemotePreset.filterSharp;
 }
 

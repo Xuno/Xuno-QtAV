@@ -1369,14 +1369,14 @@ void MainWindow::onGammaRGBChanged(int g)
 {
     Q_UNUSED(g);
     VideoRenderer *vo = mpPlayer->renderer();
-    //vo->setGammaRGB(mpVideoEQ->gammaRGB());
+    vo->setGammaRGB(mpVideoEQ->gammaRGB());
 }
 
 void MainWindow::onFilterSharpChanged(int fs)
 {
     Q_UNUSED(fs);
     VideoRenderer *vo = mpPlayer->renderer();
-    //vo->setFilterSharp(mpVideoEQ->filterSharp());
+    vo->setFilterSharp(mpVideoEQ->filterSharp());
 }
 
 void MainWindow::onCaptureConfigChanged()
