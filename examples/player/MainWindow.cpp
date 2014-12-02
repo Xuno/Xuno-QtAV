@@ -512,9 +512,9 @@ void MainWindow::setupUi()
     pWA = new QWidgetAction(0);
     pWA->setDefaultWidget(mpVideoEQ);
     subMenu->addAction(pWA);
-    //TODO LEXXAI
-    //mpVideoEQ->setSaveFile(Config::instance().defaultDir() + "/presets.ini");
-    //mpVideoEQ->loadLocalPresets();
+
+    mpVideoEQ->setSaveFile(Config::instance().defaultDir() + "/presets.ini");
+    mpVideoEQ->loadLocalPresets();
 
     mpVideoEQ->setSaveFile(Config::instance().defaultDir() + "/presets.ini");
     mpVideoEQ->loadLocalPresets();
@@ -1406,14 +1406,22 @@ void MainWindow::onGammaRGBChanged(int g)
 {
     Q_UNUSED(g);
     VideoRenderer *vo = mpPlayer->renderer();
+<<<<<<< HEAD
     vo->setGammaRGB(mpVideoEQ->gammaRGB());
+=======
+    //vo->setGammaRGB(mpVideoEQ->gammaRGB());
+>>>>>>> player: try implement OpenGL filters
 }
 
 void MainWindow::onFilterSharpChanged(int fs)
 {
     Q_UNUSED(fs);
     VideoRenderer *vo = mpPlayer->renderer();
+<<<<<<< HEAD
     vo->setFilterSharp(mpVideoEQ->filterSharp());
+=======
+    //vo->setFilterSharp(mpVideoEQ->filterSharp());
+>>>>>>> player: try implement OpenGL filters
 }
 
 void MainWindow::onCaptureConfigChanged()
