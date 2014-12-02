@@ -57,6 +57,8 @@ public:
         contrast = impl->contrast();
         hue = impl->hue();
         saturation = impl->saturation();
+        gammaRGB = impl->saturation();
+        filterSharp = impl->saturation();
     }
     ~VideoOutputPrivate() {
         if (impl) {
@@ -294,6 +296,30 @@ bool VideoOutput::onSetSaturation(qreal saturation)
         return false;
     }
     emit saturationChanged(saturation);
+    return true;
+}
+
+bool VideoOutput::onSetGammaRGB(qreal gammaRGB)
+{
+    DPTR_D(VideoOutput);
+    // not call onSetXXX here, otherwise states in impl will not change
+    d.impl->setGammaRGB(gammaRGB);
+    if (gammaRGB != d.impl->gammaRGB()) {
+        return false;
+    }
+    emit gammaRGBChanged(gammaRGB);
+    return true;
+}
+
+bool VideoOutput::onSetFilterSharp(qreal filterSharp)
+{
+    DPTR_D(VideoOutput);
+    // not call onSetXXX here, otherwise states in impl will not change
+    d.impl->setFilterSharp(filterSharp);
+    if (filterSharp != d.impl->filterSharp()) {
+        return false;
+    }
+    emit filterSharpChanged(filterSharp);
     return true;
 }
 

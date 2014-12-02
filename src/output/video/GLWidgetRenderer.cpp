@@ -1111,4 +1111,26 @@ bool GLWidgetRenderer::onSetSaturation(qreal s)
     return true;
 }
 
+bool GLWidgetRenderer::onSetGammaRGB(qreal g)
+{
+    DPTR_D(GLWidgetRenderer);
+    Q_UNUSED(g);
+    if (!d.hasGLSL)
+        return false;
+    //qDebug("GLWidgetRenderer::onSetGammaRGB :%f",g);
+    //d.gammaRGB(g);
+    return true;
+}
+
+bool GLWidgetRenderer::onSetFilterSharp(qreal fS)
+{
+    DPTR_D(GLWidgetRenderer);
+    Q_UNUSED(fS);
+    if (!d.hasGLSL)
+        return false;
+    //qDebug("GLWidgetRenderer::onSetFilterSharp :%f",fS);
+    //d.filterSharp(fS);
+    return true;
+}
+
 } //namespace QtAV
