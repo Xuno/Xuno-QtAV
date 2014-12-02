@@ -74,6 +74,9 @@ public:
     int colorMatrixLocation() const;
     int bppLocation() const;
     int opacityLocation() const;
+    int gammaRGBLocation() const;
+    int pixeloffsetLocation() const;
+    int filterkernelLocation() const;
     VideoFormat videoFormat() const;
     void setVideoFormat(const VideoFormat& format);
     QOpenGLShaderProgram* program();
@@ -114,6 +117,8 @@ public:
     const QMatrix4x4& matrix() const;
     int bpp() const; //1st plane
     int planeCount() const;
+    qreal gammaRGB() const;
+    qreal filterSharp() const;
     /*!
      * \brief validTextureWidth
      * Value is (0, 1]. Normalized valid width of a plane.
@@ -135,10 +140,13 @@ public:
      * valid and normalized roi. \sa validTextureWidth()
      */
     QRectF normalizedROI(const QRectF& roi) const;
+    QVector2D pixeloffset() const;
     void setBrightness(qreal value);
     void setContrast(qreal value);
     void setHue(qreal value);
     void setSaturation(qreal value);
+    void setGammaRGB(qreal value);
+    void setFilterSharp(qreal value);
 protected:
     VideoMaterial(VideoMaterialPrivate &d);
     DPTR_DECLARE(VideoMaterial)

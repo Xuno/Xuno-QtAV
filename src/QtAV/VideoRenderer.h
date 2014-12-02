@@ -188,6 +188,10 @@ public:
     bool setHue(qreal hue);
     qreal saturation() const;
     bool setSaturation(qreal saturation);
+    qreal gammaRGB() const;
+    bool setGammaRGB(qreal gammaRGB);
+    qreal filterSharp() const;
+    bool setFilterSharp(qreal filterSharp);
 
 protected:
     VideoRenderer(VideoRendererPrivate &d);
@@ -235,6 +239,8 @@ private: //used by VideoOutput class
     virtual bool onSetContrast(qreal contrast);
     virtual bool onSetHue(qreal hue);
     virtual bool onSetSaturation(qreal saturation);
+    virtual bool onSetGammaRGB(qreal gammaRGB);
+    virtual bool onSetFilterSharp(qreal filterSharp);
     void updateUi();
 private:
     friend class VideoOutput;
