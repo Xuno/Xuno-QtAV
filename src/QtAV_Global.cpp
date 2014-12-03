@@ -92,14 +92,16 @@ void about()
     viewQtAV->setHtml(aboutQtAV_HTML());
     viewFFmpeg->setHtml(aboutFFmpeg_HTML());
     QTabWidget *tab = new QTabWidget;
-    tab->addTab(viewQtAV, "QtAV");
+//    tab->addTab(viewQtAV, "QtAV");
+    tab->addTab(viewQtAV, "XunoPlayer");
     tab->addTab(viewFFmpeg, "FFmpeg");
     QPushButton *btn = new QPushButton(QObject::tr("Ok"));
     QHBoxLayout *btnLayout = new QHBoxLayout;
     btnLayout->addStretch();
     btnLayout->addWidget(btn);
     QDialog dialog;
-    dialog.setWindowTitle(QObject::tr("About") + "  QtAV");
+//    dialog.setWindowTitle(QObject::tr("About") + "  QtAV");
+    dialog.setWindowTitle(QObject::tr("About") + "  XunoPlayer");
     QVBoxLayout *layout = new QVBoxLayout;
     dialog.setLayout(layout);
     layout->addWidget(tab);
@@ -180,7 +182,8 @@ QString aboutFFmpeg_HTML()
 void aboutQtAV()
 {
 #if QTAV_HAVE(WIDGETS)
-    QMessageBox::about(0, QObject::tr("About QtAV"), aboutQtAV_HTML());
+//    QMessageBox::about(0, QObject::tr("About QtAV"), aboutQtAV_HTML());
+    QMessageBox::about(0, QObject::tr("About XunoPlayer"), aboutQtAV_HTML());
 #else
     qDebug() << aboutQtAV_PlainText();
 #endif //QTAV_HAVE(WIDGETS)
@@ -193,7 +196,9 @@ QString aboutQtAV_PlainText()
 
 QString aboutQtAV_HTML()
 {
-    static QString about = "<h3>QtAV " QTAV_VERSION_STR_LONG "</h3>\n"
+    // static QString about = "<h3>QtAV " QTAV_VERSION_STR_LONG "</h3>\n"
+        static QString about = "<h3>XunoPlayer " XUNO_QTAV_VERSION_STR_LONG "</h3>\n"
+            "<p>" + QObject::tr("Fork project (Xuno-QtAV) of QtAV \n") + QTAV_VERSION_STR "</p>"
             "<p>" + QObject::tr("A media playing library base on Qt and FFmpeg.\n") + "</p>"
             "<p>" + QObject::tr("Distributed under the terms of LGPLv2.1 or later.\n") + "</p>"
             "<p>Copyright (C) 2012-2014 Wang Bin (aka. Lucas Wang) <a href='mailto:wbsecg1@gmail.com'>wbsecg1@gmail.com</a></p>\n"
