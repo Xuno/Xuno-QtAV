@@ -35,12 +35,14 @@ class VideoOutputEventFilter : public QObject
 public:
     VideoOutputEventFilter(VideoRenderer *renderer = 0);
     virtual bool eventFilter(QObject *watched, QEvent *event);
+    void setEnableMovingWindow(bool s);
 
 private slots:
     void stopFiltering();
 private:
     void switchFullScreen();
     bool mRendererIsQObj;
+    bool enableMovingWindow;
     VideoRenderer *mpRenderer;
     QPoint gMousePos, iMousePos;
 };
