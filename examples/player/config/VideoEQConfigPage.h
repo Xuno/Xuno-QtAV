@@ -64,6 +64,7 @@ public:
     void saveLocalPresets();
     void setRemoteUrlPresset(const QString &file);
     void getRemotePressets ();
+    void getLocalPressets ();
 
     void setEngine(Engine engine);
 
@@ -121,6 +122,7 @@ private:
     QList <ColorSpacePreset> mPreset;
     ColorSpacePreset mRemotePreset;
     QString mFile,mURL,presetUrl;
+    void parseJsonPressetData(QString &strReply);
 };
 
 #endif // VIDEOEQCONFIGPAGE_H

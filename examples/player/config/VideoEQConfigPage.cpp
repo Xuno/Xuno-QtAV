@@ -407,8 +407,42 @@ void VideoEQConfigPage::setRemoteUrlPresset(const QString &file){
     }
 }
 
+void VideoEQConfigPage::parseJsonPressetData (QString &strReply){
+    if ( strReply.isEmpty()) return;
+    QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
+    if (!jsonResponse.isEmpty()){
+        QJsonObject jsonObject = jsonResponse.object();
+        if (!jsonObject.isEmpty()){
+            if (jsonObject.value("success").toInt()==1){
+                mRemotePreset.brightness=jsonObject.value("brightness").toDouble();
+                mRemotePreset.contrast=jsonObject.value("contrast").toDouble();
+                mRemotePreset.hue=jsonObject.value("hue").toDouble();
+                mRemotePreset.saturation=jsonObject.value("saturation").toDouble();
+                mRemotePreset.gammaRGB=jsonObject.value("gammaRGB").toDouble();
+                mRemotePreset.filterSharp=jsonObject.value("filterSharp").toDouble();
+                qDebug(" *********  mLoadPreset json loaded");
+                presetUrl=mURL;
+                emit engineChanged();
+            }
+        }
+    }
+}
+
+void VideoEQConfigPage::getLocalPressets (){
+    if ( mURL.isEmpty()) return;
+    QFile f(mURL);
+    if (!f.exists()) return;
+    if (!f.open(QIODevice::ReadOnly)) {
+        qWarning("Can not load local preset %s: %s", f.fileName().toUtf8().constData(), f.errorString().toUtf8().constData());
+        return;
+    }
+    QString strReply = (QString)f.readAll();
+    f.close();
+    parseJsonPressetData(strReply);
+}
+
 void VideoEQConfigPage::getRemotePressets (){
-    //qDebug("VideoEQConfigPage::getRemotePressets before: mURL %s",qPrintable(mURL));
+    qDebug("VideoEQConfigPage::getRemotePressets before: mURL %s",qPrintable(mURL));
     if (mURL.compare(presetUrl)==0 || mURL.isEmpty()) return; //check if pressets was loaded for this url
     QNetworkAccessManager *nam = new QNetworkAccessManager(this);
     QObject::connect(nam, SIGNAL(finished(QNetworkReply*)),
@@ -424,23 +458,7 @@ void VideoEQConfigPage::getRemotePressets (){
 void VideoEQConfigPage::onPresetRequestFinished(QNetworkReply* reply){
     if(reply->error() == QNetworkReply::NoError) {
         QString strReply = (QString)reply->readAll();
-        QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
-        if (!jsonResponse.isEmpty()){
-            QJsonObject jsonObject = jsonResponse.object();
-            if (!jsonObject.isEmpty()){
-                if (jsonObject.value("success").toInt()==1){
-                    mRemotePreset.brightness=jsonObject.value("brightness").toDouble();
-                    mRemotePreset.contrast=jsonObject.value("contrast").toDouble();
-                    mRemotePreset.hue=jsonObject.value("hue").toDouble();
-                    mRemotePreset.saturation=jsonObject.value("saturation").toDouble();
-                    mRemotePreset.gammaRGB=jsonObject.value("gammaRGB").toDouble();
-                    mRemotePreset.filterSharp=jsonObject.value("filterSharp").toDouble();
-                    qDebug(" *********  mRemotePreset json loaded");
-                    presetUrl=mURL;
-                    emit engineChanged();
-                }
-            }
-        }
+        parseJsonPressetData(strReply);
     } else {
         qDebug("VideoEQConfigPage.cpp: ERROR, read fromJson VideoEQConfigPage::onPresetRequestFinished");
     }
