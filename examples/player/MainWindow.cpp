@@ -849,6 +849,7 @@ void MainWindow::onStartPlay()
 
     if (mpStatisticsView && mpStatisticsView->isVisible())
         mpStatisticsView->setStatistics(mpPlayer->statistics());
+    reSizeByMovie();
 }
 
 void MainWindow::onStopPlay()
