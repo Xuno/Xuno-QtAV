@@ -753,6 +753,7 @@ void MainWindow::play(const QString &name)
     item.setLastTime(0);
     mpHistory->remove(mFile);
     mpHistory->insertItemAt(item, 0);
+    loadRemoteUrlPresset(mFile);
     mpPlayer->play(name);
 }
 
