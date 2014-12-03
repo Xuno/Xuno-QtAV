@@ -538,7 +538,8 @@ void MainWindow::setupUi()
     mpControl->setLayout(controlLayout);
     controlLayout->addWidget(mpCurrent);
     //controlLayout->addWidget(mpTitle);
-    QSpacerItem *space = new QSpacerItem(mpPlayPauseBtn->width(), mpPlayPauseBtn->height(), QSizePolicy::MinimumExpanding);
+    //QSpacerItem *space = new QSpacerItem(mpPlayPauseBtn->width(), mpPlayPauseBtn->height(), QSizePolicy::MinimumExpanding);
+    QSpacerItem *space = new QSpacerItem(1, mpPlayPauseBtn->height(), QSizePolicy::MinimumExpanding);
     controlLayout->addSpacerItem(space);
     controlLayout->addWidget(mpVolumeSlider);
     controlLayout->addWidget(mpVolumeBtn);

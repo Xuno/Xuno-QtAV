@@ -57,6 +57,16 @@ QString QtAV_Version_String_Long()
     return QTAV_VERSION_STR_LONG;
 }
 
+QString XUNO_QtAV_Version_String()
+{
+    return XUNO_QTAV_VERSION_STR;
+}
+
+QString XUNO_QtAV_Version_String_Long()
+{
+    return XUNO_QTAV_VERSION_STR_LONG;
+}
+
 namespace QtAV {
 
 namespace Internal {
