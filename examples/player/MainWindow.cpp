@@ -1489,9 +1489,8 @@ void MainWindow::loadRemoteUrlPresset(const QString& url){
         ba.append("m="+lurl.remove(XUNOserverUrl+"/",Qt::CaseInsensitive));
         surl.append("q="+ba.toBase64());
         qDebug("MainWindow::openUrl surl: %s",qPrintable(surl));
-        //TODO LEXXAI
-        //mpVideoEQ->setRemoteUrlPresset(surl);
-        //mpVideoEQ->getRemotePressets();
+        mpVideoEQ->setRemoteUrlPresset(surl);
+        mpVideoEQ->getRemotePressets();
     }
 }
 
