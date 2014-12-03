@@ -26,6 +26,9 @@
 #define QTAV_MINOR 4    //((QTAV_VERSION&0xff00)>>8)
 #define QTAV_PATCH 1    //(QTAV_VERSION&0xff)
 
+#define XUNO_QTAV_MAJOR 0    //((XUNO_QTAV_VERSION&0xff0000)>>16)
+#define XUNO_QTAV_MINOR 0    //((XUNO_QTAV_VERSION&0xff00)>>8)
+#define XUNO_QTAV_PATCH 6    //(XUNO_QTAV_VERSION&0xff)
 
 #define QTAV_VERSION_MAJOR(V) ((V & 0xff0000) >> 16)
 #define QTAV_VERSION_MINOR(V) ((V & 0xff00) >> 8)
@@ -45,5 +48,17 @@
 /* the following are compile time version */
 /* C++11 requires a space between literal and identifier */
 #define QTAV_VERSION_STR        TOSTR(QTAV_MAJOR) "." TOSTR(QTAV_MINOR) "." TOSTR(QTAV_PATCH)
+
+#ifdef WIN64
+#define QTAV_PLATFORM x64
+#endif
+
+#ifdef QTAV_PLATFORM
+#define XUNO_QTAV_VERSION_STR       "v." TOSTR(XUNO_QTAV_MAJOR) "." TOSTR(XUNO_QTAV_MINOR) TOSTR(XUNO_QTAV_PATCH) " ("TOSTR(QTAV_PLATFORM)")"
+#else
+#define XUNO_QTAV_VERSION_STR       "v." TOSTR(XUNO_QTAV_MAJOR) "." TOSTR(XUNO_QTAV_MINOR) TOSTR(XUNO_QTAV_PATCH)
+#endif
+
+#define XUNO_QTAV_VERSION_STR_LONG   XUNO_QTAV_VERSION_STR " (" __DATE__ ", " __TIME__ ")"
 
 #endif // QTAV_VERSION_H

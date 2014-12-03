@@ -113,7 +113,8 @@ int main(int argc, char *argv[])
     vo = vo.toLower();
     if (vo != "gl" && vo != "d2d" && vo != "gdi" && vo != "xv" && vo != "qt")
         vo = "gl";
-    QString title = "QtAV " /*+ vo + " "*/ + QtAV_Version_String_Long() + " wbsecg1@gmail.com";
+    //QString title = "QtAV " /*+ vo + " "*/ + QtAV_Version_String_Long() + " wbsecg1@gmail.com";
+    QString title = "XunoPlayer " /*+ vo + " "*/ + XUNO_QtAV_Version_String_Long() /* + " wbsecg1@gmail.com"*/;
 #ifndef QT_NO_OPENGL
     VideoRendererId vid = VideoRendererId_GLWidget2;
 #else

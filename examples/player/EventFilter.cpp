@@ -140,7 +140,13 @@ bool EventFilter::eventFilter(QObject *watched, QEvent *event)
             break;
         case Qt::Key_Q:
         case Qt::Key_Escape:
-            qApp->quit();
+            //qApp->quit();
+            { QWidget *w = qApp->activeWindow();
+            if (!w)
+                return false;
+            if (w->isFullScreen())
+                w->showNormal();
+            }
             break;
         case Qt::Key_S:
             player->stop(); //check playing?
