@@ -31,6 +31,7 @@ namespace QtAV {
 VideoOutputEventFilter::VideoOutputEventFilter(VideoRenderer *renderer):
     QObject(renderer->widget())
   , mRendererIsQObj(!!renderer->widget())
+  , enableMovingWindow(false)
   , mpRenderer(renderer)
 {
     if (renderer->widget()) {
@@ -114,7 +115,8 @@ bool VideoOutputEventFilter::eventFilter(QObject *watched, QEvent *event)
     }
         break;
     case QEvent::MouseMove: {
-        if (iMousePos.isNull() || gMousePos.isNull())
+//        if (iMousePos.isNull() || gMousePos.isNull())
+        if (iMousePos.isNull() || gMousePos.isNull() || !enableMovingWindow)
             return false;
         QMouseEvent *me = static_cast<QMouseEvent*>(event);
         QWidget *window = mpRenderer->widget()->window();
@@ -146,6 +148,11 @@ void VideoOutputEventFilter::switchFullScreen()
         window->showNormal();
     else
         window->showFullScreen();
+}
+
+void VideoOutputEventFilter::setEnableMovingWindow(bool s)
+{
+    enableMovingWindow = s;
 }
 
 } //namespace QtAV
