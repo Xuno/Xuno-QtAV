@@ -1490,7 +1490,10 @@ void MainWindow::workaroundRendererSize()
 
 void MainWindow::loadRemoteUrlPresset(const QString& url){
     QString lurl=url;
-    qDebug("MainWindow::loadRemoteUrlPresset url: %s",qPrintable(url));
+    if (!lurl.contains("://") || lurl.startsWith("file://")) {
+        lurl=QFileInfo(lurl).absolutePath()+"/"+QFileInfo(lurl).baseName()+".config";
+    }
+    qDebug("MainWindow::loadRemoteUrlPresset url: %s, lurl: %s",qPrintable(url),qPrintable(lurl));
     if (lurl.startsWith(XUNOserverUrl,Qt::CaseInsensitive)){
         QString surl=XUNOpresetUrl;
         QByteArray ba;
@@ -1499,6 +1502,9 @@ void MainWindow::loadRemoteUrlPresset(const QString& url){
         qDebug("MainWindow::openUrl surl: %s",qPrintable(surl));
         mpVideoEQ->setRemoteUrlPresset(surl);
         mpVideoEQ->getRemotePressets();
+    }else if (lurl.endsWith(".config")){
+        mpVideoEQ->setRemoteUrlPresset(lurl);
+        mpVideoEQ->getLocalPressets();
     }
 }
 
