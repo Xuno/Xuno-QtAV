@@ -1,7 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
     Copyright (C) 2014 Wang Bin <wbsecg1@gmail.com>
-    Copyright (C) 2014 Stefan Ladage <sladage@gmail.com>
 
 *   This file is part of QtAV
 
@@ -20,34 +19,26 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
 
-#ifndef QTAV_AVIOCONTEXT_H
-#define QTAV_AVIOCONTEXT_H
+#ifndef QTAV_AVINPUT_P_H
+#define QTAV_AVINPUT_P_H
 
+#include "QtAV/QtAV_Global.h"
 #include "QtAV/private/AVCompat.h"
-//struct AVIOContext; //anonymous struct in FFmpeg1.0.x
-class QIODevice;
-
-#define IODATA_BUFFER_SIZE 32768
+#include <QtCore/QString>
 
 namespace QtAV {
 
-class QAVIOContext
+class AVInput;
+class Q_AV_PRIVATE_EXPORT AVInputPrivate : public DPtrPrivate<AVInput>
 {
 public:
-    QAVIOContext(QIODevice* io);
-    ~QAVIOContext();
-
-    AVIOContext* context();
-    // call this after AVFormatContext is closed
-    void release();
-
-    QIODevice* device() const;
-    void setDevice(QIODevice* device);
-
-private:
-    QIODevice* m_pIO;
-    AVIOContext *m_avio;
+    AVInputPrivate()
+        : ctx(0)
+    {}
+    // TODO: how to manage ctx?
+    AVIOContext *ctx;
+    QString url;
 };
 
-}
-#endif // QTAV_AVIOCONTEXT_H
+} //namespace QtAV
+#endif // QTAV_AVINPUT_P_H
