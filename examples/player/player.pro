@@ -36,7 +36,8 @@ SOURCES += main.cpp \
     config/AVFormatConfigPage.cpp \
     config/AVFilterConfigPage.cpp \
     filters/AVFilterSubtitle.cpp \
-    XunoBrowser.cpp
+    XunoBrowser.cpp \
+    config/ImageSequenceConfigPage.cpp
 
 HEADERS += \
     MainWindow.h \
@@ -61,7 +62,8 @@ HEADERS += \
     config/AVFormatConfigPage.h \
     config/AVFilterConfigPage.h \
     filters/AVFilterSubtitle.h \
-    XunoBrowser.h
+    XunoBrowser.h \
+    config/ImageSequenceConfigPage.h
 
 
 unix:!android:!mac {

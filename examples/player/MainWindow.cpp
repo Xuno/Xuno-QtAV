@@ -62,6 +62,7 @@
 #include "../common/common.h"
 #include "XunoBrowser.h"
 #include <QUrl>
+#include "config/ImageSequenceConfigPage.h"
 
 //#include <QWebView>
 
@@ -321,10 +322,18 @@ void MainWindow::setupUi()
     QMenu *subMenu = 0;
     QWidgetAction *pWA = 0;
     mpMenu = new QMenu(mpMenuBtn);
+    mpMenu->addAction(tr("Open File"), this, SLOT(openFile()));
     mpMenu->addAction(tr("Open Url"), this, SLOT(openUrl()));
     //mpMenu->addAction(tr("Online channels"), this, SLOT(onTVMenuClick()));
-    mpMenu->addSeparator();
+    subMenu = new ClickableMenu(tr("Image Sequence"));
+    mpMenu->addMenu(subMenu);
+    mpImageSequence = new ImageSequenceConfigPage();
 
+    pWA = new QWidgetAction(0);
+    pWA->setDefaultWidget(mpImageSequence);
+    subMenu->addAction(pWA);
+
+    mpMenu->addSeparator();
     subMenu = new QMenu(tr("Play list"));
     mpMenu->addMenu(subMenu);
     mpPlayList = new PlayList(this);
