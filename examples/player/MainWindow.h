@@ -49,6 +49,7 @@ class StatisticsView;
 class OSDFilter;
 class AVFilterSubtitle;
 class XunoBrowser;
+class ImageSequenceConfigPage;
 class MainWindow : public QWidget
 {
     Q_OBJECT
@@ -208,6 +209,7 @@ private:
     QString XUNOpresetUrl;
 
     XunoBrowser *mpXunoBrowser;
+    ImageSequenceConfigPage *mpImageSequence;
 };
 
 
