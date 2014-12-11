@@ -2,7 +2,8 @@
 #include <QLabel>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
-
+#include <QFileDialog>
+#include <QtCore>
 
 ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     QWidget(parent)
@@ -38,8 +39,22 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
 
     vb->addLayout(hb);
     mpSelectImgButton = new QPushButton(tr("Select Image"));
-    connect(mpSelectImgButton, SIGNAL(clicked()), SLOT(onSelectImgPress()));
+    connect(mpSelectImgButton, SIGNAL(clicked()), SLOT(onSelectImgages()));
 
     vb->addWidget(mpSelectImgButton,Qt::AlignHCenter);
 
+}
+
+
+void ImageSequenceConfigPage::onSelectImgages()
+{
+    QStringList files = QFileDialog::getOpenFileNames(0, tr("Select one or more media file"),"",tr("Image Files (*.png *.jpg *.tif*)"));
+    if (files.isEmpty())
+        return;
+
+
+    for (int i = 0; i < files.size(); ++i){
+      qDebug() << files.at(i);
+      qDebug("ImageSequenceConfigPage::openFiles %s", qPrintable(QFileInfo(files.at(i)).fileName()));
+    }
 }
