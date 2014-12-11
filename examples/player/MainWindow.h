@@ -151,6 +151,7 @@ protected:
 private:
     void workaroundRendererSize();
     void reSizeByMovie();
+    void setPlayerPosFromRepeat();
 
 private:
     bool mIsReady, mHasPendingPlay;
