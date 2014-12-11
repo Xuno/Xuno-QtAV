@@ -751,6 +751,8 @@ void MainWindow::play(const QString &name)
     mpPlayer->enableAudio(!mNullAO);
     if (!mpRepeatEnableAction->isChecked())
         mRepeateMax = 0;
+    else
+        mRepeateMax = mpRepeatBox->value();
     mpPlayer->setRepeat(mRepeateMax);
     mpPlayer->setPriority(idsFromNames(Config::instance().decoderPriorityNames()));
     mpPlayer->setOptionsForAudioCodec(mpDecoderConfigPage->audioDecoderOptions());
@@ -837,6 +839,7 @@ void MainWindow::onStartPlay()
     mpPlayPauseBtn->setIconWithSates(mPausePixmap);
     mpTimeSlider->setMinimum(mpPlayer->mediaStartPosition());
     mpTimeSlider->setMaximum(mpPlayer->mediaStopPosition());
+    setPlayerPosFromRepeat();
     mpTimeSlider->setValue(0);
     mpTimeSlider->setEnabled(true);
     mpEnd->setText(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()).toString("HH:mm:ss"));
@@ -884,7 +887,7 @@ void MainWindow::onStopPlay()
     mpEnd->setText("00:00:00");
     tryShowControlBar();
     ScreenSaver::instance().enable();
-    toggleRepeat(false);
+    toggleRepeat(mpRepeatEnableAction->isChecked());  //after stop not reset repeat task
     //mRepeateMax = 0;
     killTimer(mCursorTimer);
     unsetCursor();
@@ -1549,6 +1552,21 @@ void MainWindow::onFullScreen(){
         showNormal();
     else
         showFullScreen();
+}
+
+void MainWindow::setPlayerPosFromRepeat(){
+    if (mpRepeatEnableAction->isChecked()){
+        qint64 RA=QTime(0, 0, 0).msecsTo(mpRepeatA->time());
+        qint64 RB=QTime(0, 0, 0).msecsTo(mpRepeatB->time());
+        if (RB>RA){
+            if (RA>=mpPlayer->mediaStartPosition() && RA<=mpPlayer->mediaStopPosition()) {
+                mpPlayer->setStartPosition(RA);
+            }
+            if (RB>=mpPlayer->mediaStartPosition() && RB<=mpPlayer->mediaStopPosition()) {
+                mpPlayer->setStopPosition(RB);
+            }
+        }
+    }
 }
 
 
