@@ -328,7 +328,10 @@ void MainWindow::setupUi()
     subMenu = new ClickableMenu(tr("Image Sequence"));
     mpMenu->addMenu(subMenu);
     mpImageSequence = new ImageSequenceConfigPage();
-
+    connect(mpImageSequence, SIGNAL(play(QString)), SLOT(play(QString)));
+    connect(mpImageSequence, SIGNAL(repeatAChanged(QTime)), SLOT(repeatAChanged(QTime)));
+    connect(mpImageSequence, SIGNAL(repeatBChanged(QTime)), SLOT(repeatBChanged(QTime)));
+    connect(mpImageSequence, SIGNAL(toggleRepeat(bool)), SLOT(toggleRepeat(bool)));
     pWA = new QWidgetAction(0);
     pWA->setDefaultWidget(mpImageSequence);
     subMenu->addAction(pWA);
@@ -747,6 +750,9 @@ void MainWindow::play(const QString &name)
     if (!mFile.contains("://") || mFile.startsWith("file://")) {
         mTitle = QFileInfo(mFile).fileName();
     }
+    if (mFile.contains("/%0") && mFile.contains("d.")) {
+        mTitle = QString("Sequence of images: %1").arg(QFileInfo(mFile).fileName());
+    }
     if (mFile.startsWith("http://")){
         mTitle = QString("http://%1/.../%2").arg(QUrl(mFile).host(),QString(QUrl(mFile).fileName()));
     }
@@ -974,6 +980,7 @@ void MainWindow::repeatAChanged(const QTime& t)
 {
     if (!mpPlayer)
         return;
+    mpRepeatA->setTime(t);
     mpPlayer->setStartPosition(QTime(0, 0, 0).msecsTo(t));
 }
 
@@ -984,6 +991,7 @@ void MainWindow::repeatBChanged(const QTime& t)
     // when this slot is called? even if only range is set?
     if (t <= mpRepeatA->time())
         return;
+    mpRepeatB->setTime(t);
     mpPlayer->setStopPosition(QTime(0, 0, 0).msecsTo(t));
 }
 
