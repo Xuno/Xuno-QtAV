@@ -49,6 +49,7 @@ class StatisticsView;
 class OSDFilter;
 class AVFilterSubtitle;
 class XunoBrowser;
+class ImageSequenceConfigPage;
 class MainWindow : public QWidget
 {
     Q_OBJECT
@@ -150,6 +151,7 @@ protected:
 private:
     void workaroundRendererSize();
     void reSizeByMovie();
+    void setPlayerPosFromRepeat();
 
 private:
     bool mIsReady, mHasPendingPlay;
@@ -208,6 +210,7 @@ private:
     QString XUNOpresetUrl;
 
     XunoBrowser *mpXunoBrowser;
+    ImageSequenceConfigPage *mpImageSequence;
 };
 
 

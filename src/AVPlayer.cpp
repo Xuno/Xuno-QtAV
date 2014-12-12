@@ -730,6 +730,7 @@ qint64 AVPlayer::startPosition() const
 
 void AVPlayer::setStartPosition(qint64 pos)
 {
+    // default stopPosition() is int64 max, so set start position before media loaded is ok
     if (pos > stopPosition() && stopPosition() > 0) {
         qWarning("start position too large (%lld > %lld). ignore", pos, stopPosition());
         return;
@@ -1024,9 +1025,9 @@ void AVPlayer::playInternal()
     if (masterClock()->isClockAuto()) {
         qDebug("auto select clock: audio > external");
         if (!d->demuxer.audioCodecContext() || !d->ao) {
-            qWarning("No audio found or audio not supported. Using ExternalClock");
             masterClock()->setClockType(AVClock::ExternalClock);
-            masterClock()->setInitialValue(mediaStartPositionF());
+            masterClock()->setInitialValue((double)absoluteMediaStartPosition()/1000.0);
+            qWarning("No audio found or audio not supported. Using ExternalClock. initial value: %f", masterClock()->value());
         } else {
             qDebug("Using AudioClock");
             masterClock()->setClockType(AVClock::AudioClock);
@@ -1163,12 +1164,17 @@ void AVPlayer::timerEvent(QTimerEvent *te)
             emit positionChanged(t);
             return;
         }
+        // FIXME
         if (d->seeking && t >= d->seek_target + 1000) {
             d->seeking = false;
             d->seek_target = 0;
         }
+        if (t < startPosition()) {
+            setPosition(startPosition());
+            return;
+        }
         if (t <= stopPosition()) {
-            if (!d->seeking) {
+            if (!d->seeking) { // FIXME
                 emit positionChanged(t);
             }
             return;

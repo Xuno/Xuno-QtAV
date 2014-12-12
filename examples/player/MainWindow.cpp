@@ -62,6 +62,7 @@
 #include "../common/common.h"
 #include "XunoBrowser.h"
 #include <QUrl>
+#include "config/ImageSequenceConfigPage.h"
 
 //#include <QWebView>
 
@@ -321,10 +322,21 @@ void MainWindow::setupUi()
     QMenu *subMenu = 0;
     QWidgetAction *pWA = 0;
     mpMenu = new QMenu(mpMenuBtn);
+    mpMenu->addAction(tr("Open File"), this, SLOT(openFile()));
     mpMenu->addAction(tr("Open Url"), this, SLOT(openUrl()));
     //mpMenu->addAction(tr("Online channels"), this, SLOT(onTVMenuClick()));
-    mpMenu->addSeparator();
+    subMenu = new ClickableMenu(tr("Image Sequence"));
+    mpMenu->addMenu(subMenu);
+    mpImageSequence = new ImageSequenceConfigPage();
+    connect(mpImageSequence, SIGNAL(play(QString)), SLOT(play(QString)));
+    connect(mpImageSequence, SIGNAL(repeatAChanged(QTime)), SLOT(repeatAChanged(QTime)));
+    connect(mpImageSequence, SIGNAL(repeatBChanged(QTime)), SLOT(repeatBChanged(QTime)));
+    connect(mpImageSequence, SIGNAL(toggleRepeat(bool)), SLOT(toggleRepeat(bool)));
+    pWA = new QWidgetAction(0);
+    pWA->setDefaultWidget(mpImageSequence);
+    subMenu->addAction(pWA);
 
+    mpMenu->addSeparator();
     subMenu = new QMenu(tr("Play list"));
     mpMenu->addMenu(subMenu);
     mpPlayList = new PlayList(this);
@@ -735,6 +747,9 @@ void MainWindow::play(const QString &name)
     if (!mFile.contains("://") || mFile.startsWith("file://")) {
         mTitle = QFileInfo(mFile).fileName();
     }
+    if (mFile.contains("/%0") && mFile.contains("d.")) {
+        mTitle = QString("Sequence of images: %1").arg(QFileInfo(mFile).fileName());
+    }
     if (mFile.startsWith("http://")){
         mTitle = QString("http://%1/.../%2").arg(QUrl(mFile).host(),QString(QUrl(mFile).fileName()));
     }
@@ -742,6 +757,8 @@ void MainWindow::play(const QString &name)
     mpPlayer->enableAudio(!mNullAO);
     if (!mpRepeatEnableAction->isChecked())
         mRepeateMax = 0;
+    else
+        mRepeateMax = mpRepeatBox->value();
     mpPlayer->setRepeat(mRepeateMax);
     mpPlayer->setPriority(idsFromNames(Config::instance().decoderPriorityNames()));
     mpPlayer->setOptionsForAudioCodec(mpDecoderConfigPage->audioDecoderOptions());
@@ -828,6 +845,7 @@ void MainWindow::onStartPlay()
     mpPlayPauseBtn->setIconWithSates(mPausePixmap);
     mpTimeSlider->setMinimum(mpPlayer->mediaStartPosition());
     mpTimeSlider->setMaximum(mpPlayer->mediaStopPosition());
+    setPlayerPosFromRepeat();
     mpTimeSlider->setValue(0);
     mpTimeSlider->setEnabled(true);
     mpEnd->setText(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()).toString("HH:mm:ss"));
@@ -875,7 +893,7 @@ void MainWindow::onStopPlay()
     mpEnd->setText("00:00:00");
     tryShowControlBar();
     ScreenSaver::instance().enable();
-    toggleRepeat(false);
+    toggleRepeat(mpRepeatEnableAction->isChecked());  //after stop not reset repeat task
     //mRepeateMax = 0;
     killTimer(mCursorTimer);
     unsetCursor();
@@ -959,6 +977,7 @@ void MainWindow::repeatAChanged(const QTime& t)
 {
     if (!mpPlayer)
         return;
+    mpRepeatA->setTime(t);
     mpPlayer->setStartPosition(QTime(0, 0, 0).msecsTo(t));
 }
 
@@ -969,6 +988,7 @@ void MainWindow::repeatBChanged(const QTime& t)
     // when this slot is called? even if only range is set?
     if (t <= mpRepeatA->time())
         return;
+    mpRepeatB->setTime(t);
     mpPlayer->setStopPosition(QTime(0, 0, 0).msecsTo(t));
 }
 
@@ -1542,4 +1562,18 @@ void MainWindow::onFullScreen(){
         showFullScreen();
 }
 
+void MainWindow::setPlayerPosFromRepeat(){
+    if (mpRepeatEnableAction->isChecked()){
+        qint64 RA=QTime(0, 0, 0).msecsTo(mpRepeatA->time());
+        qint64 RB=QTime(0, 0, 0).msecsTo(mpRepeatB->time());
+        if (RB>RA){
+            if (RA>=mpPlayer->mediaStartPosition() && RA<=mpPlayer->mediaStopPosition()) {
+                mpPlayer->setStartPosition(RA);
+            }
+            if (RB>=mpPlayer->mediaStartPosition() && RB<=mpPlayer->mediaStopPosition()) {
+                mpPlayer->setStopPosition(RB);
+            }
+        }
+    }
+}
 
