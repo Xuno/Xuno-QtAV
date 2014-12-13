@@ -18,6 +18,10 @@ public:
     explicit ImageSequenceConfigPage(QWidget *parent = 0);
     void openFiles();
     void playImgages();
+<<<<<<< HEAD
+=======
+
+>>>>>>> cab54f0998efb9f5009453366c4a6e4046478547
 signals:
     void play(QString);
     void repeatAChanged(QTime);

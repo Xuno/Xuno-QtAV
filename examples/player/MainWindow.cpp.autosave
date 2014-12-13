@@ -64,10 +64,6 @@
 #include <QUrl>
 #include "config/ImageSequenceConfigPage.h"
 
-<<<<<<< HEAD
-
-=======
->>>>>>> cab54f0998efb9f5009453366c4a6e4046478547
 //#include <QWebView>
 
 /*
