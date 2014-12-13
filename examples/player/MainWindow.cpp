@@ -64,10 +64,6 @@
 #include <QUrl>
 #include "config/ImageSequenceConfigPage.h"
 
-<<<<<<< HEAD
-
-=======
->>>>>>> cab54f0998efb9f5009453366c4a6e4046478547
 //#include <QWebView>
 
 /*
@@ -310,13 +306,8 @@ void MainWindow::setupUi()
 
     mpMenuBtn = new Button();
     //mpMenuBtn->setAutoRaise(true);
-<<<<<<< HEAD
     mpMenuBtn->setPopupMode(QToolButton::InstantPopup);
     mpMenuBtn->setPopupMode(QToolButton::InstantPopup);
-=======
-    mpMenuBtn->setPopupMode(QToolButton::InstantPopup);
-    mpMenuBtn->setPopupMode(QToolButton::InstantPopup);
->>>>>>> cab54f0998efb9f5009453366c4a6e4046478547
     mpMenuBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
     mpMenuBtn->setMaximumHeight(a+kMaxButtonIconMargin);
     mpMenuBtn->setText(tr("Menu "));
@@ -524,15 +515,6 @@ void MainWindow::setupUi()
     mpVideoEQ->setSaveFile(Config::instance().defaultDir() + "/presets.ini");
     mpVideoEQ->loadLocalPresets();
 
-<<<<<<< HEAD
-    mpVideoEQ->setSaveFile(Config::instance().defaultDir() + "/presets.ini");
-    mpVideoEQ->loadLocalPresets();
-
-    mpVideoEQ->setSaveFile(Config::instance().defaultDir() + "/presets.ini");
-    mpVideoEQ->loadLocalPresets();
-
-=======
->>>>>>> cab54f0998efb9f5009453366c4a6e4046478547
     subMenu = new ClickableMenu(tr("Decoder"));
     mpMenu->addMenu(subMenu);
     mpDecoderConfigPage = new DecoderConfigPage();
@@ -1595,7 +1577,3 @@ void MainWindow::setPlayerPosFromRepeat(){
     }
 }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> cab54f0998efb9f5009453366c4a6e4046478547

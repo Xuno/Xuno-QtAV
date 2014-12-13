@@ -104,7 +104,4 @@ QMAKE_TARGET_COMPANY = "Shanghai University->S3 Graphics->Deepin | wbsecg1@gmail
 QMAKE_TARGET_DESCRIPTION = "Multimedia playback framework based on Qt & FFmpeg. https://github.com/Xuno/Xuno-QtAV"
 QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2014 WangBin, wbsecg1@gmail.com,  http://www.xuno.com"
 QMAKE_TARGET_PRODUCT = "Xuno-QtAV player"
-<<<<<<< HEAD
-=======
 
->>>>>>> cab54f0998efb9f5009453366c4a6e4046478547
