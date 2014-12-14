@@ -57,7 +57,6 @@ Q_DECLARE_METATYPE(QtAV::AVInput*)
 #define EOF_ISSUE_SOLVED 0
 namespace QtAV {
 
-static const int kPosistionCheckMS = 500;
 static const qint64 kSeekMS = 10000;
 
 /// Supported input protocols. A static string list
@@ -1008,13 +1007,13 @@ void AVPlayer::playInternal()
         qDebug("auto select clock: audio > external");
         if (!d->demuxer.audioCodecContext() || !d->ao) {
             masterClock()->setClockType(AVClock::ExternalClock);
-            masterClock()->setInitialValue((double)absoluteMediaStartPosition()/1000.0);
-            qWarning("No audio found or audio not supported. Using ExternalClock. initial value: %f", masterClock()->value());
+            qDebug("No audio found or audio not supported. Using ExternalClock.");
         } else {
             qDebug("Using AudioClock");
             masterClock()->setClockType(AVClock::AudioClock);
-            //masterClock()->setInitialValue(0);
         }
+        masterClock()->setInitialValue((double)absoluteMediaStartPosition()/1000.0);
+        qDebug("Clock initial value: %f", masterClock()->value());
     }
     // from previous play()
     if (d->demuxer.audioCodecContext() && d->athread) {
@@ -1036,7 +1035,7 @@ void AVPlayer::playInternal()
     d->read_thread->start();
 
     if (d->timer_id < 0) {
-        //d->timer_id = startTimer(kPosistionCheckMS); //may fail if not in this thread
+        //d->timer_id = startNotifyTimer(); //may fail if not in this thread
         QMetaObject::invokeMethod(this, "startNotifyTimer", Qt::AutoConnection);
     }
 // ffplay does not seek to stream's start position. usually it's 0, maybe < 1. seeking will result in a non-key frame position and it's bad.
@@ -1052,6 +1051,7 @@ void AVPlayer::stopFromDemuxerThread()
 {
     qDebug("demuxer thread emit finished.");
     if (currentRepeat() >= repeat() && repeat() >= 0) {
+        masterClock()->reset();
         stopNotifyTimer();
         d->start_position = 0;
         d->stop_position = kInvalidPosition; // already stopped. so not 0 but invalid. 0 can stop the playback in timerEvent
@@ -1081,7 +1081,7 @@ void AVPlayer::aboutToQuitApp()
 
 void AVPlayer::startNotifyTimer()
 {
-    d->timer_id = startTimer(kPosistionCheckMS);
+    d->timer_id = startTimer(d->notify_interval);
 }
 
 void AVPlayer::stopNotifyTimer()
@@ -1164,14 +1164,18 @@ void AVPlayer::timerEvent(QTimerEvent *te)
             emit positionChanged(t);
             return;
         }
-        // FIXME
+        // FIXME: totally wrong if seek_target - keyframe_seek > 1000
         if (d->seeking && t >= d->seek_target + 1000) {
             d->seeking = false;
             d->seek_target = 0;
         }
         if (t < startPosition()) {
-            setPosition(startPosition());
-            return;
+            //qDebug("position %lld < startPosition %lld", t, startPosition());
+            // or set clock initial value to get correct t
+            if (startPosition() != mediaStartPosition()) {
+                setPosition(startPosition());
+                return;
+            }
         }
         if (t <= stopPosition()) {
             if (!d->seeking) { // FIXME
