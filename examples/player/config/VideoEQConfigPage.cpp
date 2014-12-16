@@ -31,6 +31,11 @@
 #include <QtCore/QSettings>
 #include <QtNetwork>
 #include <QNetworkReply>
+#include <QDoubleSpinBox>
+#include <QSizePolicy>
+#include <QMessageBox>
+#include <QJsonDocument>
+
 
 VideoEQConfigPage::VideoEQConfigPage(QWidget *parent) :
     QWidget(parent)
@@ -47,8 +52,8 @@ VideoEQConfigPage::VideoEQConfigPage(QWidget *parent) :
     connect(mpEngine, SIGNAL(currentIndexChanged(int)), SLOT(onEngineChangedByUI()));
 
     int r = 0, c = 0;
-    gl->addWidget(label, r, c);
-    gl->addWidget(mpEngine, r, c+1);
+    gl->addWidget(label, r, c,1,1);
+    gl->addWidget(mpEngine, r, c+1,1,3);
     r++;
 
 
@@ -56,13 +61,14 @@ VideoEQConfigPage::VideoEQConfigPage(QWidget *parent) :
         QSlider **slider;
         QString text;
         int init;
+        QDoubleSpinBox **slidertune;
     } sliders[] = {
-        { &mpBSlider, tr("Brightness"),0 },
-        { &mpCSlider, tr("Constrast"),0},
-        { &mpHSlider, tr("Hue"),0 },
-        { &mpSSlider, tr("Saturation"),0},
-        { &mpGSlider, tr("GammaRGB"),0},
-        { &mpFSSlider, tr("Filter Sharp"),-100},
+        { &mpBSlider, tr("Brightness"),0,&mpBSliderT },
+        { &mpCSlider, tr("Constrast"),0, &mpCSliderT},
+        { &mpHSlider, tr("Hue"),0, &mpHSliderT },
+        { &mpSSlider, tr("Saturation"),0, &mpSSliderT},
+        { &mpGSlider, tr("GammaRGB"),0, &mpGSliderT},
+        { &mpFSSlider, tr("Filter Sharp"),-100, &mpFSSliderT},
         { 0, "",0 }
     };
     for (int i = 0; sliders[i].slider; ++i) {
@@ -72,44 +78,78 @@ VideoEQConfigPage::VideoEQConfigPage(QWidget *parent) :
         slider->setOrientation(Qt::Horizontal);
         slider->setTickInterval(2);
         slider->setRange(-100, 100);
-        slider->setValue((sliders[i].init)?sliders[i].init:0);
-
+        int sliderinit = (sliders[i].init)?sliders[i].init:0;
+        slider->setValue(sliderinit);
+        *sliders[i].slidertune  = new QDoubleSpinBox(slider);
+        QDoubleSpinBox *sliderTune = *sliders[i].slidertune;
+        sliderTune->setDecimals(2);
+        sliderTune->setSingleStep(.05);
+        if (i==5){
+            sliderTune->setRange(0., 2.);
+            sliderTune->setValue((sliderinit+100)/100.);
+            sliderTune->setToolTip("0:2");
+        }else{
+            sliderTune->setRange(-1., 1.);
+            sliderTune->setValue(sliderinit/100.);
+            sliderTune->setToolTip("-1:1");
+        }
         gl->addWidget(label, r, c);
-        gl->addWidget(slider, r, c+1);
+        gl->addWidget(slider, r, c+1,1,2);
+        gl->addWidget(sliderTune, r, c+3,Qt::AlignHCenter);
         r++;
     }
     mpGlobal = new QCheckBox(tr("Global"));
     mpGlobal->setEnabled(false);
     mpGlobal->setChecked(false);
     mpResetButton = new QPushButton(tr("Reset"));
+    mpResetButton->setSizePolicy(QSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed));
 
-    gl->addWidget(mpGlobal, r, c, Qt::AlignLeft);
-    gl->addWidget(mpResetButton, r, c+1, Qt::AlignRight);
+    gl->addWidget(mpGlobal, r, c, Qt::AlignCenter);
+    gl->addWidget(mpResetButton, r, c+1,1,3);
     r++;
 
-    mpLoadPreset = new QPushButton(tr("Load Preset"));
-    gl->addWidget(mpLoadPreset, r, c, Qt::AlignLeft);
     mpListPreset = new QComboBox();
 
     setListPresets();
     initPresets();
 
     connect(mpListPreset, SIGNAL(currentIndexChanged(int)), SLOT(onListPresetChangedByUI()));
-    gl->addWidget(mpListPreset, r, c+1, Qt::AlignRight);
-    r++;
+    gl->addWidget(mpListPreset, r, c,1,2);
+
+    mpLoadPreset = new QPushButton(tr("Load Preset"));
+    gl->addWidget(mpLoadPreset, r, c+2);
+
     mpSavePreset = new QPushButton(tr("Save Preset"));
-    gl->addWidget(mpSavePreset, r, c, Qt::AlignLeft);
+    gl->addWidget(mpSavePreset, r, c+3);
+    r++;
+    mpResetLocalCongig = new QPushButton(tr("Reset Local .config"));
+    gl->addWidget(mpResetLocalCongig, r, c,1,2);
+
+    mpSaveLocalCongig = new QPushButton(tr("Save Local .config"));
+    gl->addWidget(mpSaveLocalCongig, r, c+2,1,2);
+
 
     connect(mpBSlider, SIGNAL(valueChanged(int)), SIGNAL(brightnessChanged(int)));
     connect(mpCSlider, SIGNAL(valueChanged(int)), SIGNAL(contrastChanged(int)));
     connect(mpHSlider, SIGNAL(valueChanged(int)), SIGNAL(hueChanegd(int)));
     connect(mpSSlider, SIGNAL(valueChanged(int)), SIGNAL(saturationChanged(int)));
-    connect(mpGlobal, SIGNAL(toggled(bool)), SLOT(onGlobalSet(bool)));
-    connect(mpResetButton, SIGNAL(clicked()), SLOT(onReset()));
     connect(mpGSlider, SIGNAL(valueChanged(int)), SIGNAL(gammaRGBChanged(int)));
     connect(mpFSSlider, SIGNAL(valueChanged(int)), SIGNAL(filterSharpChanged(int)));
+
+    connect(mpBSliderT, SIGNAL(valueChanged(double)), SLOT(brightnessTChanged(double)));
+    connect(mpCSliderT, SIGNAL(valueChanged(double)), SLOT(contrastTChanged(double)));
+    connect(mpHSliderT, SIGNAL(valueChanged(double)), SLOT(hueTChanegd(double)));
+    connect(mpSSliderT, SIGNAL(valueChanged(double)), SLOT(saturationTChanged(double)));
+    connect(mpGSliderT, SIGNAL(valueChanged(double)), SLOT(gammaRGBTChanged(double)));
+    connect(mpFSSliderT, SIGNAL(valueChanged(double)), SLOT(filterSharpTChanged(double)));
+
+    connect(mpGlobal, SIGNAL(toggled(bool)), SLOT(onGlobalSet(bool)));
+    connect(mpResetButton, SIGNAL(clicked()), SLOT(onReset()));
     connect(mpSavePreset, SIGNAL(clicked()), SLOT(onSavePreset()));
     connect(mpLoadPreset, SIGNAL(clicked()), SLOT(onLoadPreset()));
+
+    connect(mpResetLocalCongig, SIGNAL(clicked()), SLOT(onResetLocalCongig()));
+    connect(mpSaveLocalCongig, SIGNAL(clicked()), SLOT(onSaveLocalCongig()));
 }
 
 void VideoEQConfigPage::onGlobalSet(bool g)
@@ -225,7 +265,9 @@ qreal VideoEQConfigPage::brightness() const
 
 qreal VideoEQConfigPage::brightness_p() const
 {
-    return ((qreal)mpBSlider->value()/100.0);
+    qreal d=((qreal)mpBSlider->value()/100.0);
+    mpBSliderT->setValue(d);
+    return d;
 }
 
 void VideoEQConfigPage::brightness(qreal val)
@@ -241,7 +283,9 @@ qreal VideoEQConfigPage::contrast() const
 
 qreal VideoEQConfigPage::contrast_p() const
 {
-    return ((qreal)mpCSlider->value()/100.0);
+    qreal d=((qreal)mpCSlider->value()/100.0);
+    mpCSliderT->setValue(d);
+    return d;
 }
 
 void VideoEQConfigPage::contrast(qreal val) const
@@ -257,7 +301,9 @@ qreal VideoEQConfigPage::hue() const
 
 qreal VideoEQConfigPage::hue_p() const
 {
-    return ((qreal)mpHSlider->value()/100.0);
+    qreal d=((qreal)mpHSlider->value()/100.0);
+    mpHSliderT->setValue(d);
+    return d;
 }
 
 void VideoEQConfigPage::hue(qreal val) const
@@ -273,7 +319,9 @@ qreal VideoEQConfigPage::saturation() const
 
 qreal VideoEQConfigPage::saturation_p() const
 {
-    return ((qreal)mpSSlider->value()/100.0);
+    qreal d = ((qreal)mpSSlider->value()/100.0);
+    mpSSliderT->setValue(d);
+    return d;
 }
 
 void VideoEQConfigPage::saturation(qreal val) const
@@ -288,7 +336,9 @@ qreal VideoEQConfigPage::gammaRGB() const
 
 qreal VideoEQConfigPage::gammaRGB_p() const
 {
-    return ((qreal)mpGSlider->value()/100.0);
+    qreal d=((qreal)mpGSlider->value()/100.0);
+    mpGSliderT->setValue(d);
+    return d;
 }
 
 void VideoEQConfigPage::gammaRGB(qreal val) const
@@ -304,7 +354,9 @@ qreal VideoEQConfigPage::filterSharp() const
 
 qreal VideoEQConfigPage::filterSharp_p() const
 {
-    return ((qreal)mpFSSlider->value()/100.0);
+    qreal d = ((qreal)mpFSSlider->value()/100.0);
+    mpFSSliderT->setValue(d+1.0);
+    return d;
 }
 
 void VideoEQConfigPage::filterSharp(qreal val) const
@@ -474,4 +526,96 @@ void VideoEQConfigPage::onEngineChangedByUI()
     mpGSlider->setEnabled(mEngine==GLSL);
     mpFSSlider->setEnabled(mEngine==GLSL);
     emit engineChanged();
+}
+
+
+
+void VideoEQConfigPage::brightnessTChanged(double d){
+    mpBSlider->setValue(d*100);
+}
+
+void VideoEQConfigPage::contrastTChanged(double d){
+    mpCSlider->setValue(d*100);
+
+}
+
+void VideoEQConfigPage::hueTChanegd(double d){
+    mpHSlider->setValue(d*100);
+
+}
+
+void VideoEQConfigPage::saturationTChanged(double d){
+    mpSSlider->setValue(d*100);
+
+}
+
+void VideoEQConfigPage::gammaRGBTChanged(double d){
+    mpGSlider->setValue(d*100);
+
+}
+void VideoEQConfigPage::filterSharpTChanged(double d){
+    mpFSSlider->setValue((d*100)-100);
+}
+
+void VideoEQConfigPage::onResetLocalCongig(){
+    if ( mURL.isEmpty()) return;
+    QFile f(mURL);
+    if (!f.exists()) {
+        QString message=tr("Can't find local .config into movie directory.\n%1").arg(f.fileName().toUtf8().constData());
+        qWarning()<<message;
+        QMessageBox::warning(NULL, tr("Warning"), message);
+        return;
+    }else if (!f.open(QIODevice::ReadWrite)) {
+        QString message=tr("Can't open writable local .config from movie directory.\n%1\n%2").arg(f.fileName().toUtf8().constData()).arg(f.errorString().toUtf8().constData());
+        qWarning()<<message;
+        QMessageBox::warning(NULL, tr("Warning"), message);
+        f.close();
+        return;
+    }else if (!f.remove()){
+        QString message=tr("Can't remove local .config from movie directory.\n%1\n%2").arg(f.fileName().toUtf8().constData()).arg(f.errorString().toUtf8().constData());
+        qWarning()<<message;
+        QMessageBox::warning(NULL, tr("Warning!"), message);
+        f.close();
+        return;
+    }
+    mRemotePreset=ColorSpacePreset(); // initialize mRemotePreset values by default //TODO CheckIT
+    reReadColorsCongig();
+    QString message=tr("Local .config was cleared.\n").append(f.fileName().toUtf8().constData());
+    qWarning()<<message;
+    QMessageBox::information(NULL, tr("Informatron!"), message);
+
+}
+
+void VideoEQConfigPage::onSaveLocalCongig(){
+    if ( mURL.isEmpty()) return;
+    QFile f(mURL);
+    if (!f.open(QIODevice::WriteOnly)) {
+        f.close();
+        QString message=tr("Can't save local .config into movie directory.\n%1\n%2").arg(f.fileName().toUtf8().constData()).arg(f.errorString().toUtf8().constData());
+        qWarning()<<message;
+        QMessageBox::warning(NULL, tr("Warning!"), message);
+        return;
+    }
+    QJsonObject jsonObject;
+    jsonObject["brightness"]  = brightness_p();
+    jsonObject["contrast"]    =  contrast_p();
+    jsonObject["hue"]         =  hue_p();
+    jsonObject["saturation"]  =  saturation_p();
+    jsonObject["gammaRGB"]    =  gammaRGB_p();
+    jsonObject["filterSharp"] =  filterSharp_p()+1.0;
+    jsonObject["success"]     =  1.;
+    QJsonDocument *jsonDoc = new QJsonDocument(jsonObject);
+    f.write(jsonDoc->toJson(QJsonDocument::Compact));
+    f.close();
+    QString message=tr("Local .config was saved into movie directory.\n").append(f.fileName().toUtf8().constData());
+    QMessageBox::information(NULL, tr("Informatron!"), message);
+}
+
+void VideoEQConfigPage::reReadColorsCongig(){
+    emit brightnessChanged(0);
+    emit contrastChanged(0);
+    emit hueChanegd(0);
+    emit saturationChanged(0);
+    emit gammaRGBChanged(0);
+    emit filterSharpChanged(0);
 }

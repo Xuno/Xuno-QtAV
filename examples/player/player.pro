@@ -9,7 +9,7 @@ STATICLINK = 0
 PROJECTROOT = $$PWD/../..
 include($$PROJECTROOT/src/libQtAV.pri)
 include($$PWD/../common/libcommon.pri)
-preparePaths($$OUT_PWD/../..)
+preparePaths($$OUT_PWD)
 INCLUDEPATH += $$PWD
 mac: RC_FILE = $$PROJECTROOT/src/QtAV.icns
 

@@ -28,6 +28,7 @@ class QCheckBox;
 class QComboBox;
 class QPushButton;
 class QSlider;
+class QDoubleSpinBox;
 class VideoEQConfigPage : public QWidget
 {
     Q_OBJECT
@@ -103,6 +104,16 @@ private slots:
     void onSavePreset();
     void onListPresetChangedByUI();
     void onPresetRequestFinished(QNetworkReply* reply);
+    void onResetLocalCongig();
+    void onSaveLocalCongig();
+
+    void brightnessTChanged(double);
+    void contrastTChanged(double);
+    void hueTChanegd(double);
+    void saturationTChanged(double);
+    void gammaRGBTChanged(double);
+    void filterSharpTChanged(double);
+
 
 private:
     qreal brightness_p() const;
@@ -113,9 +124,9 @@ private:
     qreal filterSharp_p() const;
     QCheckBox *mpGlobal;
     QComboBox *mpEngine, *mpListPreset;
-    QSlider *mpBSlider, *mpCSlider, *mpSSlider, *mpGSlider, *mpFSSlider;
-    QSlider *mpHSlider;
-    QPushButton *mpResetButton, *mpSavePreset, *mpLoadPreset;
+    QSlider *mpBSlider, *mpCSlider, *mpSSlider, *mpGSlider, *mpFSSlider,*mpHSlider;
+    QDoubleSpinBox *mpBSliderT, *mpCSliderT, *mpSSliderT, *mpGSliderT, *mpFSSliderT,*mpHSliderT;
+    QPushButton *mpResetButton, *mpSavePreset, *mpLoadPreset, *mpSaveLocalCongig, *mpResetLocalCongig ;
     Engine mEngine;
     QVector<Engine> mEngines;
     int mPresetID;
@@ -123,6 +134,6 @@ private:
     ColorSpacePreset mRemotePreset;
     QString mFile,mURL,presetUrl;
     void parseJsonPressetData(QString &strReply);
+    void reReadColorsCongig();
 };
-
 #endif // VIDEOEQCONFIGPAGE_H

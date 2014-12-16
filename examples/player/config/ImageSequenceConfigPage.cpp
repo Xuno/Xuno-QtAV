@@ -116,7 +116,7 @@ void ImageSequenceConfigPage::calculatePos(){
         return;
     startPos=startFrame*(1000UL/fps);
     stopPos=startPos + frames*(1000UL/fps);
-    //qDebug()<<"ImageSequenceConfigPage :: startPos:"<<startPos<<", stopPos:"<<stopPos;
+    //tesqDebug()<<"ImageSequenceConfigPage :: startPos:"<<startPos<<", stopPos:"<<stopPos;
     QTime mRepeatA = QTime(0, 0, 0).addMSecs(startPos);
     QTime mRepeatB = QTime(0, 0, 0).addMSecs(stopPos);
     emit repeatAChanged(mRepeatA);
