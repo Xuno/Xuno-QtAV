@@ -582,7 +582,7 @@ void VideoEQConfigPage::onResetLocalCongig(){
     reReadColorsCongig();
     QString message=tr("Local .config was cleared.\n").append(f.fileName().toUtf8().constData());
     qWarning()<<message;
-    QMessageBox::information(NULL, tr("Informatron!"), message);
+    QMessageBox::information(NULL, tr("Information!"), message);
 
 }
 
@@ -608,7 +608,7 @@ void VideoEQConfigPage::onSaveLocalCongig(){
     f.write(jsonDoc->toJson(QJsonDocument::Compact));
     f.close();
     QString message=tr("Local .config was saved into movie directory.\n").append(f.fileName().toUtf8().constData());
-    QMessageBox::information(NULL, tr("Informatron!"), message);
+    QMessageBox::information(NULL, tr("Information!"), message);
 }
 
 void VideoEQConfigPage::reReadColorsCongig(){
