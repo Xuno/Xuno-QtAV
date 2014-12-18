@@ -136,6 +136,7 @@ private slots:
 
     void onXunoBrowser();
     void onClickXunoBrowser();
+    void customfpsChanged(int n);
 
 protected:
     virtual void closeEvent(QCloseEvent *e);
@@ -152,6 +153,9 @@ private:
     void workaroundRendererSize();
     void reSizeByMovie();
     void setPlayerPosFromRepeat();
+    void tuneRepeatMovieDuration();
+    bool isFileImgageSequence();
+    bool applyCustomFPS();
 
 private:
     bool mIsReady, mHasPendingPlay;
@@ -160,6 +164,7 @@ private:
     int mCursorTimer;
     int mShowControl; //0: can hide, 1: show and playing, 2: always show(not playing)
     int mRepeateMax;
+    int mCustomFPS;
     QVBoxLayout *mpPlayerLayout;
 
     QWidget *mpControl;

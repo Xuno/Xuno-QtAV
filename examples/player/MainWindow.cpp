@@ -75,6 +75,8 @@
 #define AVDEBUG() \
     qDebug("%s %s @%d", __FILE__, __FUNCTION__, __LINE__);
 
+#define IMGSEQOPENGL 0
+
 using namespace QtAV;
 const qreal kVolumeInterval = 0.05;
 
@@ -111,6 +113,7 @@ MainWindow::MainWindow(QWidget *parent) :
   , mpOSD(0)
   , mpSubtitle(0)
   , mpXunoBrowser(0)
+  , mCustomFPS(0)
 {
     XUNOserverUrl="http://www.xuno.com";
     XUNOpresetUrl=XUNOserverUrl+"/getpreset.php?";
@@ -329,9 +332,12 @@ void MainWindow::setupUi()
     mpMenu->addMenu(subMenu);
     mpImageSequence = new ImageSequenceConfigPage();
     connect(mpImageSequence, SIGNAL(play(QString)), SLOT(play(QString)));
+    connect(mpImageSequence, SIGNAL(stop()), this, SLOT(stopUnload()));
     connect(mpImageSequence, SIGNAL(repeatAChanged(QTime)), SLOT(repeatAChanged(QTime)));
     connect(mpImageSequence, SIGNAL(repeatBChanged(QTime)), SLOT(repeatBChanged(QTime)));
     connect(mpImageSequence, SIGNAL(toggleRepeat(bool)), SLOT(toggleRepeat(bool)));
+    connect(mpImageSequence, SIGNAL(customfpsChanged(int)), SLOT(customfpsChanged(int)));
+
     pWA = new QWidgetAction(0);
     pWA->setDefaultWidget(mpImageSequence);
     subMenu->addAction(pWA);
@@ -747,12 +753,14 @@ void MainWindow::play(const QString &name)
     if (!mFile.contains("://") || mFile.startsWith("file://")) {
         mTitle = QFileInfo(mFile).fileName();
     }
-    if (mFile.contains("/%0") && mFile.contains("d.")) {
+    if (isFileImgageSequence()) {
         mTitle = QString("Sequence of images: %1").arg(QFileInfo(mFile).fileName());
+        toggleRepeat(true);
     }
     if (mFile.startsWith("http://")){
         mTitle = QString("http://%1/.../%2").arg(QUrl(mFile).host(),QString(QUrl(mFile).fileName()));
     }
+
     setWindowTitle(mTitle);
     mpPlayer->enableAudio(!mNullAO);
     if (!mpRepeatEnableAction->isChecked())
@@ -763,7 +771,9 @@ void MainWindow::play(const QString &name)
     mpPlayer->setPriority(idsFromNames(Config::instance().decoderPriorityNames()));
     mpPlayer->setOptionsForAudioCodec(mpDecoderConfigPage->audioDecoderOptions());
     mpPlayer->setOptionsForVideoCodec(mpDecoderConfigPage->videoDecoderOptions());
-    mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
+    if (!applyCustomFPS()){
+        mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
+    }
     PlayListItem item;
     item.setUrl(mFile);
     item.setTitle(mTitle);
@@ -806,6 +816,7 @@ void MainWindow::togglePlayPause()
     } else {
         if (mFile.isEmpty())
             return;
+        applyCustomFPS();
         mpPlayer->play();
         mpPlayPauseBtn->setIconWithSates(mPausePixmap);
     }
@@ -838,6 +849,15 @@ void MainWindow::onPaused(bool p)
 
 void MainWindow::onStartPlay()
 {
+//--- TODO --- remove after recover OpenGL rgb48le
+#if !IMGSEQOPENGL
+    bool rgb48=mpPlayer->statistics().video_only.pix_fmt.contain;
+    VideoRenderer *vo = VideoRendererFactory::create( (isFileImgageSequence() && rgb48) ? VideoRendererId_Widget : VideoRendererId_GLWidget2);
+    if (vo && vo->isAvailable()) {
+        setRenderer(vo);
+    }
+#endif
+
     mpRenderer->setRegionOfInterest(QRectF());
     mFile = mpPlayer->file(); //open from EventFilter's menu
     setWindowTitle(mTitle);
@@ -881,7 +901,7 @@ void MainWindow::onStopPlay()
     // use shortcut to replay in EventFilter, the options will not be set, so set here
     mpPlayer->setOptionsForAudioCodec(mpDecoderConfigPage->audioDecoderOptions());
     mpPlayer->setOptionsForVideoCodec(mpDecoderConfigPage->videoDecoderOptions());
-    mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
+    //mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
 
     mpPlayPauseBtn->setIconWithSates(mPlayPixmap);
     mpTimeSlider->setValue(0);
@@ -1563,6 +1583,7 @@ void MainWindow::onFullScreen(){
 }
 
 void MainWindow::setPlayerPosFromRepeat(){
+    tuneRepeatMovieDuration();
     if (mpRepeatEnableAction->isChecked()){
         qint64 RA=QTime(0, 0, 0).msecsTo(mpRepeatA->time());
         qint64 RB=QTime(0, 0, 0).msecsTo(mpRepeatB->time());
@@ -1577,3 +1598,26 @@ void MainWindow::setPlayerPosFromRepeat(){
     }
 }
 
+void MainWindow::customfpsChanged(int n){
+  mCustomFPS=n;
+}
+void MainWindow::tuneRepeatMovieDuration(){
+     mpImageSequence->setMovieDuration(mpPlayer->mediaStopPosition());
+}
+
+bool MainWindow::isFileImgageSequence(){
+    return (mFile.contains("/%0") && mFile.contains("d."));
+}
+
+bool MainWindow::applyCustomFPS(){
+    bool ret=false; // return true if custom fps was applied
+    if (isFileImgageSequence() && mCustomFPS){
+        QVariantHash tmp=Config::instance().avformatOptions();
+        tmp["framerate"]=mCustomFPS;
+        mpPlayer->setOptionsForFormat(tmp);
+        ret=true;
+    }else{
+        customfpsChanged(0);
+    }
+    return ret;
+}

@@ -5,7 +5,6 @@
 #include <QFileDialog>
 #include <QtCore>
 #include <QRegularExpression>
-#define AVDEMUXFPS_READY 0 //TODO need change when changed AV demuxer option to video dictionary framrate
 
 ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     QWidget(parent)
@@ -29,9 +28,6 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     mpFpsBox->setValue(25);
     mpFpsBox->setSingleStep(5);
     mpFpsBox->setToolTip("frames per second.");
-#if (!AVDEMUXFPS_READY)
-    mpFpsBox->setDisabled(true);
-#endif
     connect(mpFpsBox, SIGNAL(valueChanged(int)), SLOT(setFPS(int)));
     hb->addWidget(pFPSLabel);
     hb->addWidget(mpFpsBox);
@@ -95,15 +91,19 @@ void ImageSequenceConfigPage::playImgages()
     QString filename=fileinfo.absolutePath().append("/%0").append(QString("%1d.").arg(digs)).append(fileinfo.suffix());
     //qDebug()<<"playImgages :: filename :"<<filename;
     if (digs==0) return;
+    if (fps!=25) emit customfpsChanged(fps);
     emit toggleRepeat(true);
+    playing_start=true;
     emit play(filename);
 }
 
 void ImageSequenceConfigPage::setFPS(int n){
-Q_UNUSED(n);
-#if (AVDEMUXFPS_READY)
-      fps = n;
-#endif
+    fps = n;
+    if (n) emit stop();
+    if (fps!=25) {
+        emit customfpsChanged(fps);
+        calculatePos();
+    }
 }
 
 void ImageSequenceConfigPage::setTotalFrames(int n){
@@ -116,11 +116,17 @@ void ImageSequenceConfigPage::calculatePos(){
         return;
     startPos=startFrame*(1000UL/fps);
     stopPos=startPos + frames*(1000UL/fps);
-    //tesqDebug()<<"ImageSequenceConfigPage :: startPos:"<<startPos<<", stopPos:"<<stopPos;
     QTime mRepeatA = QTime(0, 0, 0).addMSecs(startPos);
     QTime mRepeatB = QTime(0, 0, 0).addMSecs(stopPos);
-    emit repeatAChanged(mRepeatA);
-    emit repeatBChanged(mRepeatB);
+    if (startPos) emit repeatAChanged(mRepeatA);
+    if (stopPos) emit repeatBChanged(mRepeatB);
 }
 
+void ImageSequenceConfigPage::setMovieDuration(qint64 d){
+    if (playing_start) {
+        QTime mRepeatB = QTime(0, 0, 0).addMSecs(d);
+        if (stopPos==0) emit repeatBChanged(mRepeatB);
+        playing_start=false;
+    }
+}
 
