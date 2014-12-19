@@ -754,7 +754,7 @@ void MainWindow::play(const QString &name)
         mTitle = QFileInfo(mFile).fileName();
     }
     if (isFileImgageSequence()) {
-        mTitle = QString("Sequence of images: %1").arg(QFileInfo(mFile).fileName());
+        mTitle = QString("Sequence of images: %1/%2").arg(QFileInfo(mFile).dir().dirName()).arg(QFileInfo(mFile).fileName());
         toggleRepeat(true);
     }
     if (mFile.startsWith("http://")){
@@ -851,7 +851,7 @@ void MainWindow::onStartPlay()
 {
 //--- TODO --- remove after recover OpenGL rgb48le
 #if !IMGSEQOPENGL
-    bool rgb48=mpPlayer->statistics().video_only.pix_fmt.contain;
+    bool rgb48=mpPlayer->statistics().video_only.pix_fmt.contains("rgb48be");
     VideoRenderer *vo = VideoRendererFactory::create( (isFileImgageSequence() && rgb48) ? VideoRendererId_Widget : VideoRendererId_GLWidget2);
     if (vo && vo->isAvailable()) {
         setRenderer(vo);
