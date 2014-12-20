@@ -113,7 +113,7 @@ MainWindow::MainWindow(QWidget *parent) :
   , mpOSD(0)
   , mpSubtitle(0)
   , mpXunoBrowser(0)
-  , mCustomFPS(0)
+  , mCustomFPS(0.)
 {
     XUNOserverUrl="http://www.xuno.com";
     XUNOpresetUrl=XUNOserverUrl+"/getpreset.php?";
@@ -336,7 +336,7 @@ void MainWindow::setupUi()
     connect(mpImageSequence, SIGNAL(repeatAChanged(QTime)), SLOT(repeatAChanged(QTime)));
     connect(mpImageSequence, SIGNAL(repeatBChanged(QTime)), SLOT(repeatBChanged(QTime)));
     connect(mpImageSequence, SIGNAL(toggleRepeat(bool)), SLOT(toggleRepeat(bool)));
-    connect(mpImageSequence, SIGNAL(customfpsChanged(int)), SLOT(customfpsChanged(int)));
+    connect(mpImageSequence, SIGNAL(customfpsChanged(double)), SLOT(customfpsChanged(double)));
 
     pWA = new QWidgetAction(0);
     pWA->setDefaultWidget(mpImageSequence);
@@ -1598,7 +1598,7 @@ void MainWindow::setPlayerPosFromRepeat(){
     }
 }
 
-void MainWindow::customfpsChanged(int n){
+void MainWindow::customfpsChanged(double n){
   mCustomFPS=n;
 }
 void MainWindow::tuneRepeatMovieDuration(){
@@ -1611,13 +1611,13 @@ bool MainWindow::isFileImgageSequence(){
 
 bool MainWindow::applyCustomFPS(){
     bool ret=false; // return true if custom fps was applied
-    if (isFileImgageSequence() && mCustomFPS){
+    if (isFileImgageSequence() && mCustomFPS>0){
         QVariantHash tmp=Config::instance().avformatOptions();
         tmp["framerate"]=mCustomFPS;
         mpPlayer->setOptionsForFormat(tmp);
         ret=true;
     }else{
-        customfpsChanged(0);
+        customfpsChanged(0.);
     }
     return ret;
 }

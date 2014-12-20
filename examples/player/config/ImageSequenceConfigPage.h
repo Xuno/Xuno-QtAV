@@ -26,21 +26,22 @@ signals:
     void repeatAChanged(QTime);
     void repeatBChanged(QTime);
     void toggleRepeat(bool);
-    void customfpsChanged(int);
+    void customfpsChanged(double);
 
 
 public slots:
     void onSelectImgages();
 
 private slots:
-    void setFPS(int n);
+    void setFPS(double n);
     void setTotalFrames(int n);
 
 private:
-    QSpinBox *mpFpsBox, *mpTotalFramesBox;
+    QSpinBox *mpTotalFramesBox;
+    QDoubleSpinBox *mpFpsBox;
     QPushButton *mpSelectImgButton, *mpPlayImgButton;
     quint64 startPos,stopPos;
-    int fps;
+    double fps;
     quint32 startFrame, frames;
     QFileInfo fileinfo;
 
