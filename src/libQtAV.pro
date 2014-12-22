@@ -87,7 +87,10 @@ win32 {
 #UINT64_C: C99 math features, need -D__STDC_CONSTANT_MACROS in CXXFLAGS
 DEFINES += __STDC_CONSTANT_MACROS
 android: CONFIG += config_opensl
-LIBS += -lavcodec -lavformat -lavutil -lswscale
+# mac is -FQTDIR we need -LQTDIR
+LIBS *= -L$$[QT_INSTALL_LIBS] -lavcodec -lavformat -lavutil -lswscale
+# libs needed by mac static ffmpeg. corefoundation: vda, avdevice
+mac: LIBS += -liconv -lbz2 -lz -framework CoreFoundation
 
 exists($$PROJECTROOT/contrib/libchardet/libchardet.pri) {
   include($$PROJECTROOT/contrib/libchardet/libchardet.pri)
@@ -118,7 +121,13 @@ config_avresample {
 }
 config_avdevice {
     DEFINES += QTAV_HAVE_AVDEVICE=1
-    LIBS += -lavdevice
+    LIBS *= -lavdevice
+  mac:!ios { # static ffmpeg
+    LIBS += -framework Foundation -framework QTKit -framework CoreMedia -framework QuartzCore -framework CoreGraphics \
+            -framework AVFoundation
+    # assume avdevice targets to the same version as Qt and always >= 10.6
+    !isEqual(QMAKE_MACOSX_DEPLOYMENT_TARGET, 10.6): LIBS += -framework AVFoundation
+  }
 }
 config_ipp {
     DEFINES += QTAV_HAVE_IPP=1
@@ -341,6 +350,7 @@ SOURCES += \
     Statistics.cpp \
     codec/video/VideoDecoder.cpp \
     codec/video/VideoDecoderTypes.cpp \
+    codec/video/VideoDecoderFFmpegBase.cpp \
     codec/video/VideoDecoderFFmpeg.cpp \
     codec/video/VideoDecoderFFmpegHW.cpp \
     VideoThread.cpp \
@@ -422,6 +432,7 @@ HEADERS *= \
     AVThread_p.h \
     AudioThread.h \
     VideoThread.h \
+    codec/video/VideoDecoderFFmpegBase.h \
     codec/video/VideoDecoderFFmpegHW.h \
     codec/video/VideoDecoderFFmpegHW_p.h \
     filter/FilterManager.h \

@@ -192,6 +192,8 @@ void MainWindow::initPlayer()
     connect(mpVideoEQ, SIGNAL(filterSharpChanged(int)),  this, SLOT(onFilterSharpChanged(int)));
 
 
+    connect(mpCaptureBtn, SIGNAL(clicked()), mpPlayer->videoCapture(), SLOT(request()));
+
     emit ready(); //emit this signal after connection. otherwise the slots may not be called for the first time
 }
 
@@ -583,7 +585,6 @@ void MainWindow::setupUi()
     //connect(pSpeedBox, SIGNAL(valueChanged(double)), SLOT(onSpinBoxChanged(double)));
     connect(mpOpenBtn, SIGNAL(clicked()), SLOT(openFile()));
     connect(mpPlayPauseBtn, SIGNAL(clicked()), SLOT(togglePlayPause()));
-    connect(mpCaptureBtn, SIGNAL(clicked()), this, SLOT(capture()));
     connect(mpInfoBtn, SIGNAL(clicked()), SLOT(showInfo()));
     //valueChanged can be triggered by non-mouse event
     //TODO: connect sliderMoved(int) to preview(int)
@@ -932,11 +933,6 @@ void MainWindow::seekToMSec(int msec)
 void MainWindow::seek()
 {
     mpPlayer->seek((qint64)mpTimeSlider->value());
-}
-
-void MainWindow::capture()
-{
-    mpPlayer->captureVideo();
 }
 
 void MainWindow::showHideVolumeBar()
@@ -1433,11 +1429,11 @@ void MainWindow::onCaptureConfigChanged()
 {
     mpPlayer->videoCapture()->setCaptureDir(Config::instance().captureDir());
     mpPlayer->videoCapture()->setQuality(Config::instance().captureQuality());
-    if (Config::instance().captureFormat().toLower() == "yuv") {
-        mpPlayer->videoCapture()->setRaw(true);
+    if (Config::instance().captureFormat().toLower() == "original") {
+        mpPlayer->videoCapture()->setOriginalFormat(true);
     } else {
-        mpPlayer->videoCapture()->setRaw(false);
-        mpPlayer->videoCapture()->setFormat(Config::instance().captureFormat());
+        mpPlayer->videoCapture()->setOriginalFormat(false);
+        mpPlayer->videoCapture()->setSaveFormat(Config::instance().captureFormat());
     }
     mpCaptureBtn->setToolTip(tr("Capture video frame") + "\n" + tr("Save to") + ": " + mpPlayer->videoCapture()->captureDir()
                              + "\n" + tr("Format") + ": " + Config::instance().captureFormat());
