@@ -23,10 +23,10 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     QLabel *pFPSLabel = new QLabel(tr("FPS:"));
     QHBoxLayout *hb = new QHBoxLayout;
     mpFpsBox = new QDoubleSpinBox(0);
-    mpFpsBox->setMinimum(0.01);
+    mpFpsBox->setMinimum(0.1);
     mpFpsBox->setMaximum(200);
     mpFpsBox->setValue(25);
-    mpFpsBox->setSingleStep(5);
+    mpFpsBox->setSingleStep(1);
     mpFpsBox->setToolTip("frames per second.");
     connect(mpFpsBox, SIGNAL(valueChanged(double)), SLOT(setFPS(double)));
     hb->addWidget(pFPSLabel);
@@ -100,12 +100,18 @@ void ImageSequenceConfigPage::playImgages()
 void ImageSequenceConfigPage::setFPS(double n){
     fps = n;
     if (n) emit stop();
-    if (fps!=25) {
-        if (fps>1) fps=(double)qRound(fps);
-        mpFpsBox->setValue(fps);
-        emit customfpsChanged(fps);
-        calculatePos();
+    double step;
+    if (fps>1){
+      step=1;
+    }else if (fps<=1){
+      step=0.1;
     }
+    mpFpsBox->setSingleStep(step);
+    if (fps==1.1) fps=2;
+    else if (fps>1.1) fps=(double)qRound(fps);
+    mpFpsBox->setValue(fps);
+    emit customfpsChanged(fps);
+    calculatePos();
 }
 
 void ImageSequenceConfigPage::setTotalFrames(int n){
