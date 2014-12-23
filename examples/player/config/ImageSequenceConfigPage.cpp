@@ -91,8 +91,8 @@ void ImageSequenceConfigPage::playImgages()
     QString filename=fileinfo.absolutePath().append("/%0").append(QString("%1d.").arg(digs)).append(fileinfo.suffix());
     //qDebug()<<"playImgages :: filename :"<<filename;
     if (digs==0) return;
-    if (fps!=25) emit customfpsChanged(fps);
-    emit toggleRepeat(true);
+    emit customfpsChanged(fps);
+    if (startPos) emit toggleRepeat(true);
     playing_start=true;
     emit play(filename);
 }

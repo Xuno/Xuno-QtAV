@@ -776,7 +776,7 @@ void MainWindow::play(const QString &name)
     }
     if (isFileImgageSequence()) {
         mTitle = QString("Sequence of images: %1/%2").arg(QFileInfo(mFile).dir().dirName()).arg(QFileInfo(mFile).fileName());
-        toggleRepeat(true);
+        //toggleRepeat(true);
     }
     if (mFile.startsWith("http://")){
         mTitle = QString("http://%1/.../%2").arg(QUrl(mFile).host(),QString(QUrl(mFile).fileName()));
