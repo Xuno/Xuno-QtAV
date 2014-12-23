@@ -136,6 +136,7 @@ private slots:
     void onXunoBrowser();
     void onClickXunoBrowser();
     void customfpsChanged(double n);
+    void changeClockType(QAction* action);
 
 protected:
     virtual void closeEvent(QCloseEvent *e);
