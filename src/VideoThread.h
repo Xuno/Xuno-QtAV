@@ -47,11 +47,11 @@ public:
     void setContrast(int val);
     void setSaturation(int val);
     void setEQ(int b, int c, int s);
+    void scheduleFrameDrop(bool value = true);
 
 public Q_SLOTS:
     void addCaptureTask();
 protected:
-    void waitAndCheck(ulong value, qreal pts);
     void applyFilters(VideoFrame& frame);
     // deliver video frame to video renderers. frame may be converted to a suitable format for renderer
     bool deliverVideoFrame(VideoFrame &frame);

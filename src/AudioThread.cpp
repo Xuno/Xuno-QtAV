@@ -107,8 +107,8 @@ void AudioThread::run()
              * audio may be too fast than video if skip without sleep
              * a frame is about 20ms. sleep time must be << frame time
              */
-            qreal a_v = dts - d.clock->videoPts();
-            //qDebug("skip audio decode at %f/%f v=%f a-v=%fms", dts, d.render_pts0, d.clock->videoPts(), a_v*1000.0);
+            qreal a_v = dts - d.clock->videoTime();
+            //qDebug("skip audio decode at %f/%f v=%f a-v=%fms", dts, d.render_pts0, d.clock->videoTime(), a_v*1000.0);
             if (a_v > 0) {
                 msleep(qMin((ulong)20, ulong(a_v*1000.0)));
             } else {
@@ -127,21 +127,12 @@ void AudioThread::run()
              *TODO: 1. how to choose the value
              * 2. use last delay when seeking
             */
-            if (qAbs(d.delay) < 2.718) {
+            if (qAbs(d.delay) < 2.0) {
                 if (d.delay < -kSyncThreshold) { //Speed up. drop frame?
                     //continue;
                 }
-                while (d.delay > kSyncThreshold) { //Slow down
-                    //d.delay_cond.wait(&d.mutex, d.delay*1000); //replay may fail. why?
-                    //qDebug("~~~~~wating for %f msecs", d.delay*1000);
-                    usleep(kSyncThreshold * 1000000UL);
-                    if (d.stop)
-                        d.delay = 0;
-                    else
-                        d.delay -= kSyncThreshold;
-                }
                 if (d.delay > 0)
-                    usleep(d.delay * 1000000UL);
+                    waitAndCheck(d.delay, dts);
             } else { //when to drop off?
                 if (d.delay > 0) {
                     msleep(64);

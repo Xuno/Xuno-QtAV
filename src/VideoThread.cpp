@@ -189,27 +189,23 @@ void VideoThread::setEQ(int b, int c, int s)
     }
 }
 
-void VideoThread::waitAndCheck(ulong value, qreal pts)
+void VideoThread::scheduleFrameDrop(bool value)
 {
-    DPTR_D(VideoThread);
-    if (value == 0)
-        return;
-    //qDebug("wating for %lu msecs", value);
-    ulong us = value * 1000UL;
-    static const ulong kWaitSlice = 20 * 1000UL; //20ms
-    while (us > kWaitSlice) {
-        usleep(kWaitSlice);
-        if (d.stop)
-            us = 0;
-        else
-            us -= kWaitSlice;
-        us = qMin(us, ulong((double)(pts - d.clock->value())*1000000.0));
-        processNextTask();
-    }
-    if (us > 0) {
-        usleep(us);
-        processNextTask();
-    }
+    class FrameDropTask : public QRunnable {
+        AVDecoder *decoder;
+        bool drop;
+    public:
+        FrameDropTask(AVDecoder *dec, bool value) : decoder(dec), drop(value) {}
+        void run() Q_DECL_OVERRIDE {
+            if (!decoder)
+                return;
+            if (drop)
+                decoder->setOptions(VideoThreadPrivate::dec_opt_framedrop);
+            else
+                decoder->setOptions(VideoThreadPrivate::dec_opt_normal);
+        }
+    };
+    scheduleTask(new FrameDropTask(decoder(), value));
 }
 
 void VideoThread::applyFilters(VideoFrame &frame)
@@ -401,7 +397,7 @@ void VideoThread::run()
             diff = 0; // TODO: can not change delay!
         }
         // update here after wait
-        d.clock->updateVideoPts(pts); // dts or pts?
+        d.clock->updateVideoTime(pts); // dts or pts?
         seeking = !qFuzzyIsNull(d.render_pts0);
         if (qAbs(diff) < 0.5) {
             if (diff < -kSyncThreshold) { //Speed up. drop frame?
