@@ -39,6 +39,7 @@ class QVBoxLayout;
 class QLabel;
 class QPushButton;
 class QSpinBox;
+class QCheckBox;
 class QTimeEdit;
 class Button;
 class Slider;
@@ -137,6 +138,7 @@ private slots:
     void onClickXunoBrowser();
     void customfpsChanged(double n);
     void changeClockType(QAction* action);
+    void RepeatLoopChanged(int i);
 
 protected:
     virtual void closeEvent(QCloseEvent *e);
@@ -180,6 +182,7 @@ private:
     QMenu *mpMenu;
     QAction *mpVOAction, *mpARAction; //remove mpVOAction if vo.id() is supported
     QAction *mpRepeatEnableAction;
+    QCheckBox *mpRepeatLoop;
     QWidgetAction *mpRepeatAction;
     QSpinBox *mpRepeatBox;
     QTimeEdit *mpRepeatA, *mpRepeatB;

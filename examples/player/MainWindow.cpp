@@ -75,7 +75,7 @@
 #define AVDEBUG() \
     qDebug("%s %s @%d", __FILE__, __FUNCTION__, __LINE__);
 
-#define IMGSEQOPENGL 0
+#define IMGSEQOPENGL 1
 
 using namespace QtAV;
 const qreal kVolumeInterval = 0.05;
@@ -391,21 +391,26 @@ void MainWindow::setupUi()
 
     subMenu = new ClickableMenu(tr("Repeat"));
     mpMenu->addMenu(subMenu);
+    subMenu->setObjectName(QString::fromUtf8("RepeatMenu"));
     //subMenu->setEnabled(false);
     mpRepeatEnableAction = subMenu->addAction(tr("Enable"));
     mpRepeatEnableAction->setCheckable(true);
     connect(mpRepeatEnableAction, SIGNAL(toggled(bool)), SLOT(toggleRepeat(bool)));
     // TODO: move to a func or class
+    mpRepeatLoop = new QCheckBox(tr("Loop"), this);
+    connect(mpRepeatLoop, SIGNAL(stateChanged(int)), SLOT(RepeatLoopChanged(int)));
     mpRepeatBox = new QSpinBox(0);
     mpRepeatBox->setMinimum(-1);
-    mpRepeatBox->setValue(-1);
+    mpRepeatBox->setValue(1);
     mpRepeatBox->setToolTip("-1: " + tr("infinity"));
     connect(mpRepeatBox, SIGNAL(valueChanged(int)), SLOT(setRepeateMax(int)));
     QLabel *pRepeatLabel = new QLabel(tr("Times"));
     QHBoxLayout *hb = new QHBoxLayout;
+    hb->setObjectName(QString::fromUtf8("TimesLayout"));
     hb->addWidget(pRepeatLabel);
     hb->addWidget(mpRepeatBox);
     QVBoxLayout *vb = new QVBoxLayout;
+    vb->addWidget(mpRepeatLoop);
     vb->addLayout(hb);
     pRepeatLabel = new QLabel(tr("From"));
     mpRepeatA = new QTimeEdit();
@@ -433,6 +438,7 @@ void MainWindow::setupUi()
     pWA->defaultWidget()->setEnabled(false);
     subMenu->addAction(pWA); //must add action after the widget action is ready. is it a Qt bug?
     mpRepeatAction = pWA;
+    mpRepeatLoop->setCheckState(Qt::Checked);
 
     mpMenu->addSeparator();
 
@@ -1250,7 +1256,8 @@ void MainWindow::toggleRepeat(bool r)
 
 void MainWindow::setRepeateMax(int m)
 {
-    mRepeateMax = m;
+    if (m!=0) mRepeateMax = m;
+    if (m<1)  mpRepeatBox->setValue(1);
     if (mpPlayer) {
         mpPlayer->setRepeat(m);
     }
@@ -1650,3 +1657,23 @@ bool MainWindow::applyCustomFPS(){
     }
     return ret;
 }
+
+ void MainWindow::RepeatLoopChanged(int i){
+     bool checked=(i==Qt::Checked);
+     qDebug()<<"RepeatLoopChanged:"<<i;
+     mpRepeatBox->setVisible(!checked);
+     mpRepeatBox->setValue(checked?-1:1);
+     QLayout *layout = mpRepeatBox->parentWidget()->layout();
+     QHBoxLayout *layout2 = layout->findChild<QHBoxLayout *>("TimesLayout");
+     if (layout2){
+         for (int j = 0; j < layout2->count(); ++j){
+             QWidget *widget =layout2->itemAt(j)->widget();
+             if (widget){
+                 widget->setVisible(!checked);
+             }
+         }
+     }
+     bool ch=mpRepeatEnableAction->isChecked();
+     mpRepeatEnableAction->setChecked(!ch);
+     mpRepeatEnableAction->setChecked(ch);
+ }
