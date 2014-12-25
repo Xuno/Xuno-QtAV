@@ -75,7 +75,7 @@
 #define AVDEBUG() \
     qDebug("%s %s @%d", __FILE__, __FUNCTION__, __LINE__);
 
-#define IMGSEQOPENGL 1
+#define IMGSEQOPENGL 0
 
 using namespace QtAV;
 const qreal kVolumeInterval = 0.05;

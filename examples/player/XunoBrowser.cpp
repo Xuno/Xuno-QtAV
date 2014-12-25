@@ -45,7 +45,7 @@
 #include <QtWebKitWidgets/QtWebKitWidgets>
 #include <QtWebKitWidgets/QGraphicsWebView>
 //#include <QWebView>
-#include "xunobrowser.h"
+#include "XunoBrowser.h"
 
  XunoBrowser::XunoBrowser(QWidget *parent) : QDialog(parent)
    , view(0)
