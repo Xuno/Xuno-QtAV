@@ -22,6 +22,7 @@
 #define MAINWINDOW_H
 
 #include <QWidget>
+#include <QUrl>
 
 class QWidgetAction;
 namespace QtAV {
@@ -65,6 +66,7 @@ public:
 
 public slots:
     void play(const QString& name);
+    void play(const QUrl& url);
     void openFile();
     void togglePlayPause();
     void showNextOSD();

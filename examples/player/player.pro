@@ -4,6 +4,7 @@ QT += network
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 greaterThan(QT_MAJOR_VERSION, 4): QT += webkitwidgets
 TRANSLATIONS = res/player_zh_CN.ts
+VERSION = $$QTAV_VERSION
 
 STATICLINK = 0
 PROJECTROOT = $$PWD/../..
@@ -12,6 +13,7 @@ include($$PWD/../common/libcommon.pri)
 preparePaths($$OUT_PWD)
 INCLUDEPATH += $$PWD
 mac: RC_FILE = $$PROJECTROOT/src/QtAV.icns
+genRC($$TARGET)
 
 SOURCES += main.cpp \
     MainWindow.cpp \
@@ -93,15 +95,3 @@ include($$PROJECTROOT/deploy.pri)
 RESOURCES += \
     res/player.qrc \
     theme.qrc
-
-ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
-
-RC_ICONS = $$PROJECTROOT/src/Xuno-QtAV.ico
-QMAKE_TARGET_COMPANY = "Shanghai University->S3 Graphics->Deepin | wbsecg1@gmail.com"
-//QMAKE_TARGET_DESCRIPTION = "Multimedia playback framework based on Qt & FFmpeg. https://github.com/Xuno/Xuno-QtAV"
-//QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2014 WangBin, wbsecg1@gmail.com, http://www.xuno.com"
-//QMAKE_TARGET_PRODUCT = "QtAV player"
-QMAKE_TARGET_DESCRIPTION = "Multimedia playback framework based on Qt & FFmpeg. https://github.com/Xuno/Xuno-QtAV"
-QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2014 WangBin, wbsecg1@gmail.com,  http://www.xuno.com"
-QMAKE_TARGET_PRODUCT = "Xuno-QtAV player"
-

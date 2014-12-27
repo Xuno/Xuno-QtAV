@@ -777,6 +777,7 @@ void MainWindow::play(const QString &name)
         mHasPendingPlay = true;
         return;
     }
+    mTitle = mFile;
     if (!mFile.contains("://") || mFile.startsWith("file://")) {
         mTitle = QFileInfo(mFile).fileName();
     }
@@ -809,6 +810,11 @@ void MainWindow::play(const QString &name)
     mpHistory->insertItemAt(item, 0);
     loadRemoteUrlPresset(mFile);
     mpPlayer->play(name);
+}
+
+void MainWindow::play(const QUrl &url)
+{
+    play(QUrl::fromPercentEncoding(url.toEncoded()));
 }
 
 void MainWindow::setVideoDecoderNames(const QStringList &vd)

@@ -21,7 +21,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <QApplication>
-
 #include <QtDebug>
 #include <QtCore/QDir>
 #include <QMessageBox>
@@ -149,6 +148,9 @@ int main(int argc, char *argv[])
     renderer->setOutAspectRatioMode(VideoRenderer::VideoAspectRatio);
 
     MainWindow window;
+    AppEventFilter ae(&window);
+    qApp->installEventFilter(&ae);
+
     window.show();
     window.setWindowTitle(title);
     window.setRenderer(renderer);
