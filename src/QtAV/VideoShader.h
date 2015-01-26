@@ -109,7 +109,6 @@ public:
 
     bool bind(); // TODO: roi
     void unbind();
-    void bindPlane(int p); // TODO: roi
     int compare(const VideoMaterial* other) const;
 
     bool hasAlpha() const;
@@ -148,6 +147,9 @@ public:
     void setGammaRGB(qreal value);
     void setFilterSharp(qreal value);
 protected:
+    // TODO: roi
+    // whether to update texture is set internal
+    void bindPlane(int p, bool updateTexture = true);
     VideoMaterial(VideoMaterialPrivate &d);
     DPTR_DECLARE(VideoMaterial)
 };

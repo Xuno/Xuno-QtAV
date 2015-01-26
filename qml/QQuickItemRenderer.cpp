@@ -28,21 +28,24 @@
 #include <QtAV/FactoryDefine.h>
 #include <QtAV/AVPlayer.h>
 #include <QtAV/VideoRendererTypes.h> //it declares a factory we need
+#include "QtAV/private/mkid.h"
 #include "QtAV/private/prepost.h"
 #include "QmlAV/QmlAVPlayer.h"
 #include "QmlAV/SGVideoNode.h"
 
 namespace QtAV
 {
-VideoRendererId VideoRendererId_QQuickItem = 65; //leave some for QtAV
+VideoRendererId VideoRendererId_QQuickItem = mkid::id32base36_6<'Q','Q','I','t','e','m'>::value;
 
 FACTORY_REGISTER_ID_AUTO(VideoRenderer, QQuickItem, "QQuickItem")
 
-QQuickItemRenderer::QQuickItemRenderer(QQuickItem *parent) :
-    VideoRenderer(*new QQuickItemRendererPrivate)
+QQuickItemRenderer::QQuickItemRenderer(QQuickItem *parent)
+    : QQuickItem(parent)
+    , VideoRenderer(*new QQuickItemRendererPrivate())
 {
     Q_UNUSED(parent);
     setFlag(QQuickItem::ItemHasContents, true);
+    connect(this, SIGNAL(windowChanged(QQuickWindow*)), SLOT(handleWindowChange(QQuickWindow*)));
 }
 
 VideoRendererId QQuickItemRenderer::id() const
@@ -52,6 +55,8 @@ VideoRendererId QQuickItemRenderer::id() const
 
 bool QQuickItemRenderer::isSupported(VideoFormat::PixelFormat pixfmt) const
 {
+    if (pixfmt == VideoFormat::Format_RGB48BE)
+        return false;
     if (!isOpenGL())
         return VideoFormat::isRGB(pixfmt);
     return pixfmt != VideoFormat::Format_YUYV && pixfmt != VideoFormat::Format_UYVY;
@@ -81,8 +86,6 @@ void QQuickItemRenderer::geometryChanged(const QRectF &newGeometry, const QRectF
 bool QQuickItemRenderer::receiveFrame(const VideoFrame &frame)
 {
     DPTR_D(QQuickItemRenderer);
-    QMutexLocker locker(&d.img_mutex);
-    Q_UNUSED(locker);
     d.video_frame = frame;
     if (!isOpenGL()) {
         d.image = QImage((uchar*)frame.bits(), frame.width(), frame.height(), frame.bytesPerLine(), frame.imageFormat());
@@ -166,10 +169,16 @@ void QQuickItemRenderer::drawFrame()
     if (isOpenGL()) {
         SGVideoNode *sgvn = static_cast<SGVideoNode*>(d.node);
         Q_ASSERT(sgvn);
-        sgvn->setTexturedRectGeometry(d.out_rect, normalizedROI(), d.orientation);
         if (d.frame_changed)
             sgvn->setCurrentFrame(d.video_frame);
         d.frame_changed = false;
+        d.video_frame = VideoFrame();
+        sgvn->setTexturedRectGeometry(d.out_rect, normalizedROI(), d.orientation);
+        return;
+    }
+    if (!d.frame_changed) {
+        static_cast<QSGSimpleTextureNode*>(d.node)->setRect(d.out_rect);
+        d.node->markDirty(QSGNode::DirtyGeometry);
         return;
     }
     if (d.image.isNull()) {
@@ -188,6 +197,8 @@ void QQuickItemRenderer::drawFrame()
     }
     static_cast<QSGSimpleTextureNode*>(d.node)->setTexture(d.texture);
     d.node->markDirty(QSGNode::DirtyGeometry);
+    d.frame_changed = false;
+    d.video_frame = VideoFrame();
 }
 
 QSGNode *QQuickItemRenderer::updatePaintNode(QSGNode *node, QQuickItem::UpdatePaintNodeData *data)
@@ -211,6 +222,27 @@ QSGNode *QQuickItemRenderer::updatePaintNode(QSGNode *node, QQuickItem::UpdatePa
     handlePaintEvent();
     d.node = 0;
     return node;
+}
+
+void QQuickItemRenderer::handleWindowChange(QQuickWindow *win)
+{
+    disconnect(this, SLOT(beforeRendering()));
+    disconnect(this, SLOT(afterRendering()));
+    if (!win)
+        return;
+    connect(win, SIGNAL(beforeRendering()), this, SLOT(beforeRendering()), Qt::DirectConnection);
+    connect(win, SIGNAL(afterRendering()), this, SLOT(afterRendering()), Qt::DirectConnection);
+}
+
+void QQuickItemRenderer::beforeRendering()
+{
+    d_func().img_mutex.lock();
+    // TODO: what if current frame not rendered but new frame comes?
+}
+
+void QQuickItemRenderer::afterRendering()
+{
+    d_func().img_mutex.unlock();
 }
 
 bool QQuickItemRenderer::onSetRegionOfInterest(const QRectF &roi)

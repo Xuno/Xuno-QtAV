@@ -70,6 +70,7 @@ QmlAVPlayer::QmlAVPlayer(QObject *parent) :
   , m_status(QtAV::NoMedia)
   , mpPlayer(0)
   , mChannelLayout(ChannelLayoutAuto)
+  , m_timeout(30000)
 {
 }
 
@@ -82,6 +83,7 @@ void QmlAVPlayer::classBegin()
     connect(mpPlayer, SIGNAL(started()), SLOT(_q_started()));
     connect(mpPlayer, SIGNAL(stopped()), SLOT(_q_stopped()));
     connect(mpPlayer, SIGNAL(positionChanged(qint64)), SIGNAL(positionChanged()));
+    connect(mpPlayer, SIGNAL(seekableChanged()), SIGNAL(seekableChanged()));
     connect(this, SIGNAL(volumeChanged()), SLOT(applyVolume()));
     connect(this, SIGNAL(channelLayoutChanged()), SLOT(applyChannelLayout()));
 
@@ -261,6 +263,21 @@ QmlAVPlayer::ChannelLayout QmlAVPlayer::channelLayout() const
     return mChannelLayout;
 }
 
+void QmlAVPlayer::setTimeout(int value)
+{
+    if (m_timeout == value)
+        return;
+    m_timeout = value;
+    emit timeoutChanged();
+    if (mpPlayer)
+        mpPlayer->setInterruptTimeout(m_timeout);
+}
+
+int QmlAVPlayer::timeout() const
+{
+    return m_timeout;
+}
+
 QStringList QmlAVPlayer::videoCodecPriority() const
 {
     return mVideoCodecs;
@@ -328,7 +345,7 @@ int QmlAVPlayer::position() const
 
 bool QmlAVPlayer::isSeekable() const
 {
-    return true;
+    return mpPlayer && mpPlayer->isSeekable();
 }
 
 QmlAVPlayer::Status QmlAVPlayer::status() const
@@ -364,6 +381,7 @@ void QmlAVPlayer::setPlaybackState(PlaybackState playbackState)
         if (mpPlayer->isPaused()) {
             mpPlayer->pause(false);
         } else {
+            mpPlayer->setInterruptTimeout(m_timeout);
             mpPlayer->setRepeat(mLoopCount - 1);
             if (!vcodec_opt.isEmpty()) {
                 QVariantHash vcopt;

@@ -64,11 +64,6 @@ void AudioThread::run()
         return;
     resetState();
     Q_ASSERT(d.clock != 0);
-    AudioDecoder *dec = static_cast<AudioDecoder*>(d.dec);
-    AudioOutput *ao = 0;
-    // first() is not null even if list empty
-    if (!d.outputSet->outputs().isEmpty())
-        ao = static_cast<AudioOutput*>(d.outputSet->outputs().first()); //TODO: not here
     d.init();
     //TODO: bool need_sync in private class
     bool is_external_clock = d.clock->clockType() == AVClock::ExternalClock;
@@ -95,7 +90,10 @@ void AudioThread::run()
         }
         if (!pkt.isValid()) {
             qDebug("Invalid packet! flush audio codec context!!!!!!!! audio queue size=%d", d.packets.size());
-            dec->flush();
+            QMutexLocker locker(&d.mutex);
+            Q_UNUSED(locker);
+            if (d.dec) //maybe set to null in setDecoder()
+                d.dec->flush();
             continue;
         }
         qreal dts = pkt.dts; //FIXME: pts and dts
@@ -144,6 +142,20 @@ void AudioThread::run()
         } else {
             d.clock->updateValue(pkt.pts);
         }
+
+        /* lock here to ensure decoder and ao can complete current work before they are changed
+         * current packet maybe not supported by new decoder
+         */
+        QMutexLocker locker(&d.mutex);
+        Q_UNUSED(locker);
+        AudioDecoder *dec = static_cast<AudioDecoder*>(d.dec);
+        if (!dec)
+            continue;
+        AudioOutput *ao = 0;
+        // first() is not null even if list empty
+        if (!d.outputSet->outputs().isEmpty())
+            ao = static_cast<AudioOutput*>(d.outputSet->outputs().first());
+
         //DO NOT decode and convert if ao is not available or mute!
         bool has_ao = ao && ao->isAvailable();
         //if (!has_ao) {//do not decode?
@@ -180,8 +192,6 @@ void AudioThread::run()
             qDebug("audio thread stop before decode()");
             break;
         }
-        QMutexLocker locker(&d.mutex);
-        Q_UNUSED(locker);
         if (!dec->decode(pkt)) {
             qWarning("Decode audio failed. undecoded: %d", dec->undecodedSize());
             qreal dt = dts - d.last_pts;
@@ -200,7 +210,7 @@ void AudioThread::run()
         int decodedPos = 0;
         qreal delay = 0;
         //AudioFormat.durationForBytes() calculates int type internally. not accurate
-        AudioFormat &af = dec->resampler()->inAudioFormat();
+        AudioFormat &af = dec->resampler()->outAudioFormat();
         qreal byte_rate = af.bytesPerSecond();
         while (decodedSize > 0) {
             if (d.stop) {
@@ -212,6 +222,7 @@ void AudioThread::run()
             //AudioFormat.bytesForDuration
             const qreal chunk_delay = (qreal)chunk/(qreal)byte_rate;
             pkt.pts += chunk_delay;
+            pkt.dts += chunk_delay;
             QByteArray decodedChunk(chunk, 0); //volume == 0 || mute
             if (has_ao) {
                 //TODO: volume filter and other filters!!!

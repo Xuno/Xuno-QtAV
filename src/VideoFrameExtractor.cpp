@@ -1,3 +1,24 @@
+/******************************************************************************
+    QtAV:  Media play library based on Qt and FFmpeg
+    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
+
+*   This file is part of QtAV
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+******************************************************************************/
+
 #include "QtAV/VideoFrameExtractor.h"
 #include <QtCore/QCoreApplication>
 #include <QtCore/QQueue>
@@ -99,10 +120,10 @@ public:
         dec_opt_normal["avcodec"] = opt; // avcodec need correct string or value in libavcodec
         codecs
 #if QTAV_HAVE(DXVA)
-                     << "DXVA"
+                    // << "DXVA"
 #endif //QTAV_HAVE(DXVA)
 #if QTAV_HAVE(VAAPI)
-                     << "VAAPI"
+                    // << "VAAPI"
 #endif //QTAV_HAVE(VAAPI)
 #if QTAV_HAVE(CEDARV)
                     //<< "Cedarv"
@@ -117,27 +138,28 @@ public:
         thread.waitStop();
         // close codec context first.
         decoder.reset(0);
-        demuxer.close();
+        demuxer.unload();
     }
 
     bool checkAndOpen() {
-        const bool loaded = demuxer.isLoaded(source);
-        if (loaded && decoder)
+        const bool loaded = demuxer.fileName() == source && demuxer.isLoaded();
+        if (loaded && decoder && !demuxer.atEnd())
             return true;
         seek_count = 0;
         if (decoder) { // new source
             decoder->close();
             decoder.reset(0);
         }
-        if (!loaded) {
-            demuxer.close();
-            if (!demuxer.loadFile(source)) {
+        if (!loaded || demuxer.atEnd()) {
+            demuxer.unload();
+            demuxer.setMedia(source);
+            if (!demuxer.load()) {
                 return false;
             }
         }
         has_video = demuxer.videoStreams().size() > 0;
         if (!has_video) {
-            demuxer.close();
+            demuxer.unload();
             return false;
         }
         if (codecs.isEmpty())
@@ -174,76 +196,63 @@ public:
 
     // return the key frame position
     bool extractInPrecision(qint64 value, int range) {
+        frame = VideoFrame();
         if (value < demuxer.startTime())
             value += demuxer.startTime();
         demuxer.seek(value);
         const int vstream = demuxer.videoStream();
         Packet pkt;
         while (!demuxer.atEnd()) {
-            if (!demuxer.readFrame()) {
-                //qDebug("!!!!!!read frame error!!!!!!");
+            if (!demuxer.readFrame())
                 continue;
-            }
             if (demuxer.stream() != vstream)
                 continue;
             pkt = demuxer.packet();
-            if ((qint64)(pkt.pts*1000.0) - value > (qint64)range)
+            if ((qint64)(pkt.pts*1000.0) - value > (qint64)range) {
+                qDebug("read packet out of range");
                 return false;
+            }
             //qDebug("video packet: %f", pkt.pts);
             // TODO: always key frame?
             if (pkt.hasKeyFrame)
                 break;
+            else
+                qWarning("Not seek to key frame!!!");
         }
-        decoder->flush(); //must flush otherwise old frames will be decoded at the beginning
+        if (!pkt.isValid()) {
+            qWarning("VideoFrameExtractor failed to get a packet at %lld", value);
+            return false;
+        }
+        // no flush is required because we compare the correct decoded timestamp
+        //decoder->flush(); //must flush otherwise old frames will be decoded at the beginning
         decoder->setOptions(dec_opt_normal);
-        const qint64 t_key = qint64(pkt.pts * 1000.0);
-        //qDebug("delta t = %d, data size: %d", int(value - t_key), pkt.data.size());
         // must decode key frame
-        // because current decode() only accept data, no dts pts, so we can't get correct decoded dts pts.
-        // it's a workaround to decode until decoded key frame is valid
         int k = 0;
-        while (k < 5 && !frame.isValid()) {
+        while (k < 2 && !frame.isValid()) {
             //qWarning("invalid key frame!!!!! undecoded: %d", decoder->undecodedSize());
-            if (!decoder->decode(pkt)) {
-                //qWarning("!!!!!!!!!decode key failed!!!!!!!!");
-                return false;
+            if (decoder->decode(pkt)) {
+                frame = decoder->frame();
             }
-            frame = decoder->frame();
             ++k;
         }
-        frame.setTimestamp(pkt.pts);
-
         // seek backward, so value >= t
         // decode key frame
-        if (int(value - t_key) <= range) {
-            //qDebug("!!!!!!!!!use key frame!!!!!!!");
+        if (int(value - frame.timestamp()) <= range) {
             if (frame.isValid()) {
                 qDebug() << "VideoFrameExtractor: key frame found. format: " <<  frame.format();
                 return true;
             }
         }
-        frame = VideoFrame();
         QVariantHash* dec_opt = &dec_opt_normal; // 0: default, 1: framedrop
-
         // decode at the given position
-        qreal t0 = qreal(value/1000LL);
         while (!demuxer.atEnd()) {
-            if (!demuxer.readFrame()) {
-                //qDebug("!!!!!!----read frame error!!!!!!");
+            if (!demuxer.readFrame())
                 continue;
-            }
-            if (demuxer.stream() != vstream) {
-                //qDebug("not video packet");
+            if (demuxer.stream() != vstream)
                 continue;
-            }
             pkt = demuxer.packet();
             const qreal t = pkt.pts;
-            const qint64 diff = qint64(t*1000.0) - value;
             //qDebug("video packet: %f, delta=%lld", t, value - qint64(t*1000.0));
-            if (diff > (qint64)range) { // use last decoded frame
-                //qWarning("out of range");
-                return frame.isValid();
-            }
             if (!pkt.isValid()) {
                 qWarning("invalid packet. no decode");
                 continue;
@@ -253,6 +262,7 @@ public:
                 //qCritical("Internal error. Can not be a key frame!!!!");
                 //return false; //??
             }
+            qint64 diff = qint64(t*1000.0) - value;
             QVariantHash *dec_opt_old = dec_opt;
             if (seek_count == 0 || diff >= 0)
                 dec_opt = &dec_opt_normal;
@@ -262,24 +272,32 @@ public:
                 decoder->setOptions(*dec_opt);
             // invalid packet?
             if (!decoder->decode(pkt)) {
-                //qWarning("!!!!!!!!!decode failed!!!!");
+                qWarning("!!!!!!!!!decode failed!!!!");
+                frame = VideoFrame();
                 return false;
             }
             // store the last decoded frame because next frame may be out of range
             const VideoFrame f = decoder->frame();
-            //qDebug() << "frame found. format: " <<  f.format();
             if (!f.isValid()) {
-                qDebug("VideoFrameExtractor: invalid frame!!!");
+                //qDebug("VideoFrameExtractor: invalid frame!!!");
                 continue;
             }
             frame = f;
-            frame.setTimestamp(t);
-            // TODO: break if t is in (t0-range, t0+range)
-            if (diff >= 0 || -diff < range)
+            const qreal pts = frame.timestamp();
+            const qint64 pts_ms = pts*1000.0;
+            if (pts_ms < value)
+                continue; //
+            diff = pts_ms - value;
+            if (qAbs(diff) <= (qint64)range) {
+                qDebug("got frame at %fs, diff=%lld", pts, diff);
                 break;
-            if (t < t0)
-                continue;
-            break;
+            }
+            // if decoder was not flushed, we may get old frame which is acceptable
+            if (diff > range && t > pts) {
+                qWarning("out pts out of range");
+                frame = VideoFrame();
+                return false;
+            }
         }
         ++seek_count;
         // now we get the final frame

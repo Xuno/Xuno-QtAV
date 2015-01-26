@@ -40,9 +40,14 @@ public:
     ~Private();
 
     void initStatistics();
+    void initBaseStatistics();
+    void initCommonStatistics(int s, Statistics::Common* st, AVCodecContext* avctx);
+    void initAudioStatistics(int s);
+    void initVideoStatistics(int s);
+    void initSubtitleStatistics(int s);
+
     bool setupAudioThread(AVPlayer *player);
     bool setupVideoThread(AVPlayer *player);
-
 
     //TODO: addAVOutput()
     template<class Out>
@@ -110,6 +115,7 @@ public:
     int repeat_max, repeat_current;
     int timer_id; //notify position change and check AB repeat range. active when playing
 
+    int audio_track, video_track, subtitle_track;
     //the following things are required and must be set not null
     AVDemuxer demuxer;
     AVDemuxThread *read_thread;

@@ -35,6 +35,7 @@
 #define QOpenGLContext QGLContext
 #endif //!defined(QT_NO_OPENGL)
 #endif
+class QColor;
 
 namespace QtAV {
 
@@ -49,6 +50,7 @@ class Q_AV_EXPORT OpenGLVideo : public QObject
     Q_OBJECT
     DPTR_DECLARE_PRIVATE(OpenGLVideo)
 public:
+    static bool isSupported(VideoFormat::PixelFormat pixfmt);
     OpenGLVideo();
     /*!
      * \brief setOpenGLContext
@@ -61,6 +63,7 @@ public:
     void setOpenGLContext(QOpenGLContext *ctx);
     QOpenGLContext* openGLContext();
     void setCurrentFrame(const VideoFrame& frame);
+    void fill(const QColor& color);
     /*!
      * \brief render
      * all are in Qt's coordinate

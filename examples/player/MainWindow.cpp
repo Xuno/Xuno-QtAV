@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV Player Demo:  this file is part of QtAV examples
-    Copyright (C) 2012-2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -19,6 +19,8 @@
 ******************************************************************************/
 #include "MainWindow.h"
 #include "EventFilter.h"
+#include <QtAV>
+#include <QtAVWidgets>
 #include <QtCore/QtDebug>
 #include <QtCore/QLocale>
 #include <QtCore/QTimer>
@@ -45,9 +47,6 @@
 #include <QToolTip>
 #include <QKeyEvent>
 #include <QWheelEvent>
-#include <QtAV/QtAV.h>
-#include <QtAV/LibAVFilter.h>
-#include <QtAV/SubtitleFilter.h>
 #include "Button.h"
 #include "ClickableMenu.h"
 #include "Slider.h"
@@ -562,8 +561,9 @@ void MainWindow::setupUi()
     //TODO: AVOutput.name,detail(description). check whether it is available
     mpVOAction = subMenu->addAction("QPainter");
     mpVOAction->setData(VideoRendererId_Widget);
-    subMenu->addAction("OpenGL Widget 2")->setData(VideoRendererId_GLWidget2);
-    subMenu->addAction("OpenGL Widget")->setData(VideoRendererId_GLWidget);
+    subMenu->addAction("OpenGLWidget")->setData(VideoRendererId_OpenGLWidget);
+    subMenu->addAction("GLWidget 2")->setData(VideoRendererId_GLWidget2);
+    subMenu->addAction("GLWidget")->setData(VideoRendererId_GLWidget);
     subMenu->addAction("GDI+")->setData(VideoRendererId_GDI);
     subMenu->addAction("Direct2D")->setData(VideoRendererId_Direct2D);
     subMenu->addAction("XV")->setData(VideoRendererId_XV);
@@ -658,13 +658,15 @@ void MainWindow::changeAudioTrack(QAction *action)
     }
     int track = action->data().toInt();
 
-    if (!mpPlayer->setAudioStream(track, true)) {
+    if (!mpPlayer->setAudioStream(track)) {
         action->toggle();
         return;
     }
     mpAudioTrackAction->setChecked(false);
     mpAudioTrackAction = action;
     mpAudioTrackAction->setChecked(true);
+    if (mpStatisticsView && mpStatisticsView->isVisible())
+        mpStatisticsView->setStatistics(mpPlayer->statistics());
 }
 
 void MainWindow::changeVO(QAction *action)
@@ -749,14 +751,16 @@ void MainWindow::setRenderer(QtAV::VideoRenderer *renderer)
         }
     }
     mpVOAction->setChecked(true);
-    //mpTitle->setText(mpVOAction->text());
-    if (mpPlayer->renderer()->id() == VideoRendererId_GLWidget
-            || mpPlayer->renderer()->id() == VideoRendererId_GLWidget2
+    mpTitle->setText(mpVOAction->text());
+    const VideoRendererId vid = mpPlayer->renderer()->id();
+    if (vid == VideoRendererId_GLWidget
+            || vid == VideoRendererId_GLWidget2
+            || vid == VideoRendererId_OpenGLWidget
             ) {
         mpVideoEQ->setEngines(QVector<VideoEQConfigPage::Engine>() << VideoEQConfigPage::SWScale << VideoEQConfigPage::GLSL);
         mpVideoEQ->setEngine(VideoEQConfigPage::GLSL);
         mpPlayer->renderer()->forcePreferredPixelFormat(true);
-    } else if (mpPlayer->renderer()->id() == VideoRendererId_XV) {
+    } else if (vid == VideoRendererId_XV) {
         mpVideoEQ->setEngines(QVector<VideoEQConfigPage::Engine>() << VideoEQConfigPage::XV);
         mpVideoEQ->setEngine(VideoEQConfigPage::XV);
         mpPlayer->renderer()->forcePreferredPixelFormat(true);
@@ -900,7 +904,7 @@ void MainWindow::onStartPlay()
     mpTimeSlider->setMaximum(mpPlayer->mediaStopPosition());
     setPlayerPosFromRepeat();
     mpTimeSlider->setValue(0);
-    mpTimeSlider->setEnabled(true);
+    mpTimeSlider->setEnabled(mpPlayer->isSeekable());
     mpEnd->setText(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()).toString("HH:mm:ss"));
     setVolume();
     mShowControl = 0;
@@ -1017,7 +1021,8 @@ void MainWindow::timerEvent(QTimerEvent *e)
 
 void MainWindow::onPositionChange(qint64 pos)
 {
-    mpTimeSlider->setValue(pos);
+    if (mpPlayer->isSeekable())
+        mpTimeSlider->setValue(pos);
     mpCurrent->setText(QTime(0, 0, 0).addMSecs(pos).toString("HH:mm:ss"));
 }
 

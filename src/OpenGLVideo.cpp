@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -20,6 +20,7 @@
 ******************************************************************************/
 
 #include "QtAV/OpenGLVideo.h"
+#include <QtGui/QColor>
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
 #include <QtGui/QOpenGLShaderProgram>
 #include <QtGui/QOpenGLFunctions>
@@ -81,6 +82,12 @@ public:
 };
 
 OpenGLVideo::OpenGLVideo() {}
+
+bool OpenGLVideo::isSupported(VideoFormat::PixelFormat pixfmt)
+{
+    return pixfmt != VideoFormat::Format_YUYV && pixfmt != VideoFormat::Format_UYVY
+            && pixfmt != VideoFormat::Format_RGB48BE;
+}
 
 // TODO: set surface/device size here (viewport?)
 void OpenGLVideo::setOpenGLContext(QOpenGLContext *ctx)
@@ -162,6 +169,17 @@ void OpenGLVideo::setGammaRGB(qreal value)
 void OpenGLVideo::setFilterSharp(qreal value)
 {
     d_func().material->setFilterSharp(value);
+}
+
+void OpenGLVideo::fill(const QColor &color)
+{
+#ifndef QT_OPENGL_DYNAMIC
+    glClearColor(color.red(), color.green(), color.blue(), color.alpha());
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#else
+    QOpenGLContext::currentContext()->functions()->glClearColor(color.red(), color.green(), color.blue(), color.alpha());
+    QOpenGLContext::currentContext()->functions()->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#endif
 }
 
 void OpenGLVideo::render(const QRectF &target, const QRectF& roi, const QMatrix4x4& transform)

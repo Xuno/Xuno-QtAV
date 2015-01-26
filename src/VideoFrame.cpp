@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -27,6 +27,7 @@
 #include "QtAV/private/AVCompat.h"
 #include <QtCore/QSharedPointer>
 #include <QtGui/QImage>
+#include "utils/Logger.h"
 
 // FF_API_PIX_FMT
 #ifdef PixelFormat
@@ -49,6 +50,7 @@ namespace QtAV {
 
 class VideoFramePrivate : public FramePrivate
 {
+    Q_DISABLE_COPY(VideoFramePrivate)
 public:
     VideoFramePrivate()
         : FramePrivate()
@@ -111,28 +113,6 @@ public:
         textures.reserve(format.planeCount());
         return true;
     }
-    bool convertTo(const VideoFormat& fmt, const QSizeF &dstSize, const QRectF &roi) {
-        if (fmt == format.pixelFormatFFmpeg()
-                && roi == QRectF(0, 0, width, height)
-                && dstSize == roi.size())
-            return true;
-        if (!conv) {
-            format.setPixelFormat(VideoFormat::Format_Invalid);
-            return false;
-        }
-        format = fmt;
-        data = conv->outData();
-        planes = conv->outPlanes();
-        line_sizes = conv->outLineSizes();
-
-        planes.resize(fmt.planeCount());
-        line_sizes.resize(fmt.planeCount());
-        textures.resize(fmt.planeCount());
-        planes.reserve(format.planeCount());
-        line_sizes.reserve(format.planeCount());
-        textures.reserve(format.planeCount());
-        return false;
-    }
 
     int width, height;
     float displayAspectRatio;
@@ -144,31 +124,31 @@ public:
 };
 
 VideoFrame::VideoFrame()
-    : Frame(*new VideoFramePrivate())
+    : Frame(new VideoFramePrivate())
 {
 }
 
 VideoFrame::VideoFrame(int width, int height, const VideoFormat &format)
-    : Frame(*new VideoFramePrivate(width, height, format))
+    : Frame(new VideoFramePrivate(width, height, format))
 {
 }
 
 VideoFrame::VideoFrame(const QByteArray& data, int width, int height, const VideoFormat &format)
-    : Frame(*new VideoFramePrivate(width, height, format))
+    : Frame(new VideoFramePrivate(width, height, format))
 {
     Q_D(VideoFrame);
     d->data = data;
 }
 
 VideoFrame::VideoFrame(const QVector<int>& textures, int width, int height, const VideoFormat &format)
-    : Frame(*new VideoFramePrivate(width, height, format))
+    : Frame(new VideoFramePrivate(width, height, format))
 {
     Q_D(VideoFrame);
     d->textures = textures;
 }
 
 VideoFrame::VideoFrame(const QImage& image)
-    : Frame(*new VideoFramePrivate(image.width(), image.height(), VideoFormat(image.format())))
+    : Frame(new VideoFramePrivate(image.width(), image.height(), VideoFormat(image.format())))
 {
     // TODO: call const image.bits()?
     setBits((uchar*)image.bits(), 0);
@@ -382,9 +362,66 @@ bool VideoFrame::convertTo(int fffmt)
     return d_func()->convertTo(fffmt);
 }
 
-bool VideoFrame::convertTo(const VideoFormat& fmt, const QSizeF &dstSize, const QRectF &roi)
+QImage VideoFrame::toImage(QImage::Format fmt, const QSize& dstSize, const QRectF &roi) const
 {
-    return d_func()->convertTo(fmt, dstSize, roi);
+    Q_UNUSED(dstSize);
+    Q_UNUSED(roi);
+    if (!isValid() || !bits(0)) // only in data in host memory is supported now
+        return QImage();
+    if (imageFormat() == fmt) {
+        return QImage((const uchar*)frameData().constData(), width(), height(), bytesPerLine(0), fmt).copy();
+    }
+    Q_D(const VideoFrame);
+    QScopedPointer<ImageConverter> conv(ImageConverterFactory::create(ImageConverterId_FF));
+    conv->setInFormat(pixelFormatFFmpeg());
+    conv->setOutFormat(VideoFormat::pixelFormatToFFmpeg(VideoFormat::pixelFormatFromImageFormat(fmt)));
+    conv->setInSize(width(), height());
+    int w = width(), h = height();
+    if (dstSize.width() > 0)
+        w = dstSize.width();
+    if (dstSize.height() > 0)
+        h = dstSize.height();
+    conv->setOutSize(w, h);
+    if (!conv->convert(d->planes.constData(), d->line_sizes.constData())) {
+        qWarning("VideoFrame::toImage error");
+        return QImage();
+    }
+    QImage image((const uchar*)conv->outData().constData(), w, h, conv->outLineSizes().at(0), fmt);
+    return image.copy();
+}
+
+VideoFrame VideoFrame::to(const VideoFormat &fmt, const QSize& dstSize, const QRectF& roi) const
+{
+    Q_UNUSED(dstSize);
+    Q_UNUSED(roi);
+    if (!isValid() || !bits(0)) // only in data in host memory is supported now
+        return VideoFrame();
+    if (fmt.pixelFormatFFmpeg() == pixelFormatFFmpeg())
+        return clone();
+    Q_D(const VideoFrame);
+    QScopedPointer<ImageConverter> conv(ImageConverterFactory::create(ImageConverterId_FF));
+    conv->setInFormat(pixelFormatFFmpeg());
+    conv->setOutFormat(fmt.pixelFormatFFmpeg());
+    conv->setInSize(width(), height());
+    int w = width(), h = height();
+    if (dstSize.width() > 0)
+        w = dstSize.width();
+    if (dstSize.height() > 0)
+        h = dstSize.height();
+    conv->setOutSize(w, h);
+    if (!conv->convert(d->planes.constData(), d->line_sizes.constData())) {
+        qWarning() << "VideoFrame::to error: " << format() << "=>" << fmt;
+        return VideoFrame();
+    }
+    VideoFrame f(conv->outData(), w, h, fmt);
+    f.setBits(conv->outPlanes());
+    f.setBytesPerLine(conv->outLineSizes());
+    return f;
+}
+
+VideoFrame VideoFrame::to(VideoFormat::PixelFormat pixfmt, const QSize& dstSize, const QRectF &roi) const
+{
+    return to(VideoFormat(pixfmt), dstSize, roi);
 }
 
 void *VideoFrame::map(SurfaceType type, void *handle, int plane)

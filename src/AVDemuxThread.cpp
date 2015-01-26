@@ -376,9 +376,6 @@ void AVDemuxThread::run()
     if (video_thread)
         ++running_threads;
     qDebug("demux thread start running...%d avthreads", running_threads);
-
-    audio_stream = demuxer->audioStream();
-    video_stream = demuxer->videoStream();
     int index = 0;
     Packet pkt;
     pause(false);
@@ -394,6 +391,18 @@ void AVDemuxThread::run()
         vqueue->setBlocking(true);
     }
     while (!end) {
+        if (end || demuxer->atEnd()) {
+            end = true;
+            //connect to stop is ok too
+            //avthread can stop. do not clear queue, make sure all data are played
+            if (audio_thread) {
+                audio_thread->setDemuxEnded(true);
+            }
+            if (video_thread) {
+                video_thread->setDemuxEnded(true);
+            }
+            break;
+        }
         processNextSeekTask();
         if (tryPause()) {
             continue; //the queue is empty and will block
@@ -405,27 +414,12 @@ void AVDemuxThread::run()
         }
         QMutexLocker locker(&buffer_mutex);
         Q_UNUSED(locker);
-        if (end) {
-            break;
-        }
         if (!demuxer->readFrame()) {
             continue;
         }
         index = demuxer->stream();
         pkt = demuxer->packet(); //TODO: how to avoid additional copy?
-        //connect to stop is ok too
-        if (pkt.isEnd()) {
-            qDebug("read end packet %d A:%d V:%d", index, audio_stream, video_stream);
-            end = true;
-            //avthread can stop. do not clear queue, make sure all data are played
-            if (audio_thread) {
-                audio_thread->setDemuxEnded(true);
-            }
-            if (video_thread) {
-                video_thread->setDemuxEnded(true);
-            }
-            break;
-        }
+
         /*1 is empty but another is enough, then do not block to
           ensure the empty one can put packets immediatly.
           But usually it will not happen, why?
@@ -438,7 +432,7 @@ void AVDemuxThread::run()
          * stream data: aavavvavvavavavavavavavavvvaavavavava, it's ok
          */
         //TODO: use cache queue, take from cache queue if not empty?
-        if (index == audio_stream) {
+        if (index == demuxer->audioStream()) {
             /* if vqueue if not blocked and full, and aqueue is empty, then put to
              * vqueue will block demuex thread
              */
@@ -452,7 +446,7 @@ void AVDemuxThread::run()
                 aqueue->blockFull(!video_thread || !video_thread->isRunning() || !vqueue || (vqueue->isEnough() || demuxer->hasAttacedPicture()));
                 aqueue->put(pkt); //affect video_thread
             }
-        } else if (index == video_stream) {
+        } else if (index == demuxer->videoStream()) {
             if (vqueue) {
                 if (!video_thread || !video_thread->isRunning()) {
                     vqueue->clear();

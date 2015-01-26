@@ -447,38 +447,34 @@ bool VideoMaterial::bind()
         return false;
     if (nb_planes > 4) //why?
         return false;
-    if (d.update_texure) {
-        for (int i = 0; i < nb_planes; ++i) {
-            bindPlane((i + 1) % nb_planes); // why? i: quick items display wrong textures
-        }
-        d.update_texure = false;
-        return true;
-    }
     for (int i = 0; i < nb_planes; ++i) {
-        const int p = (i + 1) % nb_planes; // why? i: quick items display wrong textures
-        OpenGLHelper::glActiveTexture(GL_TEXTURE0 + p);
-// for dynamicgl. qglfunctions before qt5.3 does not have portable gl functions
-#ifndef QT_OPENGL_DYNAMIC
-        glBindTexture(GL_TEXTURE_2D, d.textures[p]);
-#else
-        QOpenGLContext::currentContext()->functions()->glBindTexture(GL_TEXTURE_2D, d.textures[p]);
-#endif
+        bindPlane((i + 1) % nb_planes, d.update_texure); // why? i: quick items display wrong textures
+    }
+    if (d.update_texure) {
+        d.update_texure = false;
+        d.frame = VideoFrame();
     }
     return true;
 }
 
-void VideoMaterial::bindPlane(int p)
+void VideoMaterial::bindPlane(int p, bool updateTexture)
 {
+// for dynamicgl. qglfunctions before qt5.3 does not have portable gl functions
+#ifdef QT_OPENGL_DYNAMIC
+#define glBindTextureDY(target, tex) QOpenGLContext::currentContext()->functions()->glBindTexture(target, tex)
+#else
+#define glBindTextureDY(target, tex) glBindTexture(target, tex)
+#endif
     DPTR_D(VideoMaterial);
+    if (!updateTexture) {
+        OpenGLHelper::glActiveTexture(GL_TEXTURE0 + p); //0 must active?
+        glBindTextureDY(d.target, d.textures[p]);
+        return;
+    }
     //setupQuality?
     if (d.frame.map(GLTextureSurface, &d.textures[p])) {
         OpenGLHelper::glActiveTexture(GL_TEXTURE0 + p); //0 must active?
-// for dynamicgl. qglfunctions before qt5.3 does not have portable gl functions
-#ifndef QT_OPENGL_DYNAMIC
-        glBindTexture(GL_TEXTURE_2D, d.textures[p]);
-#else
-        QOpenGLContext::currentContext()->functions()->glBindTexture(GL_TEXTURE_2D, d.textures[p]);
-#endif
+        glBindTextureDY(d.target, d.textures[p]);
         return;
     }
     // FIXME: why happens on win?
@@ -486,22 +482,21 @@ void VideoMaterial::bindPlane(int p)
         return;
     OpenGLHelper::glActiveTexture(GL_TEXTURE0 + p);
     //qDebug("bpl[%d]=%d width=%d", p, frame.bytesPerLine(p), frame.planeWidth(p));
-// for dynamicgl. qglfunctions before qt5.3 does not have portable gl functions
+    glBindTextureDY(d.target, d.textures[p]);
+    // for dynamicgl. qglfunctions before qt5.3 does not have portable gl functions
 #ifndef QT_OPENGL_DYNAMIC
-    glBindTexture(GL_TEXTURE_2D, d.textures[p]);
     //d.setupQuality();
     // This is necessary for non-power-of-two textures
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, d.texture_upload_size[p].width(), d.texture_upload_size[p].height(), d.data_format[p], d.data_type[p], d.frame.bits(p));
+    glTexParameteri(d.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(d.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexSubImage2D(d.target, 0, 0, 0, d.texture_upload_size[p].width(), d.texture_upload_size[p].height(), d.data_format[p], d.data_type[p], d.frame.bits(p));
 #else
     QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
-    f->glBindTexture(GL_TEXTURE_2D, d.textures[p]);
     //d.setupQuality();
     // This is necessary for non-power-of-two textures
-    f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    f->glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, d.texture_upload_size[p].width(), d.texture_upload_size[p].height(), d.data_format[p], d.data_type[p], d.frame.bits(p));
+    f->glTexParameteri(d.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    f->glTexParameteri(d.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    f->glTexSubImage2D(d.target, 0, 0, 0, d.texture_upload_size[p].width(), d.texture_upload_size[p].height(), d.data_format[p], d.data_type[p], d.frame.bits(p));
 #endif
 }
 
@@ -639,22 +634,22 @@ bool VideoMaterialPrivate::initTexture(GLuint tex, GLint internal_format, GLenum
 {
 // for dynamicgl. qglfunctions before qt5.3 does not have portable gl functions
 #ifndef QT_OPENGL_DYNAMIC
-    glBindTexture(GL_TEXTURE_2D, tex);
+    glBindTexture(target, tex);
     setupQuality();
     // This is necessary for non-power-of-two textures
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0/*border, ES not support*/, format, dataType, NULL);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(target, 0, internal_format, width, height, 0/*border, ES not support*/, format, dataType, NULL);
+    glBindTexture(target, 0);
 #else
     QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
-    f->glBindTexture(GL_TEXTURE_2D, tex);
+    f->glBindTexture(target, tex);
     setupQuality();
     // This is necessary for non-power-of-two textures
-    f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    f->glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0/*border, ES not support*/, format, dataType, NULL);
-    f->glBindTexture(GL_TEXTURE_2D, 0);
+    f->glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    f->glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    f->glTexImage2D(target, 0, internal_format, width, height, 0/*border, ES not support*/, format, dataType, NULL);
+    f->glBindTexture(target, 0);
 #endif
 
     return true;
@@ -723,8 +718,8 @@ bool VideoMaterialPrivate::initTextures(const VideoFormat& fmt)
         if (fmt.bytesPerPixel(i) == 2 && fmt.planeCount() == 3) {
             //data_type[i] = GL_UNSIGNED_SHORT;
         }
-        int bpp_gl = OpenGLHelper::bytesOfGLFormat(data_format[i], data_type[i]);
-        int pad = std::ceil((qreal)(texture_size[i].width() - effective_tex_width[i])/(qreal)bpp_gl);
+        const int bpp_gl = OpenGLHelper::bytesOfGLFormat(data_format[i], data_type[i]);
+        const int pad = std::ceil((qreal)(texture_size[i].width() - effective_tex_width[i])/(qreal)bpp_gl);
         texture_size[i].setWidth(std::ceil((qreal)texture_size[i].width()/(qreal)bpp_gl));
         texture_upload_size[i].setWidth(std::ceil((qreal)texture_upload_size[i].width()/(qreal)bpp_gl));
         effective_tex_width[i] /= bpp_gl; //fmt.bytesPerPixel(i);
@@ -768,10 +763,31 @@ bool VideoMaterialPrivate::initTextures(const VideoFormat& fmt)
 
 bool VideoMaterialPrivate::updateTexturesIfNeeded()
 {
+    if (!update_texure) //video frame is already uploaded and displayed
+        return true;
     const VideoFormat &fmt = video_format;
     if (!fmt.isValid())
         return false;
     bool update_textures = false;
+    GLenum new_target = target;
+    QByteArray t = frame.metaData("target").toByteArray().toLower();
+#ifndef GL_TEXTURE_RECTANGLE
+#define GL_TEXTURE_RECTANGLE 0x84F5
+#endif
+    if (t == "rect")
+        new_target = GL_TEXTURE_RECTANGLE;
+#ifdef GL_TEXTURE_3D
+    else if (t == "3d")
+        new_target = GL_TEXTURE_3D;
+#endif //GL_TEXTURE_3D
+#ifdef GL_TEXTURE_1D
+    else if (t == "1d")
+        new_target = GL_TEXTURE_1D;
+#endif //GL_TEXTURE_1D
+    if (new_target != target) {
+        target = new_target;
+        update_textures = true;
+    }
     // effective size may change even if plane size not changed
     if (update_textures
             || frame.bytesPerLine(0) != plane0Size.width() || frame.height() != plane0Size.height()
@@ -814,16 +830,16 @@ void VideoMaterialPrivate::setupQuality()
 {
 #ifndef QT_OPENGL_DYNAMIC
 #if (GLSL_BICUBIC)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 #else
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 #endif
 #else
     QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
-    f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    f->glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 #endif
 }
 
