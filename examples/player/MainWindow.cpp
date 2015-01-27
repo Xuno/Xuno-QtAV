@@ -751,7 +751,7 @@ void MainWindow::setRenderer(QtAV::VideoRenderer *renderer)
         }
     }
     mpVOAction->setChecked(true);
-    mpTitle->setText(mpVOAction->text());
+    //mpTitle->setText(mpVOAction->text()); //was crash of player here after merge 2015-01-27
     const VideoRendererId vid = mpPlayer->renderer()->id();
     if (vid == VideoRendererId_GLWidget
             || vid == VideoRendererId_GLWidget2
