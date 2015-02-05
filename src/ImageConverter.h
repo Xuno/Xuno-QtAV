@@ -1,6 +1,6 @@
 /******************************************************************************
     ImageConverter: Base class for image resizing & color model convertion
-    Copyright (C) 2012-2013 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
     
 *   This file is part of QtAV
 
@@ -35,7 +35,7 @@ class ImageConverter;
 FACTORY_DECLARE(ImageConverter)
 
 class ImageConverterPrivate;
-class Q_AV_EXPORT ImageConverter //export is not needed
+class ImageConverter //export is not needed
 {
     DPTR_DECLARE_PRIVATE(ImageConverter)
 public:
@@ -43,7 +43,6 @@ public:
     virtual ~ImageConverter();
 
     QByteArray outData() const;
-
     // return false if i/o format not supported, or size is not valid.
     virtual bool check() const;
     void setInSize(int width, int height);
@@ -74,10 +73,28 @@ public:
 protected:
     ImageConverter(ImageConverterPrivate& d);
     //Allocate memory for out data. Called in setOutFormat()
-    virtual bool setupColorspaceDetails();
     virtual bool prepareData(); //Allocate memory for out data
     DPTR_DECLARE(ImageConverter)
 };
+
+class ImageConverterFFPrivate;
+/*!
+ * \brief The ImageConverterFF class
+ * based on libswscale
+ */
+class ImageConverterFF : public ImageConverter //Q_AV_EXPORT is not needed
+{
+    DPTR_DECLARE_PRIVATE(ImageConverterFF)
+public:
+    ImageConverterFF();
+    virtual bool check() const;
+    virtual bool convert(const quint8 *const srcSlice[], const int srcStride[]);
+};
+typedef ImageConverterFF ImageConverterSWS;
+
+//ImageConverter* c = ImageConverter::create(ImageConverterId_FF);
+extern ImageConverterId ImageConverterId_FF;
+extern ImageConverterId ImageConverterId_IPP;
 
 } //namespace QtAV
 #endif // QTAV_IMAGECONVERTER_H
