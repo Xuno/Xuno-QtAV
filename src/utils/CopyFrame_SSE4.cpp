@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2013-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -19,32 +19,15 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
 
-#ifndef QTAV_VIDEODECODERFFMPEGHW_H
-#define QTAV_VIDEODECODERFFMPEGHW_H
+// for mingw gcc
+#include <smmintrin.h> //stream load
+#define STREAM_LOAD_SI128(x) _mm_stream_load_si128(x)
+namespace sse4 { //avoid name conflict
+#include "CopyFrame_SSE2.cpp"
+} //namespace sse4
 
-#include "VideoDecoderFFmpegBase.h"
-
-namespace QtAV {
-
-class VideoDecoderFFmpegHWPrivate;
-class VideoDecoderFFmpegHW : public VideoDecoderFFmpegBase
+//QT_FUNCTION_TARGET("sse4.1")
+void CopyFrame_SSE4(void *pSrc, void *pDest, void *pCacheBlock, UINT width, UINT height, UINT pitch)
 {
-    Q_OBJECT
-    Q_DISABLE_COPY(VideoDecoderFFmpegHW)
-    DPTR_DECLARE_PRIVATE(VideoDecoderFFmpegHW)
-    Q_PROPERTY(bool SSE4 READ isSSE4 WRITE setSSE4)
-public:
-    virtual bool prepare() Q_DECL_OVERRIDE;
-    VideoFrame copyToFrame(const VideoFormat& fmt, int surface_h, quint8* src[], int pitch[], bool swapUV);
-    // properties
-    void setSSE4(bool value);
-    bool isSSE4() const;
-protected:
-    VideoDecoderFFmpegHW(VideoDecoderFFmpegHWPrivate &d);
-private:
-    VideoDecoderFFmpegHW();
-};
-
-} //namespace QtAV
-
-#endif // QTAV_VIDEODECODERFFMPEGHW_H
+    sse4::CopyFrame_SSE2(pSrc, pDest, pCacheBlock, width, height, pitch);
+}

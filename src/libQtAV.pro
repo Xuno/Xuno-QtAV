@@ -2,8 +2,7 @@ TEMPLATE = lib
 MODULE_INCNAME = QtAV # for mac framework. also used in install_sdk.pro
 TARGET = QtAV
 QT += core gui
-config_libcedarv: CONFIG += neon #need by qt4 addSimdCompiler()
-
+#CONFIG *= ltcg
 greaterThan(QT_MAJOR_VERSION, 4) {
   CONFIG *= config_opengl
   greaterThan(QT_MINOR_VERSION, 3) {
@@ -14,12 +13,32 @@ config_gl: QT += opengl
 }
 CONFIG *= qtav-buildlib
 INCLUDEPATH += $$[QT_INSTALL_HEADERS]
+
+#mac: simd.prf will load qt_build_config and the result is soname will prefixed with QT_INSTALL_LIBS and link flag will append soname after QMAKE_LFLAGS_SONAME
+config_libcedarv: CONFIG *= config_simd #need by qt4 addSimdCompiler()
+## sse2 sse4_1 may be defined in Qt5 qmodule.pri but is not included. Qt4 defines sse and sse2
+sse4_1|config_sse4_1|contains(TARGET_ARCH_SUB, sse4.1): CONFIG *= sse4_1 config_simd
+sse2|config_sse2|contains(TARGET_ARCH_SUB, sse2): CONFIG *= sse2 config_simd
+
 #release: DEFINES += QT_NO_DEBUG_OUTPUT
 #var with '_' can not pass to pri?
 STATICLINK = 0
 PROJECTROOT = $$PWD/..
 !include(libQtAV.pri): error("could not find libQtAV.pri")
 preparePaths($$OUT_PWD/../out)
+exists($$PROJECTROOT/contrib/libchardet/libchardet.pri) {
+  include($$PROJECTROOT/contrib/libchardet/libchardet.pri)
+  DEFINES += QTAV_HAVE_CHARDET=1 BUILD_CHARDET_STATIC
+} else {
+  warning("contrib/libchardet is missing. run 'git submodule update --init' first")
+}
+exists($$PROJECTROOT/contrib/capi/capi.pri) {
+  include($$PROJECTROOT/contrib/capi/capi.pri)
+  CONFIG *= capi
+  DEFINES += QTAV_HAVE_CAPI=1 BUILD_CAPI_STATIC
+} else {
+  warning("contrib/capi is missing. run 'git submodule update --init' first")
+}
 
 RESOURCES += QtAV.qrc \
     shaders/shaders.qrc
@@ -47,26 +66,16 @@ RESOURCES += QtAV.qrc \
 OTHER_FILES += $$RC_FILE QtAV.svg
 TRANSLATIONS = i18n/QtAV_zh_CN.ts
 
-## sse2 sse4_1 may be defined in Qt5 qmodule.pri but is not included. Qt4 defines sse and sse2
-sse4_1|config_sse4_1|contains(TARGET_ARCH_SUB, sse4.1) {
+sse4_1 {
   CONFIG += sse2 #only sse4.1 is checked. sse2 now can be disabled if sse4.1 is disabled
   DEFINES += QTAV_HAVE_SSE4_1=1
-## TODO: use SSE4_1_SOURCES
-# all x64 processors supports sse2. unknown option for vc
-  *msvc* {
-    !isEqual(QT_ARCH, x86_64)|!x86_64: QMAKE_CXXFLAGS += $$QMAKE_CFLAGS_SSE4_1
-  } else {
-    QMAKE_CXXFLAGS += $$QMAKE_CFLAGS_SSE4_1 #gcc -msse4.1
-  }
+  !config_simd: CONFIG *= simd
+  SSE4_1_SOURCES += utils/CopyFrame_SSE4.cpp
 }
-sse2|config_sse2|contains(TARGET_ARCH_SUB, sse2) {
+sse2 {
   DEFINES += QTAV_HAVE_SSE2=1
-# all x64 processors supports sse2. unknown option for vc
-  *msvc* {
-    !isEqual(QT_ARCH, x86_64)|!x86_64: QMAKE_CXXFLAGS += $$QMAKE_CFLAGS_SSE2
-  } else {
-    QMAKE_CXXFLAGS += $$QMAKE_CFLAGS_SSE2 #gcc -msse2
-  }
+  !config_simd: CONFIG *= simd
+  SSE2_SOURCES += utils/CopyFrame_SSE2.cpp
 }
 
 *msvc* {
@@ -79,19 +88,6 @@ DEFINES += __STDC_CONSTANT_MACROS
 android: CONFIG += config_opensl
 win32: CONFIG += config_dsound
 
-exists($$PROJECTROOT/contrib/libchardet/libchardet.pri) {
-  include($$PROJECTROOT/contrib/libchardet/libchardet.pri)
-  DEFINES += QTAV_HAVE_CHARDET=1 BUILD_CHARDET_STATIC
-} else {
-  warning("contrib/libchardet is missing. run 'git submodule update --init' first")
-}
-exists($$PROJECTROOT/contrib/capi/capi.pri) {
-  include($$PROJECTROOT/contrib/capi/capi.pri)
-  CONFIG *= capi
-  DEFINES += QTAV_HAVE_CAPI=1 BUILD_CAPI_STATIC
-} else {
-  warning("contrib/capi is missing. run 'git submodule update --init' first")
-}
 config_swresample {
     DEFINES += QTAV_HAVE_SWRESAMPLE=1
     SOURCES += AudioResamplerFF.cpp
@@ -201,13 +197,8 @@ config_vaapi* {
 config_libcedarv {
     DEFINES *= QTAV_HAVE_CEDARV=1
     QMAKE_CXXFLAGS *= -march=armv7-a
-    neon {
-      QMAKE_CXXFLAGS *= $$QMAKE_CFLAGS_NEON
-    } else {
-      DEFINES *= NO_NEON_OPT
-    }
     SOURCES += codec/video/VideoDecoderCedarv.cpp
-    CONFIG += simd #addSimdCompiler xxx_ASM
+    !config_simd: CONFIG *= simd #addSimdCompiler xxx_ASM
     CONFIG += no_clang_integrated_as #see qtbase/src/gui/painting/painting.pri. add -fno-integrated-as from simd.prf
     NEON_ASM += codec/video/tiled_yuv.S #from libvdpau-sunxi
     LIBS += -lvecore -lcedarv
@@ -408,7 +399,6 @@ HEADERS *= \
     codec/video/VideoDecoderFFmpegHW.h \
     codec/video/VideoDecoderFFmpegHW_p.h \
     filter/FilterManager.h \
-    input/QIODeviceInput.h \
     subtitle/CharsetDetector.h \
     subtitle/PlainText.h \
     utils/BlockingQueue.h \
