@@ -40,7 +40,8 @@ SOURCES += main.cpp \
     config/AVFilterConfigPage.cpp \
     filters/AVFilterSubtitle.cpp \
     XunoBrowser.cpp \
-    config/ImageSequenceConfigPage.cpp
+    config/ImageSequenceConfigPage.cpp \
+    config/configwebmemu.cpp
 
 HEADERS += \
     MainWindow.h \
@@ -66,7 +67,8 @@ HEADERS += \
     config/AVFilterConfigPage.h \
     filters/AVFilterSubtitle.h \
     XunoBrowser.h \
-    config/ImageSequenceConfigPage.h
+    config/ImageSequenceConfigPage.h \
+    config/configwebmemu.h
 
 
 unix:!android:!mac {
@@ -96,3 +98,6 @@ include($$PROJECTROOT/deploy.pri)
 RESOURCES += \
     res/player.qrc \
     theme.qrc
+
+FORMS += \
+    config/configwebmemu.ui

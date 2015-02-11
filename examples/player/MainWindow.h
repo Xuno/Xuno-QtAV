@@ -50,7 +50,6 @@ class VideoEQConfigPage;
 class StatisticsView;
 class OSDFilter;
 class AVFilterSubtitle;
-class XunoBrowser;
 class ImageSequenceConfigPage;
 class MainWindow : public QWidget
 {
@@ -136,8 +135,7 @@ private slots:
     void setSubtitleCharset(const QString& charSet);
     void setSubtitleEngine(const QString& value);
 
-    void onXunoBrowser();
-    void onClickXunoBrowser();
+    void onClickXunoBrowser(QUrl url);
     void customfpsChanged(double n);
     void changeClockType(QAction* action);
     void RepeatLoopChanged(int i);
@@ -179,7 +177,7 @@ private:
     Button *mpVolumeBtn;
     Button *mpPlayPauseBtn, *mpStopBtn, *mpForwardBtn, *mpBackwardBtn;
     Button *mpOpenBtn;
-    Button *mpXunoBtn, *mpFullScreenBtn;
+    Button *mpWebBtn, *mpFullScreenBtn;
     Button *mpInfoBtn, *mpMenuBtn, *mpSetupBtn, *mpCaptureBtn;
     QMenu *mpMenu;
     QAction *mpVOAction, *mpARAction; //remove mpVOAction if vo.id() is supported
@@ -219,7 +217,6 @@ private:
     QString XUNOserverUrl;
     QString XUNOpresetUrl;
 
-    XunoBrowser *mpXunoBrowser;
     ImageSequenceConfigPage *mpImageSequence;
 };
 

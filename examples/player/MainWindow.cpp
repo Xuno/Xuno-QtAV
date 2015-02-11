@@ -59,9 +59,9 @@
 //#include "filters/AVFilterSubtitle.h"
 #include "playlist/PlayList.h"
 #include "../common/common.h"
-#include "XunoBrowser.h"
 #include <QUrl>
 #include "config/ImageSequenceConfigPage.h"
+#include "config/configwebmemu.h"
 
 //#include <QWebView>
 
@@ -111,7 +111,6 @@ MainWindow::MainWindow(QWidget *parent) :
   , mpStatisticsView(0)
   , mpOSD(0)
   , mpSubtitle(0)
-  , mpXunoBrowser(0)
   , mCustomFPS(0.)
 {
     XUNOserverUrl="http://www.xuno.com";
@@ -145,10 +144,6 @@ MainWindow::~MainWindow()
     if (mpStatisticsView) {
         delete mpStatisticsView;
         mpStatisticsView = 0;
-    }
-    if (mpXunoBrowser) {
-        delete mpXunoBrowser;
-        mpXunoBrowser = 0;
     }
 }
 
@@ -295,12 +290,19 @@ void MainWindow::setupUi()
     mpVolumeSlider->setValue(80);
     setVolume();
 
-    mpXunoBtn = new Button();
-    mpXunoBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    mpXunoBtn->setText(tr("Xuno"));
-    mpXunoBtn->setMaximumHeight(a+kMaxButtonIconMargin);
-    mpXunoBtn->setToolTip(tr("Open Xuno playlist browser"));
-    mpXunoBtn->setStyleSheet("color:grey;");
+    mpWebBtn = new Button();
+    mpWebBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    mpWebBtn->setText(tr("Web"));
+    mpWebBtn->setMaximumHeight(a+kMaxButtonIconMargin);
+    mpWebBtn->setPopupMode(QToolButton::InstantPopup);
+    mpWebBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    mpWebBtn->setToolTip(tr("Open XunoWeb browser"));
+    mpWebBtn->setStyleSheet("color:grey;");
+
+    ConfigWebMemu *mpWebMenu = 0;
+    mpWebMenu = new ConfigWebMemu(mpWebBtn);
+    mpWebBtn->setMenu(mpWebMenu);
+    connect(mpWebMenu, SIGNAL(onPlayXunoBrowser(QUrl)), SLOT(onClickXunoBrowser(QUrl)));
 
     mpFullScreenBtn = new Button();
     mpFullScreenBtn->setIconWithSates(QPixmap(":/theme/fullscreen.png"));
@@ -596,7 +598,7 @@ void MainWindow::setupUi()
     controlLayout->addWidget(mpForwardBtn);
     space = new QSpacerItem(mpPlayPauseBtn->width()/2, mpPlayPauseBtn->height(), QSizePolicy::Fixed);
     controlLayout->addSpacerItem(space);
-    controlLayout->addWidget(mpXunoBtn);
+    controlLayout->addWidget(mpWebBtn);
     controlLayout->addWidget(mpMenuBtn);
     controlLayout->addWidget(mpOpenBtn);
     controlLayout->addWidget(mpInfoBtn);
@@ -618,7 +620,7 @@ void MainWindow::setupUi()
     connect(mpTimeSlider, SIGNAL(sliderPressed()), SLOT(seek()));
     connect(mpTimeSlider, SIGNAL(sliderReleased()), SLOT(seek()));
     connect(mpTimeSlider, SIGNAL(onHover(int,int)), SLOT(onTimeSliderHover(int,int)));
-    connect(mpXunoBtn, SIGNAL(clicked()), SLOT(onXunoBrowser()));
+    //connect(mpWebBtn, SIGNAL(clicked()), SLOT(onXunoBrowser()));
     connect(mpFullScreenBtn, SIGNAL(clicked()), SLOT(onFullScreen()));
 
     QTimer::singleShot(0, this, SLOT(initPlayer()));
@@ -1607,18 +1609,7 @@ void MainWindow::reSizeByMovie()
     if (t.isValid() && (!t.isNull())) resize(t);
 }
 
-void MainWindow::onXunoBrowser(){
-  if (!mpXunoBrowser){
-      mpXunoBrowser = new XunoBrowser();
-      mpXunoBrowser->setXUNOContentUrl(QString(XUNOserverUrl).append("/content/"));
-      connect(mpXunoBrowser, SIGNAL(clicked()), SLOT(onClickXunoBrowser()));
-  }
-  if (mpXunoBrowser->isHidden()) mpXunoBrowser->show();
-  mpXunoBrowser->setUrl(QUrl(QString(XUNOserverUrl).append("/playlist_8bit.php")));
-}
-
-void MainWindow::onClickXunoBrowser(){
-  QUrl url=mpXunoBrowser->getClikedUrl();
+void MainWindow::onClickXunoBrowser(QUrl url){
   if (url.isValid()) play(url.toString());
 }
 
