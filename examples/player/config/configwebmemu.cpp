@@ -25,7 +25,7 @@ void ConfigWebMemu::openurl(QAction * a){
 
 void ConfigWebMemu::initMenuItems(){
     menuitemList.append(new MenuItems({"Xuno","http://www.xuno.com/playlist_8bit.php","www.xuno.net.ico"}));
-    menuitemList.append(new MenuItems({"Google","http://www.google.com","www.netflix.com.ico"}));
+    menuitemList.append(new MenuItems({"Google","http://www.google.com","www.google.com.ico"}));
 
     XUNOserverUrl="http://www.xuno.com";
     XUNOpresetUrl=XUNOserverUrl+"/getpreset.php?";

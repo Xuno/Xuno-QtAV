@@ -41,7 +41,8 @@ SOURCES += main.cpp \
     filters/AVFilterSubtitle.cpp \
     XunoBrowser.cpp \
     config/ImageSequenceConfigPage.cpp \
-    config/configwebmemu.cpp
+    config/configwebmemu.cpp \
+    config/WebConfigPage.cpp
 
 HEADERS += \
     MainWindow.h \
@@ -68,7 +69,8 @@ HEADERS += \
     filters/AVFilterSubtitle.h \
     XunoBrowser.h \
     config/ImageSequenceConfigPage.h \
-    config/configwebmemu.h
+    config/configwebmemu.h \
+    config/WebConfigPage.h
 
 
 unix:!android:!mac {

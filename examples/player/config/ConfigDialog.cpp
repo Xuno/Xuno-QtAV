@@ -26,6 +26,7 @@
 #include "DecoderConfigPage.h"
 #include "AVFormatConfigPage.h"
 #include "AVFilterConfigPage.h"
+#include "WebConfigPage.h"
 #include "common/Config.h"
 void ConfigDialog::display()
 {
@@ -36,12 +37,14 @@ void ConfigDialog::display()
 ConfigDialog::ConfigDialog(QWidget *parent) :
     QDialog(parent)
 {
+    setWindowTitle(tr("Settings..."));
     QVBoxLayout *vbl = new QVBoxLayout();
     setLayout(vbl);
     vbl->setSizeConstraint(QLayout::SetFixedSize);
 
     mpContent = new QTabWidget();
     mpContent->setTabPosition(QTabWidget::West);
+    mpContent->setFixedHeight(340);
 
     mpButtonBox = new QDialogButtonBox(Qt::Horizontal);
     mpButtonBox->addButton(tr("Reset"), QDialogButtonBox::ResetRole);// (QDialogButtonBox::Reset);
@@ -60,6 +63,7 @@ ConfigDialog::ConfigDialog(QWidget *parent) :
            << new DecoderConfigPage()
            << new AVFormatConfigPage()
            << new AVFilterConfigPage()
+           << new WebConfigPage()
               ;
 
     foreach (ConfigPageBase* page, mPages) {
