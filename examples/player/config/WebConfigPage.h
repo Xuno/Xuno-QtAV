@@ -2,11 +2,25 @@
 #define WebConfigPage_H
 
 #include "ConfigPageBase.h"
+#include <QAbstractItemModel>
+#include <QStringListModel>
+#include <QAbstractButton>
+#include <QDialogButtonBox>
+
+class StringListModel : public QStringListModel
+{
+};
+
+
 
 class QCheckBox;
-class QTextEdit;
+class QListView;
+class QPushButton;
+class QLineEdit;
+
 class WebConfigPage : public ConfigPageBase
 {
+      Q_OBJECT
 public:
     WebConfigPage();
     virtual QString name() const;
@@ -15,9 +29,20 @@ public slots:
     virtual void cancel(); //cancel the values on ui. values are from Config
     virtual void reset(); //reset to default
 
+private slots:
+     void onInsert();
+     void onChange();
+     void onDelete();
+     void onSelected(QModelIndex);
+
 private:
     QCheckBox *m_enable;
-    QTextEdit *m_options;
+    QListView *m_options;
+    QDialogButtonBox *mpButtonBox;
+    QLineEdit *ename;
+    QLineEdit *eurl;
+    StringListModel *model;
 };
+
 
 #endif // WebConfigPage_H

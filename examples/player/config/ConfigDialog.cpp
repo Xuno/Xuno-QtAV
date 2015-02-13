@@ -52,9 +52,9 @@ ConfigDialog::ConfigDialog(QWidget *parent) :
     mpButtonBox->addButton(tr("Cancel"), QDialogButtonBox::RejectRole);
     mpButtonBox->addButton(tr("Apply"), QDialogButtonBox::ApplyRole);
 
-    connect(mpButtonBox, SIGNAL(accepted()), SLOT(accept()));
-    connect(mpButtonBox, SIGNAL(rejected()), SLOT(reject()));
-    connect(mpButtonBox, SIGNAL(clicked(QAbstractButton*)), SLOT(onButtonClicked(QAbstractButton*)));
+    connect(mpButtonBox, SIGNAL(accepted()), this ,SLOT(accept()));
+    connect(mpButtonBox, SIGNAL(rejected()), this ,SLOT(reject()));
+    connect(mpButtonBox, SIGNAL(clicked(QAbstractButton*)), this ,SLOT(onButtonClicked(QAbstractButton*)));
 
     vbl->addWidget(mpContent);
     vbl->addWidget(mpButtonBox);
