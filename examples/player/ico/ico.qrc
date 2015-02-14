@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>www.google.com.ico</file>
+        <file>www.xuno.net.ico</file>
+    </qresource>
+</RCC>

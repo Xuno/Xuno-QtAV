@@ -21,7 +21,6 @@ void ConfigWebMemu::openurl(QAction * a){
     int i=a->data().toInt();
     qDebug() << i << menuitemList.at(i)->name << menuitemList.at(i)->url;
     onXunoBrowser(menuitemList.at(i)->url);
-    //onXunoBrowser("");
 }
 
 void ConfigWebMemu::initMenuItems(){
@@ -30,22 +29,26 @@ void ConfigWebMemu::initMenuItems(){
     QStringList names = links.keys();
     QList<QVariant> urls = links.values();
 
-    menuitemList.append(new MenuItems({"Xuno fixed","http://www.xuno.com/playlist_8bit.php","www.xuno.net.ico"}));
-    menuitemList.append(new MenuItems({"Google fixed","http://www.google.com","www.google.com.ico"}));
+    menuitemList.clear();
+    menuitemList.append(new MenuItems({"Xuno","http://www.xuno.com/playlist_8bit.php",":/www.xuno.net.ico"}));
+    menuitemList.append(new MenuItems({"Google","https://www.google.com",":/www.google.com.ico"}));
 
     for (int i = 0; i < names.size(); ++i){
         menuitemList.append(new MenuItems({names[i],urls[i].toString() ,""}));
     }
-
-
 
     XUNOserverUrl="http://www.xuno.com";
     XUNOpresetUrl=XUNOserverUrl+"/getpreset.php?";
 }
 
 void ConfigWebMemu::init(){
+    clear();
     for (int i=0;i<menuitemList.size();i++){
-        QIcon* ic = new QIcon(menuitemList.at(i)->iconurl);
+        QString iconurl=menuitemList.at(i)->iconurl;
+        if (iconurl.isEmpty()){
+         QUrl iurl= QUrl(menuitemList.at(i)->url.append("/favicon.ico"));
+        }
+        QIcon* ic = new QIcon(iconurl);
         QAction* qa = addAction(*ic,menuitemList.at(i)->name);
         qa->setData(i);
     }
@@ -78,7 +81,6 @@ void ConfigWebMemu::onClickXunoBrowser(){
 
 
 void ConfigWebMemu::onChanged(){
-    qDebug()<<"ConfigWebMemu::onChanged";
     initMenuItems();
     init();
 }

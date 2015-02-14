@@ -32,20 +32,15 @@ class ConfigDialog : public QDialog
     Q_OBJECT
 public:
     static void display();
-        explicit ConfigDialog(QWidget *parent = 0);
-
-signals:
-    void doUpdateMenu();
 
 private slots:
     void onButtonClicked(QAbstractButton* btn);
     void onApply();
     void onCancel();
     void onReset();
-    void doUpdateMenuSLOT();
 
 private:
-
+    explicit ConfigDialog(QWidget *parent = 0);
     QTabWidget *mpContent;
     QDialogButtonBox *mpButtonBox;
     QList<ConfigPageBase*> mPages;

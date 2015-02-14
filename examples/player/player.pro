@@ -99,7 +99,10 @@ include($$PROJECTROOT/deploy.pri)
 
 RESOURCES += \
     res/player.qrc \
-    theme.qrc
+    theme.qrc \
+    ico/ico.qrc
 
 FORMS += \
     config/configwebmemu.ui
+
+DISTFILES +=

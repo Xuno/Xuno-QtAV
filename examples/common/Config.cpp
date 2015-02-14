@@ -104,10 +104,7 @@ public:
         avfilter = settings.value("options", "").toString();
         settings.endGroup();
         settings.beginGroup("weblinks");
-        QMap<QString, QVariant> tmpweb;
-        tmpweb.insert("Xuno","http://www.xuno.com/playlist_8bit.php");
-        tmpweb.insert("Google","https://www.google.com");
-        weblinks = settings.value("links", tmpweb).toMap();
+        weblinks = settings.value("links", "").toMap();
         settings.endGroup();
     }
     void save() {
@@ -506,8 +503,9 @@ Config& Config::setWebLinks(const QMap<QString, QVariant> &value)
         return *this;
     }
     mpData->weblinks = value;
-    emit weblinksChanged();
+    qDebug("WebLinks changed");
     mpData->save();
+    emit weblinksChanged();
     return *this;
 }
 

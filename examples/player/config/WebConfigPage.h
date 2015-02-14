@@ -25,8 +25,6 @@ public:
     WebConfigPage();
     virtual QString name() const;
 
-signals:
-    void doUpdateMenuWeb();
 
 public slots:
     virtual void apply(); //store the values on ui. call Config::xxx
@@ -49,6 +47,8 @@ private:
     QMap<QString,QVariant> links;
     void initModelData();
     void saveLinks(QString name, QString urls);
+    void deleteLinks(QString name);
+    bool ValidURL(const QString &url);
 };
 
 

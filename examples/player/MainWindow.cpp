@@ -303,6 +303,7 @@ void MainWindow::setupUi()
     mpWebMenu = new ConfigWebMemu(mpWebBtn);
     mpWebBtn->setMenu(mpWebMenu);
     connect(mpWebMenu, SIGNAL(onPlayXunoBrowser(QUrl)), SLOT(onClickXunoBrowser(QUrl)));
+    connect(&Config::instance(),SIGNAL(weblinksChanged()),mpWebMenu,SLOT(onChanged()));
 
     mpFullScreenBtn = new Button();
     mpFullScreenBtn->setIconWithSates(QPixmap(":/theme/fullscreen.png"));
@@ -1505,10 +1506,10 @@ void MainWindow::donate()
 
 void MainWindow::setup()
 {
-    ConfigDialog *cfDialog = new ConfigDialog();
-    //ConfigDialog::display();
-    connect(cfDialog,SIGNAL(doUpdateMenu()),mpWebMenu,SLOT(onChanged()));
-    cfDialog->display();
+    //ConfigDialog *cfDialog = new ConfigDialog();
+    ConfigDialog::display();
+    //connect(cfDialog,SIGNAL(doUpdateMenu()),mpWebMenu,SLOT(onChanged()));
+    //cfDialog->display();
 
 }
 

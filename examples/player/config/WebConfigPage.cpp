@@ -10,6 +10,7 @@
 #include "common/Config.h"
 #include <QDebug>
 #include <QMessageBox>
+#include <QUrl>
 
 
 WebConfigPage::WebConfigPage()
@@ -29,7 +30,6 @@ WebConfigPage::WebConfigPage()
 
     connect(m_options, SIGNAL(clicked(QModelIndex)),this, SLOT(onSelected(QModelIndex)));
 
-    //m_options->setText(Config::instance().avfilterOptions());
     gl->addWidget(m_options);
 
     QHBoxLayout *hb1 = new QHBoxLayout();
@@ -83,19 +83,12 @@ QString WebConfigPage::name() const
 
 void WebConfigPage::apply()
 {
-
     Config::instance().setWebLinks(links);
-    emit doUpdateMenuWeb();
-//    Config::instance().avfilterOptions(m_options->toPlainText())
-//            .avfilterEnable(m_enable->isChecked())
-//            ;
 }
 
 void WebConfigPage::cancel()
 {
     initModelData();
-//    m_enable->setChecked(Config::instance().avfilterEnable());
-//    m_options->setText(Config::instance().avfilterOptions());
 }
 
 void WebConfigPage::reset()
@@ -103,9 +96,22 @@ void WebConfigPage::reset()
     initModelData();
 }
 
+bool WebConfigPage::ValidURL(const QString &url)
+{
+    QUrl u(url);
+    if (!u.isValid()||u.host().isEmpty()){
+        QMessageBox::warning(this, tr("Web link"),
+                             tr("     Wrong URL is used. \n"
+                                "May be need start from 'http://' ?\n"),
+                             QMessageBox::Ok);
+        return false;
+    }
+    return true;
+}
+
 void WebConfigPage::onInsert()
 {
-    qDebug("WebConfigPage onInsert");
+    //qDebug("WebConfigPage onInsert");
     QString name = ename->text();
     QString url = eurl->text();
     if (name.isEmpty()||url.isEmpty()){
@@ -113,7 +119,7 @@ void WebConfigPage::onInsert()
         QMessageBox::warning(this, tr("Insert new Web link"),
                              tr("\n   Both of fields must be filled.   \n"),
                              QMessageBox::Ok);
-    }else{
+    }else if(ValidURL(url)) {
         if (model->match(model->index(0),Qt::DisplayRole,name).isEmpty()){
             model->insertRow(model->rowCount(),QModelIndex());
             QModelIndex index = model->index(model->rowCount()-1, 0, QModelIndex());
@@ -134,7 +140,7 @@ void WebConfigPage::onInsert()
 
 void WebConfigPage::onChange()
 {
-    qDebug("WebConfigPage onChange");
+    //qDebug("WebConfigPage onChange");
     QModelIndex index = m_options->currentIndex();
     QString name = ename->text();
     QString url = eurl->text();
@@ -142,11 +148,16 @@ void WebConfigPage::onChange()
         QMessageBox::warning(this, tr("Changing Web link"),
                              tr("\nBoth of fields must be filled.\n"),
                              QMessageBox::Ok);
-    }else{
+    }else if(ValidURL(url)) {
+        QString oldname =index.data(Qt::DisplayRole).toString();
         if (model->setData(index, name, Qt::EditRole)){
+            model->sort(0);
             m_options->setCurrentIndex(index);
-            qDebug("WebConfigPage Changed");
+            //qDebug("WebConfigPage Changed");
+            deleteLinks(oldname);
             saveLinks(name,url);
+            ename->clear();
+            eurl->clear();
         }
     }
 }
@@ -165,7 +176,7 @@ void WebConfigPage::onDelete()
                 QModelIndex index = m_options->currentIndex();
                 qDebug("Index row %d:",index.row());
                 if (model->removeRow(index.row(),QModelIndex())){
-                    qDebug("WebConfigPage Deleted");
+                    //qDebug("WebConfigPage Deleted");
                     ename->clear();
                     eurl->clear();
                 }
@@ -182,7 +193,7 @@ void WebConfigPage::onSelected(QModelIndex index)
 {
     QString name = index.data().toString();
     QString url = links.value(name).toString();
-    qDebug() << "WebConfigPage onSelected :" << name << url ;
+    //qDebug() << "WebConfigPage onSelected :" << name << url ;
     ename->setText(name);
     eurl->setText(url);
 }
@@ -190,4 +201,9 @@ void WebConfigPage::onSelected(QModelIndex index)
 void WebConfigPage::saveLinks(QString name, QString urls)
 {
     links.insert(name,urls);
+}
+
+void WebConfigPage::deleteLinks(QString name)
+{
+    links.remove(name);
 }
