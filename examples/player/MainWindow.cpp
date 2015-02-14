@@ -1506,11 +1506,7 @@ void MainWindow::donate()
 
 void MainWindow::setup()
 {
-    //ConfigDialog *cfDialog = new ConfigDialog();
     ConfigDialog::display();
-    //connect(cfDialog,SIGNAL(doUpdateMenu()),mpWebMenu,SLOT(onChanged()));
-    //cfDialog->display();
-
 }
 
 void MainWindow::handleFullscreenChange()
