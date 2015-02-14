@@ -9,6 +9,7 @@
 #include <QGroupBox>
 #include "common/Config.h"
 #include <QDebug>
+#include <QMessageBox>
 
 
 WebConfigPage::WebConfigPage()
@@ -20,12 +21,7 @@ WebConfigPage::WebConfigPage()
     QVBoxLayout *gl = new QVBoxLayout();
     gl->setSizeConstraint(QLayout::SetFixedSize);
 
-    QStringList numbers;
-    numbers << "Xuno" << "Google" << "Three" << "Four" << "Five";
-
-    model = new StringListModel();
-    model->setStringList(numbers);
-
+    initModelData();
 
     m_options = new QListView();
     m_options->setModel(model);
@@ -68,6 +64,17 @@ WebConfigPage::WebConfigPage()
     setLayout(vbox);
 }
 
+void WebConfigPage::initModelData()
+{
+    links = QMap<QString,QVariant>(Config::instance().WebLinks());
+    QStringList numbers = links.keys();
+
+    if (!model) model = new StringListModel();
+    model->setStringList(numbers);
+}
+
+
+
 QString WebConfigPage::name() const
 {
     return "Web Links";
@@ -76,6 +83,9 @@ QString WebConfigPage::name() const
 
 void WebConfigPage::apply()
 {
+
+    Config::instance().setWebLinks(links);
+    emit doUpdateMenuWeb();
 //    Config::instance().avfilterOptions(m_options->toPlainText())
 //            .avfilterEnable(m_enable->isChecked())
 //            ;
@@ -83,25 +93,43 @@ void WebConfigPage::apply()
 
 void WebConfigPage::cancel()
 {
+    initModelData();
 //    m_enable->setChecked(Config::instance().avfilterEnable());
 //    m_options->setText(Config::instance().avfilterOptions());
 }
 
 void WebConfigPage::reset()
 {
+    initModelData();
 }
 
 void WebConfigPage::onInsert()
 {
     qDebug("WebConfigPage onInsert");
     QString name = ename->text();
-    model->insertRow(model->rowCount(),QModelIndex());
-    QModelIndex index = model->index(model->rowCount()-1, 0, QModelIndex());
-    if (model->setData(index, name, Qt::EditRole)){
-        m_options->setCurrentIndex(index);
-        ename->clear();
-    }
+    QString url = eurl->text();
+    if (name.isEmpty()||url.isEmpty()){
+        ename->setFocus();
+        QMessageBox::warning(this, tr("Insert new Web link"),
+                             tr("\n   Both of fields must be filled.   \n"),
+                             QMessageBox::Ok);
+    }else{
+        if (model->match(model->index(0),Qt::DisplayRole,name).isEmpty()){
+            model->insertRow(model->rowCount(),QModelIndex());
+            QModelIndex index = model->index(model->rowCount()-1, 0, QModelIndex());
+            if (model->setData(index, name, Qt::EditRole)){
+                m_options->setCurrentIndex(index);
+                saveLinks(name,url);
+                ename->clear();
+                eurl->clear();
+            }
+        }else{
+            QMessageBox::warning(this, tr("Insert new Web link"),
+                                 tr("\n   This name is used.     \n"),
+                                 QMessageBox::Ok);
+        }
 
+    }
 }
 
 void WebConfigPage::onChange()
@@ -109,9 +137,17 @@ void WebConfigPage::onChange()
     qDebug("WebConfigPage onChange");
     QModelIndex index = m_options->currentIndex();
     QString name = ename->text();
-    if (model->setData(index, name, Qt::EditRole)){
-        m_options->setCurrentIndex(index);
-        qDebug("WebConfigPage Changed");
+    QString url = eurl->text();
+    if (name.isEmpty()||url.isEmpty()){
+        QMessageBox::warning(this, tr("Changing Web link"),
+                             tr("\nBoth of fields must be filled.\n"),
+                             QMessageBox::Ok);
+    }else{
+        if (model->setData(index, name, Qt::EditRole)){
+            m_options->setCurrentIndex(index);
+            qDebug("WebConfigPage Changed");
+            saveLinks(name,url);
+        }
     }
 }
 
@@ -119,17 +155,39 @@ void WebConfigPage::onDelete()
 {
     qDebug("WebConfigPage onDelete");
     QModelIndex index = m_options->currentIndex();
-    qDebug("Index row %d:",index.row());
-    if (model->removeRow(index.row(),QModelIndex())){
-        qDebug("WebConfigPage Deleted");
+    if (index.isValid()){
+        QString name = index.data().toString();
+        int ret=QMessageBox::question(this, tr("Deleting Web link"),
+                                      tr("Record '%1' will be deleted.\n   Do you want delete it?").arg(name),
+                                      QMessageBox::Yes|QMessageBox::No,QMessageBox::No);
+        if (ret==QMessageBox::Yes){
+            if (links.remove(name)){
+                QModelIndex index = m_options->currentIndex();
+                qDebug("Index row %d:",index.row());
+                if (model->removeRow(index.row(),QModelIndex())){
+                    qDebug("WebConfigPage Deleted");
+                    ename->clear();
+                    eurl->clear();
+                }
+            }
+        }
+    }else{
+        QMessageBox::warning(this, tr("Deleting Web link"),
+                             tr("Not selected name in list.\nSelect it before continiue."),
+                             QMessageBox::Ok);
     }
-
-
 }
 
 void WebConfigPage::onSelected(QModelIndex index)
 {
     QString name = index.data().toString();
-    qDebug() << "WebConfigPage onSelected :" << name ;
+    QString url = links.value(name).toString();
+    qDebug() << "WebConfigPage onSelected :" << name << url ;
     ename->setText(name);
+    eurl->setText(url);
+}
+
+void WebConfigPage::saveLinks(QString name, QString urls)
+{
+    links.insert(name,urls);
 }

@@ -59,17 +59,26 @@ ConfigDialog::ConfigDialog(QWidget *parent) :
     vbl->addWidget(mpContent);
     vbl->addWidget(mpButtonBox);
 
+    WebConfigPage *wcfgpage = new WebConfigPage();
     mPages << new CaptureConfigPage()
            << new DecoderConfigPage()
            << new AVFormatConfigPage()
            << new AVFilterConfigPage()
-           << new WebConfigPage()
+           << wcfgpage
               ;
+
+    connect(wcfgpage,SIGNAL(doUpdateMenuWeb()),SLOT(doUpdateMenuSLOT()));
 
     foreach (ConfigPageBase* page, mPages) {
         page->applyOnUiChange(false);
         mpContent->addTab(page, page->name());
     }
+}
+
+
+void ConfigDialog::doUpdateMenuSLOT(){
+    qDebug("ConfigDialog::doUpdateMenuSLOT");
+    emit doUpdateMenu();
 }
 
 void ConfigDialog::onButtonClicked(QAbstractButton *btn)

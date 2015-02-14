@@ -1,4 +1,5 @@
 #include "configwebmemu.h"
+#include "common/Config.h"
 
 
 ConfigWebMemu::ConfigWebMemu(QWidget *parent) :
@@ -24,8 +25,19 @@ void ConfigWebMemu::openurl(QAction * a){
 }
 
 void ConfigWebMemu::initMenuItems(){
-    menuitemList.append(new MenuItems({"Xuno","http://www.xuno.com/playlist_8bit.php","www.xuno.net.ico"}));
-    menuitemList.append(new MenuItems({"Google","http://www.google.com","www.google.com.ico"}));
+
+    QMap<QString,QVariant> links = QMap<QString,QVariant>(Config::instance().WebLinks());
+    QStringList names = links.keys();
+    QList<QVariant> urls = links.values();
+
+    menuitemList.append(new MenuItems({"Xuno fixed","http://www.xuno.com/playlist_8bit.php","www.xuno.net.ico"}));
+    menuitemList.append(new MenuItems({"Google fixed","http://www.google.com","www.google.com.ico"}));
+
+    for (int i = 0; i < names.size(); ++i){
+        menuitemList.append(new MenuItems({names[i],urls[i].toString() ,""}));
+    }
+
+
 
     XUNOserverUrl="http://www.xuno.com";
     XUNOpresetUrl=XUNOserverUrl+"/getpreset.php?";
@@ -64,4 +76,10 @@ void ConfigWebMemu::onClickXunoBrowser(){
     emit onPlayXunoBrowser(url);
 }
 
+
+void ConfigWebMemu::onChanged(){
+    qDebug()<<"ConfigWebMemu::onChanged";
+    initMenuItems();
+    init();
+}
 

@@ -24,6 +24,10 @@ class WebConfigPage : public ConfigPageBase
 public:
     WebConfigPage();
     virtual QString name() const;
+
+signals:
+    void doUpdateMenuWeb();
+
 public slots:
     virtual void apply(); //store the values on ui. call Config::xxx
     virtual void cancel(); //cancel the values on ui. values are from Config
@@ -41,7 +45,10 @@ private:
     QDialogButtonBox *mpButtonBox;
     QLineEdit *ename;
     QLineEdit *eurl;
-    StringListModel *model;
+    StringListModel *model = 0;
+    QMap<QString,QVariant> links;
+    void initModelData();
+    void saveLinks(QString name, QString urls);
 };
 
 

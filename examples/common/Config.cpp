@@ -103,6 +103,12 @@ public:
         avfilter_on = settings.value("enable", true).toBool();
         avfilter = settings.value("options", "").toString();
         settings.endGroup();
+        settings.beginGroup("weblinks");
+        QMap<QString, QVariant> tmpweb;
+        tmpweb.insert("Xuno","http://www.xuno.com/playlist_8bit.php");
+        tmpweb.insert("Google","https://www.google.com");
+        weblinks = settings.value("links", tmpweb).toMap();
+        settings.endGroup();
     }
     void save() {
         qDebug() << "sync config to " << file;
@@ -140,6 +146,9 @@ public:
         settings.setValue("enable", avfilter_on);
         settings.setValue("options", avfilter);
         settings.endGroup();
+        settings.beginGroup("weblinks");
+        settings.setValue("links", weblinks);
+        settings.endGroup();
     }
 
     QString dir;
@@ -167,6 +176,7 @@ public:
     int subtilte_bottom_margin;
 
     bool preview_enabled;
+    QMap<QString, QVariant> weblinks;
 };
 
 Config& Config::instance()
@@ -483,6 +493,24 @@ Config& Config::avfilterEnable(bool e)
     emit avfilterChanged();
     return *this;
 }
+
+QMap<QString, QVariant> Config::WebLinks() const
+{
+    return mpData->weblinks;
+}
+
+Config& Config::setWebLinks(const QMap<QString, QVariant> &value)
+{
+    if (mpData->weblinks == value) {
+        qDebug("WebLinks not changed");
+        return *this;
+    }
+    mpData->weblinks = value;
+    emit weblinksChanged();
+    mpData->save();
+    return *this;
+}
+
 
 void Config::save()
 {

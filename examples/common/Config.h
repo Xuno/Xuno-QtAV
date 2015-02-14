@@ -51,6 +51,7 @@ class COMMON_EXPORT Config : public QObject
     Q_PROPERTY(bool subtitleOutline READ subtitleOutline WRITE setSubtitleOutline NOTIFY subtitleOutlineChanged)
     Q_PROPERTY(int subtitleBottomMargin READ subtitleBottomMargin WRITE setSubtitleBottomMargin NOTIFY subtitleBottomMarginChanged)
     Q_PROPERTY(bool previewEnabled READ previewEnabled WRITE setPreviewEnabled NOTIFY previewEnabledChanged)
+    Q_PROPERTY(QMap WebLinks READ WebLinks WRITE setWebLinks NOTIFY weblinksChanged)
 public:
     static Config& instance();
 
@@ -113,6 +114,9 @@ public:
     bool avfilterEnable() const;
     Config& avfilterEnable(bool e);
 
+    QMap<QString,QVariant> WebLinks() const;
+    Config& setWebLinks(const QMap<QString, QVariant> &value);
+
     Q_INVOKABLE QVariant operator ()(const QString& key) const;
     Q_INVOKABLE Config& operator ()(const QString& key, const QVariant& value);
 public:
@@ -133,6 +137,7 @@ public:
     Q_SIGNAL void subtitleOutlineColorChanged();
     Q_SIGNAL void subtitleBottomMarginChanged();
     Q_SIGNAL void previewEnabledChanged();
+    Q_SIGNAL void weblinksChanged();
 protected:
     explicit Config(QObject *parent = 0);
     ~Config();

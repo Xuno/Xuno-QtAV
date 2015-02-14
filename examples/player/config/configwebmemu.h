@@ -17,6 +17,9 @@ public:
 signals:
  void onPlayXunoBrowser(QUrl url);
 
+public slots:
+ void onChanged();
+
 private slots:
  void openurl(QAction *a);
  void onClickXunoBrowser();

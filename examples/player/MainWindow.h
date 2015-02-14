@@ -23,6 +23,7 @@
 
 #include <QWidget>
 #include <QUrl>
+#include "config/configwebmemu.h"
 
 class QWidgetAction;
 namespace QtAV {
@@ -218,6 +219,7 @@ private:
     QString XUNOpresetUrl;
 
     ImageSequenceConfigPage *mpImageSequence;
+    ConfigWebMemu *mpWebMenu = 0;
 };
 
 

@@ -61,7 +61,7 @@
 #include "../common/common.h"
 #include <QUrl>
 #include "config/ImageSequenceConfigPage.h"
-#include "config/configwebmemu.h"
+
 
 //#include <QWebView>
 
@@ -299,7 +299,7 @@ void MainWindow::setupUi()
     mpWebBtn->setToolTip(tr("Open XunoWeb browser"));
     mpWebBtn->setStyleSheet("color:grey;");
 
-    ConfigWebMemu *mpWebMenu = 0;
+
     mpWebMenu = new ConfigWebMemu(mpWebBtn);
     mpWebBtn->setMenu(mpWebMenu);
     connect(mpWebMenu, SIGNAL(onPlayXunoBrowser(QUrl)), SLOT(onClickXunoBrowser(QUrl)));
@@ -1505,7 +1505,11 @@ void MainWindow::donate()
 
 void MainWindow::setup()
 {
-    ConfigDialog::display();
+    ConfigDialog *cfDialog = new ConfigDialog();
+    //ConfigDialog::display();
+    connect(cfDialog,SIGNAL(doUpdateMenu()),mpWebMenu,SLOT(onChanged()));
+    cfDialog->display();
+
 }
 
 void MainWindow::handleFullscreenChange()
