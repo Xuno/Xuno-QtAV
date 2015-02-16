@@ -72,7 +72,6 @@ HEADERS += \
     config/configwebmemu.h \
     config/WebConfigPage.h
 
-
 unix:!android:!mac {
 #debian
 player_bins = libcommon.so.* player QMLPlayer

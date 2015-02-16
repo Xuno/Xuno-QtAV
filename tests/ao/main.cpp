@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -19,6 +19,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
 
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <limits>
 #include <QtCore/QCoreApplication>
@@ -87,9 +88,8 @@ int main(int argc, char** argv)
             left = (left+1) % kTableSize;
             right = (right+3)% kTableSize;
         }
-        ao->waitForNextBuffer();
-        ao->receiveData(data);
-        ao->play();
+        ao->setVolume(2*sin(2.0*M_PI/1000.0*timer.elapsed()));
+        ao->play(data);
     }
     ao->close();
     return 0;

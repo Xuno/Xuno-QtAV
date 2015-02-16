@@ -112,6 +112,7 @@ MainWindow::MainWindow(QWidget *parent) :
   , mpOSD(0)
   , mpSubtitle(0)
   , mCustomFPS(0.)
+  , m_preview(0)
 {
     XUNOserverUrl="http://www.xuno.com";
     XUNOpresetUrl=XUNOserverUrl+"/getpreset.php?";
@@ -134,6 +135,10 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    if (m_preview) {
+        m_preview->close();
+        delete m_preview;
+    }
     mpHistory->save();
     mpPlayList->save();
     if (mpVolumeSlider && !mpVolumeSlider->parentWidget()) {
@@ -620,6 +625,7 @@ void MainWindow::setupUi()
     //connect(mpTimeSlider, SIGNAL(sliderMoved(int)), this, SLOT(seekToMSec(int)));
     connect(mpTimeSlider, SIGNAL(sliderPressed()), SLOT(seek()));
     connect(mpTimeSlider, SIGNAL(sliderReleased()), SLOT(seek()));
+    connect(mpTimeSlider, SIGNAL(onLeave()), SLOT(onTimeSliderLeave()));
     connect(mpTimeSlider, SIGNAL(onHover(int,int)), SLOT(onTimeSliderHover(int,int)));
     //connect(mpWebBtn, SIGNAL(clicked()), SLOT(onXunoBrowser()));
     connect(mpFullScreenBtn, SIGNAL(clicked()), SLOT(onFullScreen()));
@@ -957,6 +963,8 @@ void MainWindow::onStopPlay()
     //mRepeateMax = 0;
     killTimer(mCursorTimer);
     unsetCursor();
+    if (m_preview)
+        m_preview->setFile(QString());
 }
 
 void MainWindow::onSpeedChange(qreal speed)
@@ -972,6 +980,15 @@ void MainWindow::seekToMSec(int msec)
 void MainWindow::seek()
 {
     mpPlayer->seek((qint64)mpTimeSlider->value());
+    if (!m_preview)
+        return;
+    m_preview->setTimestamp(mpTimeSlider->value());
+    m_preview->preview();
+    const int w = 160;
+    const int h = 90;
+    m_preview->setWindowFlags(m_preview->windowFlags() |Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
+    m_preview->resize(w, h);
+    m_preview->show();
 }
 
 void MainWindow::showHideVolumeBar()
@@ -1330,12 +1347,25 @@ void MainWindow::showInfo()
 
 void MainWindow::onTimeSliderHover(int pos, int value)
 {
-    QToolTip::showText(mapToGlobal(mpTimeSlider->pos() + QPoint(pos, 0)), QTime(0, 0, 0).addMSecs(value).toString("HH:mm:ss"));
+    QPoint gpos = mapToGlobal(mpTimeSlider->pos() + QPoint(pos, 0));
+    QToolTip::showText(gpos, QTime(0, 0, 0).addMSecs(value).toString("HH:mm:ss"));
+    if (!m_preview)
+        m_preview = new VideoPreviewWidget();
+    m_preview->setFile(mpPlayer->file());
+    m_preview->setTimestamp(value);
+    m_preview->preview();
+    const int w = 160;
+    const int h = 90;
+    m_preview->setWindowFlags(m_preview->windowFlags() |Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
+    m_preview->resize(w, h);
+    m_preview->move(gpos - QPoint(w/2, h));
+    m_preview->show();
 }
 
 void MainWindow::onTimeSliderLeave()
 {
-
+    if (m_preview && m_preview)
+        m_preview->hide();
 }
 
 void MainWindow::handleError(const AVError &e)

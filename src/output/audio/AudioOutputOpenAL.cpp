@@ -1,6 +1,6 @@
 /******************************************************************************
     AudioOutputOpenAL.cpp: description
-    Copyright (C) 2012-2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
     
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,6 +57,13 @@ public:
 protected:
     virtual bool write(const QByteArray& data);
     virtual int getPlayedCount();
+    virtual bool onSetFeatures(Feature value, bool set = true) {
+        Q_UNUSED(set)
+        return !(value & ~SetVolume);
+    }
+
+    virtual bool deviceSetVolume(qreal value);
+    virtual qreal deviceGetVolume() const;
     int getQueued();
 };
 
@@ -208,6 +215,7 @@ AudioOutputOpenAL::AudioOutputOpenAL()
     :AudioOutput(*new AudioOutputOpenALPrivate())
 {
     setBufferControl(PlayedCount); //TODO: AL_BYTE_OFFSET
+    setFeatures(SetVolume);
 }
 
 AudioOutputOpenAL::~AudioOutputOpenAL()
@@ -255,6 +263,8 @@ bool AudioOutputOpenAL::open()
     d.context = alcCreateContext(d.device, NULL);
     alcMakeContextCurrent(d.context);
     SCOPE_LOCK_CONTEXT();
+    // alGetString: alsoft needs a context. apple does not
+    qDebug("OpenAL %s vendor: %s; renderer: %s", alGetString(AL_VERSION), alGetString(AL_VENDOR), alGetString(AL_RENDERER));
     //alcProcessContext(ctx); //used when dealing witg multiple contexts
     ALCenum err = alcGetError(d.device);
     if (err != ALC_NO_ERROR) {
@@ -429,6 +439,25 @@ int AudioOutputOpenAL::getPlayedCount()
     ALint processed = 0;
     alGetSourcei(d.source, AL_BUFFERS_PROCESSED, &processed);
     return processed;
+}
+
+bool AudioOutputOpenAL::deviceSetVolume(qreal value)
+{
+    SCOPE_LOCK_CONTEXT();
+    AL_RUN_CHECK(alListenerf(AL_GAIN, value));
+    return true;
+}
+
+qreal AudioOutputOpenAL::deviceGetVolume() const
+{
+    SCOPE_LOCK_CONTEXT();
+    ALfloat v = 1.0;
+    alGetListenerf(AL_GAIN, &v);
+    ALenum err = alGetError();
+    if (err != AL_NO_ERROR) {
+        qWarning("AudioOutputOpenAL Error>>> deviceGetVolume (%d) : %s", err, alGetString(err));
+    }
+    return v;
 }
 
 int AudioOutputOpenAL::getQueued()

@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -39,11 +39,17 @@ class Q_AV_EXPORT VideoFrameExtractor : public QObject
     Q_PROPERTY(qint64 position READ position WRITE setPosition NOTIFY positionChanged)
 public:
     explicit VideoFrameExtractor(QObject *parent = 0);
+    /*!
+     * \brief setSource
+     * Set the video file. If video changes, current loaded video will be unloaded.
+     */
     void setSource(const QString value);
     QString source() const;
     /*!
      * \brief setAsync
      * Extract video frames in another thread. Default is true.
+     * In async mode, if current extraction is not finished, new
+     * setPosition() will be ignored.
      */
     void setAsync(bool value);
     bool async() const;
