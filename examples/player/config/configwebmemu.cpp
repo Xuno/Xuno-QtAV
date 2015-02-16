@@ -20,7 +20,8 @@ ConfigWebMemu::~ConfigWebMemu()
 void ConfigWebMemu::openurl(QAction * a){
     int i=a->data().toInt();
     qDebug() << i << menuitemList.at(i)->name << menuitemList.at(i)->url;
-    onXunoBrowser(menuitemList.at(i)->url);
+    if (!QUrl(menuitemList.at(i)->url).host().isEmpty())
+        onXunoBrowser(menuitemList.at(i)->url);
 }
 
 void ConfigWebMemu::initMenuItems(){
@@ -30,13 +31,24 @@ void ConfigWebMemu::initMenuItems(){
     QList<QVariant> urls = links.values();
 
     menuitemList.clear();
-    menuitemList.append(new MenuItems({"Xuno","http://www.xuno.com/playlist_8bit.php",":/www.xuno.net.ico"}));
-    menuitemList.append(new MenuItems({"Google","https://www.google.com",":/www.google.com.ico"}));
+    //For Fixed list items
+    //menuitemList.append(new MenuItems({"Xuno","http://www.xuno.com/playlist_8bit.php",":/www.xuno.net.ico"}));
+    //menuitemList.append(new MenuItems({"Google","https://www.google.com",":/www.google.com.ico"}));
 
-    for (int i = 0; i < names.size(); ++i){
-        menuitemList.append(new MenuItems({names[i],urls[i].toString() ,""}));
+    if (names.size()){
+        for (int i = 0; i < names.size(); ++i){
+            QString iconlink="";
+            QString urli=urls[i].toString();
+            if (QUrl(urli).host().startsWith("www.xuno.com")){
+                iconlink= ":/www.xuno.net.ico";
+            }else if (QUrl(urli).host().startsWith("www.google.com")){
+                iconlink= ":/www.google.com.ico";
+            }
+            menuitemList.append(new MenuItems({names[i],urli ,iconlink}));
+        }
+    }else{
+        menuitemList.append(new MenuItems({tr("Empty list, please define it in setup"),"" ,""}));
     }
-
     XUNOserverUrl="http://www.xuno.com";
     XUNOpresetUrl=XUNOserverUrl+"/getpreset.php?";
 }
@@ -46,7 +58,7 @@ void ConfigWebMemu::init(){
     for (int i=0;i<menuitemList.size();i++){
         QString iconurl=menuitemList.at(i)->iconurl;
         if (iconurl.isEmpty()){
-         QUrl iurl= QUrl(menuitemList.at(i)->url.append("/favicon.ico"));
+         QUrl iurl= QUrl(QString(menuitemList.at(i)->url).append("/favicon.ico"));
         }
         QIcon* ic = new QIcon(iconurl);
         QAction* qa = addAction(*ic,menuitemList.at(i)->name);

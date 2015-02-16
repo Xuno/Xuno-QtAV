@@ -104,7 +104,10 @@ public:
         avfilter = settings.value("options", "").toString();
         settings.endGroup();
         settings.beginGroup("weblinks");
-        weblinks = settings.value("links", "").toMap();
+        QMap<QString,QVariant> tmpweb;
+        tmpweb.insert("Xuno","http://www.xuno.com/playlist_8bit.php");
+        tmpweb.insert("Google","https://www.google.com");
+        weblinks = settings.value("links",tmpweb).toMap();
         settings.endGroup();
     }
     void save() {
