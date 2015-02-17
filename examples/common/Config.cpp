@@ -203,6 +203,11 @@ QString Config::defaultDir() const
     return mpData->dir;
 }
 
+QString Config::defaultFile() const
+{
+    return mpData->file;
+}
+
 void Config::reload()
 {
     mpData->load();
@@ -211,6 +216,7 @@ void Config::reload()
     emit captureDirChanged(mpData->capture_dir);
     emit captureFormatChanged(mpData->capture_fmt);
     emit captureQualityChanged(mpData->capture_quality);
+    emit weblinksChanged();
 }
 
 QStringList Config::decoderPriorityNames() const
@@ -487,6 +493,9 @@ bool Config::avfilterEnable() const
 
 Config& Config::avfilterEnable(bool e)
 {
+
+    setPreviewEnabled(e);
+
     if (mpData->avfilter_on == e)
         return *this;
     mpData->avfilter_on = e;

@@ -19,8 +19,7 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
 
-#define _USE_MATH_DEFINES
-#include <cmath>
+#include <QtCore/qmath.h>
 #include <limits>
 #include <QtCore/QCoreApplication>
 #include <QtCore/QElapsedTimer>

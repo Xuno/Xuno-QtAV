@@ -19,7 +19,7 @@
 ******************************************************************************/
 
 #include "ConfigDialog.h"
-#include <QtCore/QFile>
+#include <QFile>
 #include <QLayout>
 #include <QPushButton>
 #include "CaptureConfigPage.h"
@@ -28,6 +28,9 @@
 #include "AVFilterConfigPage.h"
 #include "WebConfigPage.h"
 #include "common/Config.h"
+#include <QMessageBox>
+#include <QDebug>
+
 void ConfigDialog::display()
 {
     static ConfigDialog *dialog = new ConfigDialog();
@@ -95,14 +98,20 @@ void ConfigDialog::onButtonClicked(QAbstractButton *btn)
 void ConfigDialog::onReset()
 {
     // TODO: check change
+
+    int ret=QMessageBox::information(this,tr("Reset all settings"),tr("Reset will delete all data"),
+                                  QMessageBox::Ok|QMessageBox::Cancel,QMessageBox::Cancel);
+    if (ret!=QMessageBox::Ok) return;
+
+    QFile cf(Config::instance().defaultFile());
+    if (!cf.remove()) {
+        qDebug()<<cf.errorString();
+        qDebug("Can't delete .ini");
+    }
+    Config::instance().reload();
     foreach (ConfigPageBase* page, mPages) {
         page->reset();
     }
-    QFile cf(Config::instance().defaultDir() + "/config.ini");
-    if (!cf.remove()) {
-
-    }
-    Config::instance().reload();
 }
 
 void ConfigDialog::onApply()

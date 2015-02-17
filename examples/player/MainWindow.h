@@ -127,6 +127,7 @@ private slots:
 
     void onCaptureConfigChanged();
     void onAVFilterConfigChanged();
+    void onPreviewEnabledChanged();
 
     void donate();
     void setup();

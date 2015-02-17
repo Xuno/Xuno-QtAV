@@ -169,6 +169,7 @@ void MainWindow::initPlayer()
     connect(&Config::instance(), SIGNAL(captureFormatChanged(QString)), SLOT(onCaptureConfigChanged()));
     connect(&Config::instance(), SIGNAL(captureQualityChanged(int)), SLOT(onCaptureConfigChanged()));
     connect(&Config::instance(), SIGNAL(avfilterChanged()), SLOT(onAVFilterConfigChanged()));
+    connect(&Config::instance(), SIGNAL(previewEnabledChanged()), SLOT(onPreviewEnabledChanged()));
     connect(mpStopBtn, SIGNAL(clicked()), this, SLOT(stopUnload()));
     connect(mpForwardBtn, SIGNAL(clicked()), mpPlayer, SLOT(seekForward()));
     connect(mpBackwardBtn, SIGNAL(clicked()), mpPlayer, SLOT(seekBackward()));
@@ -1349,8 +1350,11 @@ void MainWindow::onTimeSliderHover(int pos, int value)
 {
     QPoint gpos = mapToGlobal(mpTimeSlider->pos() + QPoint(pos, 0));
     QToolTip::showText(gpos, QTime(0, 0, 0).addMSecs(value).toString("HH:mm:ss"));
-    if (!m_preview)
+    if (!m_preview && Config::instance().previewEnabled())
         m_preview = new VideoPreviewWidget();
+
+    if (!m_preview) return;
+
     m_preview->setFile(mpPlayer->file());
     m_preview->setTimestamp(value);
     m_preview->preview();
@@ -1360,6 +1364,7 @@ void MainWindow::onTimeSliderHover(int pos, int value)
     m_preview->resize(w, h);
     m_preview->move(gpos - QPoint(w/2, h));
     m_preview->show();
+
 }
 
 void MainWindow::onTimeSliderLeave()
@@ -1709,4 +1714,14 @@ bool MainWindow::applyCustomFPS(){
      bool ch=mpRepeatEnableAction->isChecked();
      mpRepeatEnableAction->setChecked(!ch);
      mpRepeatEnableAction->setChecked(ch);
+ }
+
+ void MainWindow::onPreviewEnabledChanged(){
+     //qDebug()<<"onPreviewEnabledChanged"<<Config::instance().previewEnabled();
+     if (m_preview && !Config::instance().previewEnabled()) {
+         m_preview->close();
+         delete m_preview;
+         m_preview = 0;
+         return;
+     }
  }

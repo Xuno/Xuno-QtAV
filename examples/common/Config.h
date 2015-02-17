@@ -57,6 +57,8 @@ public:
 
     void reload();
     QString defaultDir() const;
+    QString defaultFile() const;
+
     //void loadFromFile(const QString& file);
 
     // in priority order. the same order as displayed in ui
