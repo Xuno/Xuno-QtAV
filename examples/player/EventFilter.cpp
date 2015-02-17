@@ -328,6 +328,7 @@ void EventFilter::showMenu(const QPoint &p)
 
 WindowEventFilter::WindowEventFilter(QWidget *window)
     : QObject(window)
+    , enableMovingWindow(false)
     , mpWindow(window)
 {
 
@@ -364,8 +365,9 @@ bool WindowEventFilter::eventFilter(QObject *watched, QEvent *event)
         return false;
     }
     if (event->type() == QEvent::MouseMove) {
-        if (iMousePos.isNull() || gMousePos.isNull())
+        if (iMousePos.isNull() || gMousePos.isNull() || !enableMovingWindow)
             return false;
+
         QMouseEvent *me = static_cast<QMouseEvent*>(event);
         int x = mpWindow->pos().x();
         int y = mpWindow->pos().y();
@@ -376,4 +378,9 @@ bool WindowEventFilter::eventFilter(QObject *watched, QEvent *event)
         return false;
     }
     return false;
+}
+
+void WindowEventFilter::setEnableMovingWindow(bool s)
+{
+    enableMovingWindow = s;
 }

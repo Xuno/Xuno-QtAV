@@ -76,6 +76,8 @@ protected:
 private:
     QWidget *mpWindow;
     QPoint gMousePos, iMousePos;
+    bool enableMovingWindow;
+    void setEnableMovingWindow(bool s);
 };
 
 #endif // QTAV_EVENTFILTER_H

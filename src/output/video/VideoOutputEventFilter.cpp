@@ -114,7 +114,6 @@ bool VideoOutputEventFilter::eventFilter(QObject *watched, QEvent *event)
     }
         break;
     case QEvent::MouseMove: {
-//        if (iMousePos.isNull() || gMousePos.isNull())
         if (iMousePos.isNull() || gMousePos.isNull() || !enableMovingWindow)
             return false;
         QMouseEvent *me = static_cast<QMouseEvent*>(event);
