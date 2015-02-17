@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV Player Demo:  this file is part of QtAV examples
-    Copyright (C) 2012-2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -98,20 +98,16 @@ void ConfigDialog::onButtonClicked(QAbstractButton *btn)
 void ConfigDialog::onReset()
 {
     // TODO: check change
-
     int ret=QMessageBox::information(this,tr("Reset all settings"),tr("Reset will delete all data"),
                                   QMessageBox::Ok|QMessageBox::Cancel,QMessageBox::Cancel);
     if (ret!=QMessageBox::Ok) return;
 
-    QFile cf(Config::instance().defaultFile());
-    if (!cf.remove()) {
-        qDebug()<<cf.errorString();
-        qDebug("Can't delete .ini");
-    }
-    Config::instance().reload();
+    Config::instance().reset();
+
     foreach (ConfigPageBase* page, mPages) {
         page->reset();
     }
+
 }
 
 void ConfigDialog::onApply()
