@@ -461,7 +461,9 @@ void VideoMaterial::bindPlane(int p, bool updateTexture)
         return;
     }
     //setupQuality?
+    // try_pbo ? pbo_id : 0. 0= > interop.createHandle
     if (d.frame.map(GLTextureSurface, &d.textures[p])) {
+        //TODO: move to map()?
         OpenGLHelper::glActiveTexture(GL_TEXTURE0 + p); //0 must active?
         DYGL(glBindTexture(d.target, d.textures[p]));
         return;
@@ -469,6 +471,21 @@ void VideoMaterial::bindPlane(int p, bool updateTexture)
     // FIXME: why happens on win?
     if (d.frame.bytesPerLine(p) <= 0)
         return;
+    if (d.try_pbo) {
+        //qDebug("bind PBO %d", p);
+        QOpenGLBuffer &pb = d.pbo[p];
+        pb.bind();
+        // glMapBuffer() causes sync issue.
+        // Call glBufferData() with NULL pointer before glMapBuffer(), the previous data in PBO will be discarded and
+        // glMapBuffer() returns a new allocated pointer or an unused block immediately even if GPU is still working with the previous data.
+        // https://www.opengl.org/wiki/Buffer_Object_Streaming#Buffer_re-specification
+        pb.allocate(pb.size());
+        GLubyte* ptr = (GLubyte*)pb.map(QOpenGLBuffer::WriteOnly);
+        if (ptr) {
+            memcpy(ptr, d.frame.bits(p), pb.size());
+            pb.unmap();
+        }
+    }
     OpenGLHelper::glActiveTexture(GL_TEXTURE0 + p);
     //qDebug("bpl[%d]=%d width=%d", p, frame.bytesPerLine(p), frame.planeWidth(p));
     DYGL(glBindTexture(d.target, d.textures[p]));
@@ -476,7 +493,10 @@ void VideoMaterial::bindPlane(int p, bool updateTexture)
     // This is necessary for non-power-of-two textures
     DYGL(glTexParameteri(d.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
     DYGL(glTexParameteri(d.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-    DYGL(glTexSubImage2D(d.target, 0, 0, 0, d.texture_upload_size[p].width(), d.texture_upload_size[p].height(), d.data_format[p], d.data_type[p], d.frame.bits(p)));
+    DYGL(glTexSubImage2D(d.target, 0, 0, 0, d.texture_upload_size[p].width(), d.texture_upload_size[p].height(), d.data_format[p], d.data_type[p], d.try_pbo ? 0 : d.frame.bits(p)));
+    if (d.try_pbo) {
+        d.pbo[p].release();
+    }
 }
 
 int VideoMaterial::compare(const VideoMaterial *other) const
@@ -614,6 +634,23 @@ QVector2D VideoMaterial::pixeloffset () const
     return QVector2D(w,h);
 }
 
+bool VideoMaterialPrivate::initPBO(int plane, int size)
+{
+    QOpenGLBuffer &pb = pbo[plane];
+    if (!pb.isCreated()) {
+        qDebug("Creating PBO for plane %d, size: %d...", plane, size);
+        pb.create();
+    }
+    if (!pb.bind()) {
+        qWarning("Failed to bind PBO for plane %d!!!!!!", plane);
+        try_pbo = false;
+        return false;
+    }
+    qDebug("Allocate PBO size %d", size);
+    pb.allocate(size);
+    return true;
+}
+
 bool VideoMaterialPrivate::initTexture(GLuint tex, GLint internal_format, GLenum format, GLenum dataType, int width, int height)
 {
     DYGL(glBindTexture(target, tex));
@@ -631,6 +668,8 @@ VideoMaterialPrivate::~VideoMaterialPrivate()
     if (!textures.isEmpty()) {
         DYGL(glDeleteTextures(textures.size(), textures.data()));
     }
+    for (int i = 0; i < pbo.size(); ++i)
+        pbo[i].destroy();
 }
 
 bool VideoMaterialPrivate::initTextures(const VideoFormat& fmt)
@@ -800,6 +839,19 @@ bool VideoMaterialPrivate::updateTexturesIfNeeded()
     }
     if (update_textures) {
         initTextures(fmt);
+        // check pbo support
+        // TODO: complete pbo extension set
+        try_pbo = try_pbo && OpenGLHelper::isPBOSupported();
+        // check PBO support with bind() is fine, no need to check extensions
+        if (try_pbo) {
+            for (int i = 0; i < nb_planes; ++i) {
+                //qDebug("Init PBO for plane %d", i);
+                if (!initPBO(i, frame.bytesPerLine(i)*frame.planeHeight(i))) {
+                    qWarning("Failed to init PBO for plane %d", i);
+                    break;
+                }
+            }
+        }
     }
     return true;
 }
