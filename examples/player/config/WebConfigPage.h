@@ -25,17 +25,15 @@ public:
     WebConfigPage();
     virtual QString name() const;
 
-
-public slots:
-    virtual void apply(); //store the values on ui. call Config::xxx
-    virtual void cancel(); //cancel the values on ui. values are from Config
-    virtual void reset(); //reset to default
-
 private slots:
      void onInsert();
      void onChange();
      void onDelete();
      void onSelected(QModelIndex);
+
+protected:
+    virtual void applyToUi();
+    virtual void applyFromUi();
 
 private:
     QCheckBox *m_enable;

@@ -62,6 +62,7 @@ WebConfigPage::WebConfigPage()
     groupBox->setLayout(gl);
     vbox->addWidget(groupBox);
     setLayout(vbox);
+    applyToUi();
 }
 
 void WebConfigPage::initModelData()
@@ -74,27 +75,11 @@ void WebConfigPage::initModelData()
 }
 
 
-
 QString WebConfigPage::name() const
 {
-    return "Web Links";
+    return "Web";
 }
 
-
-void WebConfigPage::apply()
-{
-    Config::instance().setWebLinks(links);
-}
-
-void WebConfigPage::cancel()
-{
-    initModelData();
-}
-
-void WebConfigPage::reset()
-{
-    initModelData();
-}
 
 bool WebConfigPage::ValidURL(const QString &url)
 {
@@ -206,4 +191,14 @@ void WebConfigPage::saveLinks(QString name, QString urls)
 void WebConfigPage::deleteLinks(QString name)
 {
     links.remove(name);
+}
+
+void WebConfigPage::applyFromUi()
+{
+      Config::instance().setWebLinks(links);
+}
+
+void WebConfigPage::applyToUi()
+{
+      initModelData();
 }

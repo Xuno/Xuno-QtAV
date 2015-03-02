@@ -495,9 +495,6 @@ bool Config::avfilterEnable() const
 
 Config& Config::avfilterEnable(bool e)
 {
-
-    setPreviewEnabled(e);
-
     if (mpData->avfilter_on == e)
         return *this;
     mpData->avfilter_on = e;
