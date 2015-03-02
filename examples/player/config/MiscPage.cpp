@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV Player Demo:  this file is part of QtAV examples
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -18,44 +18,40 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "AVFilterConfigPage.h"
-#include <QLayout>
-#include <QCheckBox>
+#include "MiscPage.h"
 #include <QLabel>
-#include <QTextEdit>
+#include <QLayout>
 #include "common/Config.h"
 
-AVFilterConfigPage::AVFilterConfigPage(QWidget *parent)
-    : ConfigPageBase(parent)
+MiscPage::MiscPage()
 {
-    setObjectName("avfilter");
     QGridLayout *gl = new QGridLayout();
     setLayout(gl);
     gl->setSizeConstraint(QLayout::SetFixedSize);
     int r = 0;
-    m_enable = new QCheckBox(tr("Enable"));
-    gl->addWidget(m_enable, r++, 0);
-    gl->addWidget(new QLabel(tr("Parameters")), r++, 0);
-    m_options = new QTextEdit();
-    gl->addWidget(m_options, r++, 0);
+    m_preview_on = new QCheckBox(tr("Preview"));
+    gl->addWidget(m_preview_on, r++, 0);
+    gl->addWidget(new QLabel(tr("Progress update interval") + "(ms)"), r, 0);
+    m_notify_interval = new QSpinBox();
+    m_notify_interval->setEnabled(false);
+    gl->addWidget(m_notify_interval, r++, 1);
     applyToUi();
 }
 
-QString AVFilterConfigPage::name() const
+QString MiscPage::name() const
 {
-    return "AVFilter";
+    return tr("Misc");
 }
 
 
-void AVFilterConfigPage::applyFromUi()
+void MiscPage::applyFromUi()
 {
-    Config::instance().avfilterOptions(m_options->toPlainText())
-            .avfilterEnable(m_enable->isChecked())
+    Config::instance().setPreviewEnabled(m_preview_on->isChecked())
             ;
 }
 
-void AVFilterConfigPage::applyToUi()
+void MiscPage::applyToUi()
 {
-    m_enable->setChecked(Config::instance().avfilterEnable());
-    m_options->setText(Config::instance().avfilterOptions());
+    m_preview_on->setChecked(Config::instance().previewEnabled());
+    //m_notify_interval->setValue(Config::instance().avfilterOptions());
 }

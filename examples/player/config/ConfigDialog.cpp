@@ -27,6 +27,7 @@
 #include "AVFormatConfigPage.h"
 #include "AVFilterConfigPage.h"
 #include "WebConfigPage.h"
+#include "MiscPage.h"
 #include "common/Config.h"
 #include <QMessageBox>
 #include <QDebug>
@@ -61,7 +62,9 @@ ConfigDialog::ConfigDialog(QWidget *parent) :
 
     vbl->addWidget(mpContent);
     vbl->addWidget(mpButtonBox);
-    mPages << new CaptureConfigPage()
+
+    mPages << new MiscPage()
+           << new CaptureConfigPage()
            << new DecoderConfigPage()
            << new AVFormatConfigPage()
            << new AVFilterConfigPage()
@@ -97,6 +100,7 @@ void ConfigDialog::onButtonClicked(QAbstractButton *btn)
 
 void ConfigDialog::onReset()
 {
+    Config::instance().reset();
     // TODO: check change
     int ret=QMessageBox::information(this,tr("Reset all settings"),tr("Reset will delete all data"),
                                   QMessageBox::Ok|QMessageBox::Cancel,QMessageBox::Cancel);
@@ -107,7 +111,6 @@ void ConfigDialog::onReset()
     foreach (ConfigPageBase* page, mPages) {
         page->reset();
     }
-
 }
 
 void ConfigDialog::onApply()

@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV Player Demo:  this file is part of QtAV examples
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -17,29 +17,26 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
-#ifndef AVFORMATCONFIGPAGE_H
-#define AVFORMATCONFIGPAGE_H
+
+#ifndef MISCPAGE_H
+#define MISCPAGE_H
 
 #include "ConfigPageBase.h"
-#include <QtCore/QVariant>
+#include <QCheckBox>
+#include <QSpinBox>
 
-class QCheckBox;
-class QSpinBox;
-class QLineEdit;
-class AVFormatConfigPage : public ConfigPageBase
+class MiscPage : public ConfigPageBase
 {
     Q_OBJECT
 public:
-    explicit AVFormatConfigPage(QWidget *parent = 0);
+    MiscPage();
     virtual QString name() const;
 protected:
     virtual void applyToUi();
     virtual void applyFromUi();
 private:
-    QCheckBox *m_direct;
-    QSpinBox *m_probeSize;
-    QSpinBox *m_analyzeDuration;
-    QLineEdit *m_extra;
+    QCheckBox *m_preview_on;
+    QSpinBox *m_notify_interval;
 };
 
-#endif // AVFORMATCONFIGPAGE_H
+#endif // MISCPAGE_H

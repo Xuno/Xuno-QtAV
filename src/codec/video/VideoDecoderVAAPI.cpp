@@ -93,6 +93,67 @@ void RegisterVideoDecoderVAAPI_Man()
 {
     FACTORY_REGISTER_ID_MAN(VideoDecoder, VAAPI, "VAAPI")
 }
+const char* getProfileName(AVCodecID id, int profile)
+{
+    AVCodec *c = avcodec_find_decoder(id);
+    if (!c)
+        return "Unknow";
+    return av_get_profile_name(c, profile);
+}
+
+typedef struct {
+    AVCodecID codec;
+    int profile;
+    VAProfile va_profile;
+} codec_profile_t;
+#define VAProfileNone ((VAProfile)-1) //maybe not defined for old va
+
+static const  codec_profile_t va_profiles[] = {
+    { QTAV_CODEC_ID(MPEG1VIDEO), FF_PROFILE_UNKNOWN, VAProfileMPEG2Main }, //vlc
+    { QTAV_CODEC_ID(MPEG2VIDEO), FF_PROFILE_MPEG2_MAIN, VAProfileMPEG2Main },
+    { QTAV_CODEC_ID(MPEG2VIDEO),  FF_PROFILE_MPEG2_SIMPLE, VAProfileMPEG2Simple },
+    { QTAV_CODEC_ID(H263), FF_PROFILE_UNKNOWN, VAProfileMPEG4AdvancedSimple }, //xbmc
+    { QTAV_CODEC_ID(MPEG4), FF_PROFILE_MPEG4_ADVANCED_SIMPLE, VAProfileMPEG4AdvancedSimple },
+    { QTAV_CODEC_ID(MPEG4), FF_PROFILE_MPEG4_MAIN, VAProfileMPEG4Main },
+    { QTAV_CODEC_ID(MPEG4), FF_PROFILE_MPEG4_SIMPLE, VAProfileMPEG4Simple },
+    { QTAV_CODEC_ID(H264), FF_PROFILE_H264_HIGH, VAProfileH264High },
+    { QTAV_CODEC_ID(H264), FF_PROFILE_H264_MAIN, VAProfileH264Main },
+    { QTAV_CODEC_ID(H264), FF_PROFILE_H264_BASELINE, VAProfileH264Baseline },
+    { QTAV_CODEC_ID(H264), FF_PROFILE_H264_CONSTRAINED_BASELINE, VAProfileH264ConstrainedBaseline }, //mpv force main
+    { QTAV_CODEC_ID(VC1), FF_PROFILE_VC1_ADVANCED, VAProfileVC1Advanced },
+    { QTAV_CODEC_ID(VC1), FF_PROFILE_VC1_MAIN, VAProfileVC1Main },
+    { QTAV_CODEC_ID(VC1), FF_PROFILE_VC1_SIMPLE, VAProfileVC1Simple },
+    { QTAV_CODEC_ID(WMV3), FF_PROFILE_VC1_ADVANCED, VAProfileVC1Advanced },
+    { QTAV_CODEC_ID(WMV3), FF_PROFILE_VC1_MAIN, VAProfileVC1Main },
+    { QTAV_CODEC_ID(WMV3), FF_PROFILE_VC1_SIMPLE, VAProfileVC1Simple },
+    { QTAV_CODEC_ID(NONE), FF_PROFILE_UNKNOWN, VAProfileNone }
+};
+
+static bool isProfileSupportedByRuntime(const VAProfile *profiles, int count, VAProfile p)
+{
+    for (int i = 0; i < count; ++i) {
+        if (profiles[i] == p)
+            return true;
+    }
+    return false;
+}
+
+const codec_profile_t* findProfileEntry(AVCodecID codec, int profile)
+{
+    if (codec == QTAV_CODEC_ID(NONE))
+        return 0;
+    for (int i = 0; va_profiles[i].codec != QTAV_CODEC_ID(NONE); ++i) {
+        const codec_profile_t* p = &va_profiles[i];
+        if (codec != p->codec || profile != p->profile)
+            continue;
+        // return the first profile entry if given profile is unknow
+        if (profile == FF_PROFILE_UNKNOWN
+                || p->profile == FF_PROFILE_UNKNOWN // force the profile
+                || profile == p->profile)
+            return p;
+    }
+    return 0;
+}
 
 class VideoDecoderVAAPIPrivate : public VideoDecoderFFmpegHWPrivate, public VAAPI_DRM, public VAAPI_X11, public VAAPI_GLX
         , public X11_API
@@ -273,24 +334,13 @@ VideoFrame VideoDecoderVAAPI::frame()
          * TODO: copy from USWC, see vlc and https://github.com/OpenELEC/OpenELEC.tv/pull/2937.diff
          * https://software.intel.com/en-us/articles/increasing-memory-throughput-with-intel-streaming-simd-extensions-4-intel-sse4-streaming-load
          */
-        status = vaDeriveImage(d.display->get(), surface_id, &d.image);
-        if (status != VA_STATUS_SUCCESS) {
-            qWarning("vaDeriveImage(VADisplay:%p, VASurfaceID:%#x, VAImage*:%p) == %#x", d.display->get(), surface_id, &d.image, status);
-            return VideoFrame();
-        }
+        VA_ENSURE_TRUE(vaDeriveImage(d.display->get(), surface_id, &d.image), VideoFrame());
     } else {
-        status = vaGetImage(d.display->get(), surface_id, 0, 0, d.width, d.height, d.image.image_id);
-        if (status != VA_STATUS_SUCCESS) {
-            qWarning("vaGetImage(VADisplay:%p, VASurfaceID:%#x, 0,0, %d, %d, VAImageID:%#x) == %#x", d.display->get(), surface_id, d.width, d.height, d.image.image_id, status);
-            return VideoFrame();
-        }
+        VA_ENSURE_TRUE(vaGetImage(d.display->get(), surface_id, 0, 0, d.width, d.height, d.image.image_id), VideoFrame());
     }
 
     void *p_base;
-    if ((status = vaMapBuffer(d.display->get(), d.image.buf, &p_base)) != VA_STATUS_SUCCESS) {
-        qWarning("vaMapBuffer(VADisplay:%p, VABufferID:%#x, pBuf:%p) == %#x", d.display->get(), d.image.buf, &p_base, status);
-        return VideoFrame();
-    }
+    VA_ENSURE_TRUE(vaMapBuffer(d.display->get(), d.image.buf, &p_base), VideoFrame());
 
     VideoFormat::PixelFormat pixfmt = VideoFormat::Format_Invalid;
     bool swap_uv = false;
@@ -321,10 +371,7 @@ VideoFrame VideoDecoderVAAPI::frame()
         pitch[i] = d.image.pitches[i];
     }
     VideoFrame frame(copyToFrame(fmt, d.surface_height, src, pitch, swap_uv));
-    if ((status = vaUnmapBuffer(d.display->get(), d.image.buf)) != VA_STATUS_SUCCESS) {
-        qWarning("vaUnmapBuffer(VADisplay:%p, VABufferID:%#x) == %#x", d.display->get(), d.image.buf, status);
-        return VideoFrame();
-    }
+    VAWARN(vaUnmapBuffer(d.display->get(), d.image.buf));
     if (!d.disable_derive && d.supports_derive) {
         vaDestroyImage(d.display->get(), d.image.image_id);
         d.image.image_id = VA_INVALID_ID;
@@ -356,41 +403,18 @@ QStringList VideoDecoderVAAPI::displayPriority() const
 
 bool VideoDecoderVAAPIPrivate::open()
 {
-#define VAProfileNone ((VAProfile)-1) //maybe not defined for old va
-    VAProfile i_profile = VAProfileNone;
-    int i_surfaces = 0;
-    switch (codec_ctx->codec_id) {
-    case QTAV_CODEC_ID(MPEG1VIDEO):
-    case QTAV_CODEC_ID(MPEG2VIDEO):
-        i_profile = VAProfileMPEG2Main;
-        i_surfaces = 2+1;
-        break;
-    case QTAV_CODEC_ID(MPEG4):
-        i_profile = VAProfileMPEG4AdvancedSimple;
-        i_surfaces = 2+1;
-        break;
-    case QTAV_CODEC_ID(WMV3):
-        i_profile = VAProfileVC1Main;
-        i_surfaces = 2+1;
-        break;
-    case QTAV_CODEC_ID(VC1):
-        i_profile = VAProfileVC1Advanced;
-        i_surfaces = 2+1;
-        break;
-    case QTAV_CODEC_ID(H264):
-        i_profile = VAProfileH264High;
-        i_surfaces = 16+2 + codec_ctx->thread_count;
-        break;
-    default:
+    const codec_profile_t* pe = findProfileEntry(codec_ctx->codec_id, codec_ctx->profile);
+    if (!pe) {
+        qWarning("codec(%s) or profile(%s) is not supported", avcodec_get_name(codec_ctx->codec_id), getProfileName(codec_ctx->codec_id, codec_ctx->profile));
         return false;
     }
-    if (surface_auto) {
-        nb_surfaces = i_surfaces;
-    }
-    if (nb_surfaces <= 0) {
-        qWarning("internal error: wrong surface count.  %u auto=%d", nb_surfaces, surface_auto);
-        nb_surfaces = 17;
-    }
+    int surface_count = 2 + 1;
+    if (codec_ctx->codec_id == QTAV_CODEC_ID(H264))
+        surface_count = 16+2 + codec_ctx->thread_count;
+    if (surface_auto)
+        nb_surfaces = surface_count;
+    if (nb_surfaces <= 0)
+        nb_surfaces = surface_count;
     config_id  = VA_INVALID_ID;
     context_id = VA_INVALID_ID;
     image.image_id = VA_INVALID_ID;
@@ -482,45 +506,29 @@ bool VideoDecoderVAAPIPrivate::open()
         qWarning("VAAPI: frame size (%dx%d) is too large", codec_ctx->width, codec_ctx->height);
         return false;
     }
-
     /* Check if the selected profile is supported */
-    int i_profiles_nb = vaMaxNumProfiles(disp);
-    VAProfile *p_profiles_list = (VAProfile*)calloc(i_profiles_nb, sizeof(VAProfile));
-    if (!p_profiles_list)
+    qDebug("checking profile: %s, %s",  avcodec_get_name(codec_ctx->codec_id), getProfileName(pe->codec, pe->profile));
+    int nb_profiles = vaMaxNumProfiles(disp);
+    if (nb_profiles <= 0) {
+        qWarning("No profile supported");
         return false;
-
-    bool b_supported_profile = false;
-    VAStatus status = vaQueryConfigProfiles(disp, p_profiles_list, &i_profiles_nb);
-    if (status == VA_STATUS_SUCCESS) {
-        for (int i = 0; i < i_profiles_nb; i++) {
-            if (p_profiles_list[i] == i_profile) {
-                b_supported_profile = true;
-                break;
-            }
-        }
     }
-    free(p_profiles_list);
-    if (!b_supported_profile) {
-        qDebug("Codec and profile not supported by the hardware");
+    QVector<VAProfile> supported_profiles(nb_profiles, VAProfileNone);
+    VA_ENSURE_TRUE(vaQueryConfigProfiles(disp, supported_profiles.data(), &nb_profiles), false);
+    if (!isProfileSupportedByRuntime(supported_profiles.constData(), nb_profiles, pe->va_profile)) {
+        qDebug("Codec or profile is not supported by the hardware");
         return false;
     }
     /* Create a VA configuration */
     VAConfigAttrib attrib;
     memset(&attrib, 0, sizeof(attrib));
     attrib.type = VAConfigAttribRTFormat;
-    if ((status = vaGetConfigAttributes(disp, i_profile, VAEntrypointVLD, &attrib, 1)) != VA_STATUS_SUCCESS) {
-        qWarning("vaGetConfigAttributes(VADisplay:%p, VAProfile:%d, VAEntrypointVLD, VAConfigAttrib*:%p, num_attrib:1) == %#x", disp, i_profile, &attrib, status);
-        return false;
-    }
+    VA_ENSURE_TRUE(vaGetConfigAttributes(disp, pe->va_profile, VAEntrypointVLD, &attrib, 1), false);
     /* Not sure what to do if not, I don't have a way to test */
     if ((attrib.value & VA_RT_FORMAT_YUV420) == 0)
         return false;
-    //vaCreateConfig(display, i_profile, VAEntrypointVLD, NULL, 0, &config_id)
-    if ((status = vaCreateConfig(disp, i_profile, VAEntrypointVLD, &attrib, 1, &config_id)) != VA_STATUS_SUCCESS) {
-        qWarning("vaCreateConfig(VADisplay:%p, VAProfile:%d, VAEntrypointVLD, VAConfigAttrib*:%p, num_attrib:1, VAConfigID*:%p) == %#x", disp, i_profile, &attrib, &config_id, status);
-        config_id = VA_INVALID_ID;
-        return false;
-    }
+    //vaCreateConfig(display, pe->va_profile, VAEntrypointVLD, NULL, 0, &config_id)
+    VA_ENSURE_TRUE(vaCreateConfig(disp, pe->va_profile, VAEntrypointVLD, &attrib, 1, &config_id), false);
     supports_derive = false;
     surface_interop = VideoSurfaceInteropPtr(new SurfaceInteropVAAPI());
     return true;
@@ -543,12 +551,7 @@ bool VideoDecoderVAAPIPrivate::createSurfaces(int count, void **pp_hw_ctx, int w
     context_id = VA_INVALID_ID;
     surface_width = FFALIGN(w, 16);
     surface_height = FFALIGN(h, 16);
-    VAStatus status = VA_STATUS_SUCCESS;
-    if ((status = vaCreateSurfaces(display->get(), VA_RT_FORMAT_YUV420, width, height,  surfaces.data() + old_size, count - old_size, NULL, 0)) != VA_STATUS_SUCCESS) {
-        qWarning("vaCreateSurfaces(VADisplay:%p, VA_RT_FORMAT_YUV420, %d, %d, VASurfaceID*:%p, surfaces:%d, VASurfaceAttrib:NULL, num_attrib:0) == %#x", display->get(), width, height, surfaces.constData(), surfaces.size(), status);
-        destroySurfaces(); //?
-        return false;
-    }
+    VA_ENSURE_TRUE(vaCreateSurfaces(display->get(), VA_RT_FORMAT_YUV420, width, height,  surfaces.data() + old_size, count - old_size, NULL, 0), false);
     for (int i = old_size; i < surfaces.size(); ++i) {
         surfaces_free.push_back(surface_ptr(new surface_t(width, height, surfaces[i], display)));
     }
@@ -556,6 +559,7 @@ bool VideoDecoderVAAPIPrivate::createSurfaces(int count, void **pp_hw_ctx, int w
     if (context_id && context_id != VA_INVALID_ID)
         VAWARN(vaDestroyContext(display->get(), context_id));
     context_id = VA_INVALID_ID;
+    VAStatus status = VA_STATUS_SUCCESS;
     if ((status = vaCreateContext(display->get(), config_id, width, height, VA_PROGRESSIVE, surfaces.data(), surfaces.size(), &context_id)) != VA_STATUS_SUCCESS) {
         qWarning("vaCreateContext(VADisplay:%p, VAConfigID:%#x, %d, %d, VA_PROGRESSIVE, VASurfaceID*:%p, surfaces:%d, VAContextID*:%p) == %#x", display->get(), config_id, width, height, surfaces.constData(), surfaces.size(), &context_id, status);
         context_id = VA_INVALID_ID;
