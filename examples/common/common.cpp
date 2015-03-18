@@ -23,7 +23,10 @@ QOptions get_common_options()
             ("language", "system", "language on UI. can be 'system', 'none' and locale name e.g. zh_CN")
             ("sf",0,"can be NN start frame for sequence of images")
             ("ef",0,"can be NN end frame for sequence of images")
+            ("tf",0,"can be NN total frames for sequence of images")
             ("fps",0.0,"set fps for sequence of images")
+            ("loop","set loop for sequence of images")
+            ("scale",0.0,"set scale for sequence of images")
             ;
     return ops;
 }

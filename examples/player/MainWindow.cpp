@@ -422,7 +422,7 @@ void MainWindow::setupUi()
     vb->addLayout(hb);
     pRepeatLabel = new QLabel(tr("From"));
     mpRepeatA = new QTimeEdit();
-    mpRepeatA->setDisplayFormat("HH:mm:ss");
+    mpRepeatA->setDisplayFormat("HH:mm:ss.zzz");
     mpRepeatA->setToolTip(tr("negative value means from the end"));
     connect(mpRepeatA, SIGNAL(timeChanged(QTime)), SLOT(repeatAChanged(QTime)));
     hb = new QHBoxLayout;
@@ -431,7 +431,7 @@ void MainWindow::setupUi()
     vb->addLayout(hb);
     pRepeatLabel = new QLabel(tr("To"));
     mpRepeatB = new QTimeEdit();
-    mpRepeatB->setDisplayFormat("HH:mm:ss");
+    mpRepeatB->setDisplayFormat("HH:mm:ss.zzz");
     mpRepeatB->setToolTip(tr("negative value means from the end"));
     connect(mpRepeatB, SIGNAL(timeChanged(QTime)), SLOT(repeatBChanged(QTime)));
     hb = new QHBoxLayout;
@@ -808,7 +808,8 @@ void MainWindow::play(const QString &name)
     if (!mpRepeatEnableAction->isChecked())
         mRepeateMax = 0;
     else
-        mRepeateMax = mpRepeatBox->value();
+        mRepeateMax = (mpRepeatLoop->isChecked())?-1:mpRepeatBox->value()-1;
+    qDebug()<<"mRepeateMax"<<mRepeateMax;
     mpPlayer->setRepeat(mRepeateMax);
     mpPlayer->setPriority(idsFromNames(Config::instance().decoderPriorityNames()));
     mpPlayer->setOptionsForAudioCodec(mpDecoderConfigPage->audioDecoderOptions());
@@ -834,18 +835,26 @@ void MainWindow::play(const QUrl &url)
 
 void MainWindow::setFpsSequenceFrame(const double fps)
 {
+    Q_UNUSED (fps)
     //TODO Crash
-   // if (mpImageSequence) mpImageSequence->setFPS(fps);
+    //if (mpImageSequence && fps>0) mpImageSequence->setFPS(fps);
 }
 
 void MainWindow::setStartSequenceFrame(const quint32 sf)
 {
-    if (mpImageSequence) mpImageSequence->setStartFrame(sf);
+    if (mpImageSequence && sf>0) mpImageSequence->setStartFrame(sf);
 }
 
 void MainWindow::setEndSequenceFrame(const quint32 ef)
 {
-    if (mpImageSequence) mpImageSequence->setEndFrame(ef);
+    if (mpImageSequence && ef>0) mpImageSequence->setEndFrame(ef);
+}
+
+void MainWindow::setRepeatLoop(const bool loop)
+{
+    if (mpRepeatLoop) {
+        mpRepeatLoop->setChecked(loop);
+    }
 }
 
 void MainWindow::setVideoDecoderNames(const QStringList &vd)
@@ -1299,7 +1308,7 @@ void MainWindow::toggleRepeat(bool r)
         mRepeateMax = 0;
     }
     if (mpPlayer) {
-        mpPlayer->setRepeat(mRepeateMax);
+        mpPlayer->setRepeat(mpRepeatLoop->isChecked()?-1:mRepeateMax-1);
     }
 }
 
@@ -1308,7 +1317,7 @@ void MainWindow::setRepeateMax(int m)
     if (m!=0) mRepeateMax = m;
     if (m<1)  mpRepeatBox->setValue(1);
     if (mpPlayer) {
-        mpPlayer->setRepeat(m);
+        mpPlayer->setRepeat(mpRepeatLoop->isChecked()?-1:m-1);
     }
 }
 
@@ -1718,8 +1727,8 @@ bool MainWindow::applyCustomFPS(){
  void MainWindow::RepeatLoopChanged(int i){
      bool checked=(i==Qt::Checked);
      qDebug()<<"RepeatLoopChanged:"<<i;
-     mpRepeatBox->setVisible(!checked);
      mpRepeatBox->setValue(checked?-1:1);
+     mpRepeatBox->setVisible(!checked);
      QLayout *layout = mpRepeatBox->parentWidget()->layout();
      QHBoxLayout *layout2 = layout->findChild<QHBoxLayout *>("TimesLayout");
      if (layout2){

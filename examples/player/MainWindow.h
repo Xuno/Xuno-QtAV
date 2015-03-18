@@ -69,6 +69,7 @@ public:
     void setStartSequenceFrame(const quint32 sf);
     void setEndSequenceFrame(const quint32 ef);
     void setFpsSequenceFrame(const double fps);
+    void setRepeatLoop(const bool loop);
 
 public slots:
     void play(const QString& name);
