@@ -19,6 +19,9 @@ public:
     void openFiles();
     void playImgages();
     void setMovieDuration(qint64 d);
+    void setStartFrame(quint32 n);
+    void setEndFrame(quint32 n);
+
 
 signals:
     void play(QString);
@@ -31,10 +34,8 @@ signals:
 
 public slots:
     void onSelectImgages();
-
-private slots:
     void setFPS(double n);
-    void setTotalFrames(int n);
+    void setTotalFrames(quint32 n);
 
 private:
     QSpinBox *mpTotalFramesBox;

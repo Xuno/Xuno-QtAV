@@ -66,6 +66,9 @@ public:
     void setRenderer(QtAV::VideoRenderer* renderer);
     void setVideoDecoderNames(const QStringList& vd);
     void loadRemoteUrlPresset(const QString& url);
+    void setStartSequenceFrame(const quint32 sf);
+    void setEndSequenceFrame(const quint32 ef);
+    void setFpsSequenceFrame(const double fps);
 
 public slots:
     void play(const QString& name);

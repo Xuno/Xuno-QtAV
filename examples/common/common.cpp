@@ -21,6 +21,9 @@ QOptions get_common_options()
             ("decoders,-vd", "cuda;vaapi;vda;dxva;cedarv;ffmpeg", "decoder name list in priority order seperated by ';'")
             ("file,f", "", "file or url to play")
             ("language", "system", "language on UI. can be 'system', 'none' and locale name e.g. zh_CN")
+            ("sf",0,"can be NN start frame for sequence of images")
+            ("ef",0,"can be NN end frame for sequence of images")
+            ("fps",0.0,"set fps for sequence of images")
             ;
     return ops;
 }

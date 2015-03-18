@@ -114,12 +114,28 @@ void ImageSequenceConfigPage::setFPS(double n){
     calculatePos();
 }
 
-void ImageSequenceConfigPage::setTotalFrames(int n){
+
+
+void ImageSequenceConfigPage::setStartFrame(quint32 n){
+    startFrame = n;
+    if (startFrame) {
+        emit toggleRepeat(true);
+        calculatePos();
+    }
+}
+
+void ImageSequenceConfigPage::setEndFrame(quint32 n){
+  mpTotalFramesBox->setValue(startFrame+n);
+  setTotalFrames(startFrame+n);
+}
+
+void ImageSequenceConfigPage::setTotalFrames(quint32 n){
   frames = n;
   calculatePos();
 }
 
 void ImageSequenceConfigPage::calculatePos(){
+     qDebug()<<"calculatePos frames"<<frames;
     if (frames<1)
         return;
     startPos=startFrame*(1000UL/fps);
@@ -128,6 +144,7 @@ void ImageSequenceConfigPage::calculatePos(){
     QTime mRepeatB = QTime(0, 0, 0).addMSecs(stopPos);
     if (startPos) emit repeatAChanged(mRepeatA);
     if (stopPos) emit repeatBChanged(mRepeatB);
+    qDebug()<<"calculatePos"<<mRepeatA<<mRepeatB;
 }
 
 void ImageSequenceConfigPage::setMovieDuration(qint64 d){

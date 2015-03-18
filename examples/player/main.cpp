@@ -174,6 +174,34 @@ int main(int argc, char *argv[])
 
     window.enableAudio(options.value("ao").toString() != "null");
 
+    op = options.option("sf");
+    if (op.isSet()) {
+        int sf = op.value().toULongLong(0);
+        if (sf){
+            qDebug()<<"Start frame for sequence"<<sf;
+            window.setStartSequenceFrame(sf);
+        }
+    }
+
+    op = options.option("ef");
+    if (op.isSet()) {
+        int ef = op.value().toULongLong(0);
+        if (ef){
+            qDebug()<<"End frame for sequence"<<ef;
+            window.setEndSequenceFrame(ef);
+        }
+    }
+
+    op = options.option("fps");
+    if (op.isSet()) {
+        double fps = op.value().toDouble(0);
+        if (fps>0.0){
+            qDebug()<<"fps for sequence"<<fps;
+            window.setFpsSequenceFrame(fps);
+        }
+    }
+
+
     op = options.option("vd");
     if (op.isSet()) {
         QStringList vd = op.value().toString().split(";", QString::SkipEmptyParts);

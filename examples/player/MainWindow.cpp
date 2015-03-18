@@ -831,6 +831,23 @@ void MainWindow::play(const QUrl &url)
     play(QUrl::fromPercentEncoding(url.toEncoded()));
 }
 
+
+void MainWindow::setFpsSequenceFrame(const double fps)
+{
+    //TODO Crash
+   // if (mpImageSequence) mpImageSequence->setFPS(fps);
+}
+
+void MainWindow::setStartSequenceFrame(const quint32 sf)
+{
+    if (mpImageSequence) mpImageSequence->setStartFrame(sf);
+}
+
+void MainWindow::setEndSequenceFrame(const quint32 ef)
+{
+    if (mpImageSequence) mpImageSequence->setEndFrame(ef);
+}
+
 void MainWindow::setVideoDecoderNames(const QStringList &vd)
 {
     QStringList vdnames;
@@ -1049,20 +1066,20 @@ void MainWindow::onPositionChange(qint64 pos)
 
 void MainWindow::repeatAChanged(const QTime& t)
 {
+    mpRepeatA->setTime(t);
     if (!mpPlayer)
         return;
-    mpRepeatA->setTime(t);
     mpPlayer->setStartPosition(QTime(0, 0, 0).msecsTo(t));
 }
 
 void MainWindow::repeatBChanged(const QTime& t)
 {
-    if (!mpPlayer)
-        return;
     // when this slot is called? even if only range is set?
     if (t <= mpRepeatA->time())
         return;
     mpRepeatB->setTime(t);
+    if (!mpPlayer)
+        return;
     mpPlayer->setStopPosition(QTime(0, 0, 0).msecsTo(t));
 }
 
