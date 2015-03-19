@@ -405,7 +405,7 @@ void MainWindow::setupUi()
     mpRepeatEnableAction->setCheckable(true);
     connect(mpRepeatEnableAction, SIGNAL(toggled(bool)), SLOT(toggleRepeat(bool)));
     // TODO: move to a func or class
-    mpRepeatLoop = new QCheckBox(tr("Loop"), this);
+    mpRepeatLoop = new QCheckBox(tr("Continuous Loop"), this);
     connect(mpRepeatLoop, SIGNAL(stateChanged(int)), SLOT(RepeatLoopChanged(int)));
     mpRepeatBox = new QSpinBox(0);
     mpRepeatBox->setMinimum(-1);
