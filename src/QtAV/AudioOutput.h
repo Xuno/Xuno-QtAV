@@ -52,43 +52,28 @@ class Q_AV_EXPORT AudioOutput : public QObject, public AVOutput
 {
     Q_OBJECT
     DPTR_DECLARE_PRIVATE(AudioOutput)
-    Q_ENUMS(BufferControl)
-    Q_FLAGS(BufferControls)
-    Q_ENUMS(Feature)
-    Q_FLAGS(Features)
+    Q_ENUMS(DeviceFeature)
+    Q_FLAGS(DeviceFeatures)
     Q_PROPERTY(qreal volume READ volume WRITE setVolume NOTIFY volumeChanged)
     Q_PROPERTY(bool mute READ isMute WRITE setMute NOTIFY muteChanged)
-    Q_PROPERTY(Feature features READ features WRITE setFeatures NOTIFY featuresChanged)
+    Q_PROPERTY(DeviceFeatures deviceFeatures READ deviceFeatures WRITE setDeviceFeatures NOTIFY deviceFeaturesChanged)
 public:
     /*!
-     * \brief The BufferControl enum
-     * Used to adapt to different audio playback backend. Usually you don't need this in application level development.
-    */
-    enum BufferControl {
-        User = 0,    // You have to reimplement waitForNextBuffer()
-        Blocking = 1,
-        Callback = 1 << 1,
-        PlayedCount = 1 << 2, //number of buffers played since last buffer dequeued
-        PlayedBytes = 1 << 3,
-        OffsetIndex = 1 << 4, //current playing offset
-        OffsetBytes = 1 << 5, //current playing offset by bytes
-    };
-    Q_DECLARE_FLAGS(BufferControls, BufferControl)
-    /*!
-     * \brief The Feature enum
-     * features supported by the audio playback api
+     * \brief DeviceFeature Feature enum
+     * features supported by the audio playback api (we call device or backend here)
      */
-    enum Feature {
+    enum DeviceFeature {
+        NoFeature = 0,
         SetVolume = 1, /// NOT IMPLEMENTED. Use backend volume control api rather than software scale. Ignore if backend does not support.
         SetMute = 1 << 1, /// NOT IMPLEMENTED
         SetSampleRate = 1 << 2, /// NOT IMPLEMENTED
     };
-    Q_DECLARE_FLAGS(Features, Feature)
+    Q_DECLARE_FLAGS(DeviceFeatures, DeviceFeature)
     /*!
      * \brief AudioOutput
      * Audio format set to preferred sample format and channel layout
      */
-    AudioOutput();
+    AudioOutput(QObject *parent = 0);
     virtual ~AudioOutput();
     virtual bool open() = 0;
     virtual bool close() = 0;
@@ -101,10 +86,6 @@ public:
      * \return true if play successfully
      */
     bool play(const QByteArray& data, qreal pts = 0.0);
-    /*!
-     * \brief setAudioFormat
-     * Remain the old value if not supported
-     */
     void setAudioFormat(const AudioFormat& format);
     AudioFormat& audioFormat();
     const AudioFormat& audioFormat() const;
@@ -117,11 +98,17 @@ public:
      * \brief setVolume
      * Set volume level.
      * If SetVolume feature is not set or not supported, software implemention will be used.
+     * Call this after open(), because it will call backend api if SetVolume feature is enabled
      * \param volume linear. 1.0: original volume.
      */
     void setVolume(qreal volume);
     qreal volume() const;
-    void setMute(bool value);
+    /*!
+     * \brief setMute
+     * If SetMute feature is not set or not supported, software implemention will be used.
+     * Call this after open(), because it will call backend api if SetMute feature is enabled
+     */
+    void setMute(bool value = true);
     bool isMute() const;
     /*!
      * \brief setSpeed  set audio playing speed
@@ -134,7 +121,6 @@ public:
      */
     void setSpeed(qreal speed);
     qreal speed() const;
-
     /*!
      * \brief isSupported
      *  check \a isSupported(format.sampleFormat()) and \a isSupported(format.channelLayout())
@@ -155,7 +141,6 @@ public:
      * \return the preferred channel layout. default is stero
      */
     virtual AudioFormat::ChannelLayout preferredChannelLayout() const;
-
     /*!
      * \brief bufferSize
      * chunk size that audio output accept. feed the audio output this size of data every time
@@ -166,45 +151,56 @@ public:
     int bufferCount() const;
     void setBufferCount(int value);
     int bufferSizeTotal() const { return bufferCount() * bufferSize();}
-
-    void setBufferControl(BufferControl value);
-    BufferControl bufferControl() const;
     /*!
-     * \brief supportedBufferControl
-     * \return default is User
+     * \brief setDeviceFeatures
+     * Unsupported features will not be set.
+     * You can call this in a backend ctor.
      */
-    virtual BufferControl supportedBufferControl() const;
+    void setDeviceFeatures(DeviceFeatures value);
     /*!
-     * \brief setFeatures
-     * do nothing if onSetFeatures() returns false, which means current api does not support the features
-     * call this in the ctor of your new backend
-     * TODO: return features set successfully
+     * \brief deviceFeatures
+     * \return features set by setFeatures() excluding unsupported features
      */
-    void setFeatures(Feature value);
-    Feature features() const;
-    void setFeature(Feature value, bool on = true);
-    bool hasFeatures(Feature value) const;
-    //TODO: virtual Features supportedFeatures() const;
+    DeviceFeatures deviceFeatures() const;
+    /*!
+     * \brief supportedDeviceFeatures
+     * Supported features of the backend, defined by AudioOutput(DeviceFeatures,AudioOutput&,QObject*) in a backend ctor
+     */
+    DeviceFeatures supportedDeviceFeatures() const;
     qreal timestamp() const;
-    // Internal use since QtAV 1.5
-    virtual bool play() = 0; //MUST
-    /*!
-     * \brief waitForNextBuffer
-     * wait until you can feed more data
-     * Internal use since QtAV 1.5
-     */
-    virtual void waitForNextBuffer();
-    // Internal use since QtAV 1.5. store and fill data to audio buffers
-    QTAV_DEPRECATED bool receiveData(const QByteArray &data, qreal pts = 0.0);
     // timestamp of current playing data
 signals:
     void volumeChanged(qreal);
     void muteChanged(bool);
-    void featuresChanged();
+    void deviceFeaturesChanged();
 protected:
+    void playInitialData(); //required by some backends, e.g. openal
+    // Store and fill data to audio buffers
+    bool receiveData(const QByteArray &data, qreal pts = 0.0);
+    /*!
+     * \brief waitForNextBuffer
+     * wait until you can feed more data
+     */
+    virtual void waitForNextBuffer();
     virtual bool write(const QByteArray& data) = 0; //MUST
+    virtual bool play() = 0; //MUST
+    /*!
+     * \brief The BufferControl enum
+     * Used to adapt to different audio playback backend. Usually you don't need this in application level development.
+    */
+    enum BufferControl {
+        User = 0,    // You have to reimplement waitForNextBuffer()
+        Blocking = 1,
+        Callback = 1 << 1,
+        PlayedCount = 1 << 2, //number of buffers played since last buffer dequeued
+        PlayedBytes = 1 << 3,
+        OffsetIndex = 1 << 4, //current playing offset
+        OffsetBytes = 1 << 5, //current playing offset by bytes
+        WritableBytes = 1 << 6,
+    };
+    virtual BufferControl bufferControl() const = 0;
     // called by callback with Callback control
-    void onCallback();
+    void onCallback(); // virtual?
     //default return -1. means not the control
     virtual int getPlayedCount(); //PlayedCount
     /*!
@@ -215,9 +211,7 @@ protected:
     virtual int getPlayedBytes(); // PlayedBytes
     virtual int getOffset();      // OffsetIndex
     virtual int getOffsetByBytes(); // OffsetBytes
-    // \return false by default
-    // TODO: bool onSetFeature(Feature f, bool s);
-    virtual bool onSetFeatures(Feature value, bool set = true); // TODO: remove
+    virtual int getWritableBytes(); //WritableBytes
     /*!
      * \brief deviceSetVolume
      * Set volume by backend api. If backend can not set the given volume, or SetVolume feature is not set, software implemention will be used.
@@ -231,7 +225,22 @@ protected:
     // reset internal status. MUST call this at the begining of open()
     void resetStatus();
 
-    AudioOutput(AudioOutputPrivate& d);
+    /*!
+     * \brief AudioOutput
+     * Specify supported features for the backend. Use this for new backends.
+     */
+    AudioOutput(DeviceFeatures featuresSupported, AudioOutputPrivate& d, QObject *parent = 0);
+
+private:
+    /*
+     * \brief reportVolume
+     * Volume can be changed by per-app volume control from system outside this library. Useful for synchronizing ui to system.
+     * Volume control from QtAV may invoke it too. And it may be invoked even if volume is not changed.
+     * If volume changed, signal volumeChanged() will be emitted and volume() will be updated.
+     * Only supported by some backends, e.g. pulseaudio
+     */
+    Q_INVOKABLE void reportVolume(qreal value);
+    Q_INVOKABLE void reportMute(bool value);
 };
 
 } //namespace QtAV

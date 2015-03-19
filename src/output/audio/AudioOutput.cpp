@@ -105,18 +105,21 @@ void AudioOutputPrivate::updateSampleScaleFunc()
     scale_samples = get_scaler(format.sampleFormat(), vol, &volume_i);
 }
 
-AudioOutput::AudioOutput()
-    :AVOutput(*new AudioOutputPrivate())
+AudioOutput::AudioOutput(QObject* parent)
+    : QObject(parent)
+    , AVOutput(*new AudioOutputPrivate())
 {
     d_func().format.setSampleFormat(AudioFormat::SampleFormat_Signed16);
     d_func().format.setChannelLayout(AudioFormat::ChannelLayout_Stero);
 }
 
-AudioOutput::AudioOutput(AudioOutputPrivate &d)
-    :AVOutput(d)
+AudioOutput::AudioOutput(DeviceFeatures featuresSupported, AudioOutputPrivate& d, QObject *parent)
+    : QObject(parent)
+    , AVOutput(d)
 {
     d_func().format.setSampleFormat(AudioFormat::SampleFormat_Signed16);
     d_func().format.setChannelLayout(AudioFormat::ChannelLayout_Stero);
+    d_func().supported_features = featuresSupported;
 }
 
 AudioOutput::~AudioOutput()
@@ -125,9 +128,23 @@ AudioOutput::~AudioOutput()
 
 bool AudioOutput::play(const QByteArray &data, qreal pts)
 {
-    waitForNextBuffer();
     receiveData(data, pts);
     return play();
+}
+
+void AudioOutput::playInitialData()
+{
+    DPTR_D(AudioOutput);
+    const char c = (d.format.sampleFormat() == AudioFormat::SampleFormat_Unsigned8
+                    || d.format.sampleFormat() == AudioFormat::SampleFormat_Unsigned8Planar)
+            ? 0x80 : 0;
+    for (int i = 1; i < bufferCount(); ++i) {
+        write(QByteArray(bufferSize(), c)); // fill silence byte, not always 0. AudioFormat.silenceByte
+        d.nextEnqueueInfo().data_size = sizeof(bufferSize());
+        d.nextEnqueueInfo().timestamp = 0;
+        d.bufferAdded();
+    }
+    play();
 }
 
 bool AudioOutput::receiveData(const QByteArray &data, qreal pts)
@@ -142,7 +159,11 @@ bool AudioOutput::receiveData(const QByteArray &data, qreal pts)
         return false;
     d.data = data;
     if (isMute() && d.sw_mute) {
-        d.data.fill(0);
+        if (d.format.sampleFormat() == AudioFormat::SampleFormat_Unsigned8
+                || d.format.sampleFormat() == AudioFormat::SampleFormat_Unsigned8Planar)
+            d.data.fill(0x80);
+        else
+            d.data.fill(0);
     } else {
         if (!qFuzzyCompare(volume(), (qreal)1.0)
                 && d.sw_volume
@@ -154,6 +175,8 @@ bool AudioOutput::receiveData(const QByteArray &data, qreal pts)
             d.scale_samples(dst, dst, nb_samples, d.volume_i, volume());
         }
     }
+    // wait after all data processing finished to reduce time error
+    waitForNextBuffer();
     d.nextEnqueueInfo().data_size = data.size();
     d.nextEnqueueInfo().timestamp = pts;
     d.bufferAdded();
@@ -163,9 +186,7 @@ bool AudioOutput::receiveData(const QByteArray &data, qreal pts)
 void AudioOutput::setAudioFormat(const AudioFormat& format)
 {
     DPTR_D(AudioOutput);
-    if (!isSupported(format)) {
-        return;
-    }
+    // no support check because that may require an open device(AL) while this function is called before ao.open()
     if (d.format == format)
         return;
     d.updateSampleScaleFunc();
@@ -214,7 +235,7 @@ void AudioOutput::setVolume(qreal volume)
     d.vol = volume;
     emit volumeChanged(d.vol);
     d.updateSampleScaleFunc();
-    if (features() & SetVolume) {
+    if (deviceFeatures() & SetVolume) {
         d.sw_volume = !deviceSetVolume(d.vol);
         //if (!qFuzzyCompare(deviceGetVolume(), d.vol))
         //    d.sw_volume = true;
@@ -237,7 +258,7 @@ void AudioOutput::setMute(bool value)
         return;
     d.mute = value;
     emit muteChanged(value);
-    if (features() & SetMute)
+    if (deviceFeatures() & SetMute)
         d.sw_mute = !deviceSetMute(value);
     else
         d.sw_mute = true;
@@ -306,63 +327,27 @@ void AudioOutput::setBufferCount(int value)
     d_func().nb_buffers = value;
 }
 
-void AudioOutput::setBufferControl(BufferControl value)
+// no virtual functions inside because it can be called in ctor
+void AudioOutput::setDeviceFeatures(DeviceFeatures value)
 {
-    // check supported? it's virtual, but called in ctor
-    d_func().control = value;
-}
-
-AudioOutput::BufferControl AudioOutput::bufferControl() const
-{
-    return (AudioOutput::BufferControl)d_func().control;
-}
-
-AudioOutput::BufferControl AudioOutput::supportedBufferControl() const
-{
-    return AudioOutput::User;
-}
-
-void AudioOutput::setFeatures(Feature value)
-{
-    if (!onSetFeatures(value))
+    DPTR_D(AudioOutput);
+    //Qt5: QFlags::Int (int or uint)
+    const int s(supportedDeviceFeatures());
+    const int f(value);
+    if (d.features == (f & s))
         return;
-    if (hasFeatures(value))
-        return;
-    d_func().features = value;
-    emit featuresChanged();
+    d.features = (f & s);
+    emit deviceFeaturesChanged();
 }
 
-AudioOutput::Feature AudioOutput::features() const
+AudioOutput::DeviceFeatures AudioOutput::deviceFeatures() const
 {
-    return (Feature)d_func().features;
+    return (DeviceFeature)d_func().features;
 }
 
-void AudioOutput::setFeature(Feature value, bool on)
+AudioOutput::DeviceFeatures AudioOutput::supportedDeviceFeatures() const
 {
-    if (!onSetFeatures(value, on))
-        return;
-    if (on) {
-        if (hasFeatures(value))
-            return;
-        d_func().features |= value;
-    } else {
-        if (!hasFeatures(value))
-            return;
-        d_func().features &= ~value;
-    }
-    emit featuresChanged();
-}
-
-bool AudioOutput::hasFeatures(Feature value) const
-{
-    return ((Feature)d_func().features & value) == value;
-}
-
-bool AudioOutput::onSetFeatures(Feature value, bool set)
-{
-    Q_UNUSED(value);
-    Q_UNUSED(set);
-    return false;
+    return (DeviceFeature)d_func().supported_features;
 }
 
 void AudioOutput::resetStatus()
@@ -381,14 +366,25 @@ void AudioOutput::waitForNextBuffer()
     if (f & Blocking) {
         remove = 1;
     } else if (f & Callback) {
-        QMutexLocker lock(&d.mutex);
-        Q_UNUSED(lock);
-        d.cond.wait(&d.mutex);
-        remove = 1;
+        int processed = d.processed_remain;
+        d.processed_remain = getWritableBytes();
+        const int next = d.nextDequeueInfo().data_size;
+        //qDebug("remain: %d-%d, size: %d, next: %d", processed, d.processed_remain, d.data.size(), next);
+        while (d.processed_remain - processed < next || d.processed_remain < d.data.size()) { //implies next > 0
+            const qint64 us = d.format.durationForBytes(next - (d.processed_remain - processed));
+            QMutexLocker lock(&d.mutex);
+            Q_UNUSED(lock);
+            d.cond.wait(&d.mutex, us/1000LL);
+            d.processed_remain = getWritableBytes();
+        }
+        processed = d.processed_remain - processed;
+        d.processed_remain -= d.data.size(); //ensure d.processed_remain later is greater
+        remove = -processed; // processed_this_period
     } else if (f & PlayedBytes) {
         d.processed_remain = getPlayedBytes();
         const int next = d.nextDequeueInfo().data_size;
         // TODO: avoid always 0
+        // TODO: compare processed_remain with d.data.size because input chuncks can be in different sizes
         while (!no_wait && d.processed_remain < next) {
             const qint64 us = d.format.durationForBytes(next - d.processed_remain);
             if (us < 1000LL)
@@ -423,29 +419,28 @@ void AudioOutput::waitForNextBuffer()
         }
         // what if c always 0?
         remove = c;
-    } else if (f & OffsetBytes) {
+    } else if (f & OffsetBytes) { //TODO: similar to Callback+getWritableBytes()
         int s = getOffsetByBytes();
         int processed = s - d.play_pos;
+        //qDebug("s: %d, play_pos: %d, processed: %d, bufferSizeTotal: %d", s, d.play_pos, processed, bufferSizeTotal());
         if (processed < 0)
             processed += bufferSizeTotal();
         d.play_pos = s;
-        d.processed_remain += processed;
         const int next = d.nextDequeueInfo().data_size;
-        // TODO: avoid always 0
-        while (!no_wait && d.processed_remain < next && next > 0) {
-            const qint64 us = d.format.durationForBytes(next - d.processed_remain);
-            if (us < 1000LL)
-                d.uwait(10000LL);
-            else
-                d.uwait(us);
+        int writable_size = d.processed_remain + processed;
+        while (!no_wait && (/*processed < next ||*/ writable_size < d.data.size()) && next > 0) {
+            const qint64 us = d.format.durationForBytes(next - writable_size);
+            d.uwait(us);
             s = getOffsetByBytes();
             processed += s - d.play_pos;
             if (processed < 0)
                 processed += bufferSizeTotal();
+            writable_size = d.processed_remain + processed;
             d.play_pos = s;
-            d.processed_remain += processed;
         }
-        remove = -d.processed_remain;
+        d.processed_remain += processed;
+        d.processed_remain -= d.data.size(); //ensure d.processed_remain later is greater
+        remove = -processed;
     } else if (f & OffsetIndex) {
         int n = getOffset();
         int processed = n - d.play_pos;
@@ -468,18 +463,23 @@ void AudioOutput::waitForNextBuffer()
         return;
     }
     if (remove < 0) {
-        //qDebug("remove bytes < %d", -remove);
         int next = d.nextDequeueInfo().data_size;
-        while (d.processed_remain > next && next > 0) {
-            d.processed_remain -= next;
-            d.bufferRemoved();
+        int free_bytes = -remove;//d.processed_remain;
+        while (free_bytes >= next && next > 0) {
+            free_bytes -= next;
+            if (!d.bufferRemoved()) {//|| d.processed_remain <= 0
+                qWarning("buffer queue empty");
+                break;
+            }
             next = d.nextDequeueInfo().data_size;
         }
+        //qDebug("remove: %d, unremoved bytes < %d, writable_bytes: %d", remove, free_bytes, d.processed_remain);
         return;
     }
     //qDebug("remove count: %d", remove);
     while (remove-- > 0) {
-        d.bufferRemoved();
+        if (!d.bufferRemoved())
+            break;
     }
 }
 
@@ -516,6 +516,11 @@ int AudioOutput::getOffsetByBytes()
     return -1;
 }
 
+int AudioOutput::getWritableBytes()
+{
+    return -1;
+}
+
 bool AudioOutput::deviceSetVolume(qreal value)
 {
     Q_UNUSED(value)
@@ -533,4 +538,25 @@ bool AudioOutput::deviceSetMute(bool value)
     return false;
 }
 
+void AudioOutput::reportVolume(qreal value)
+{
+    if (qFuzzyCompare(value + 1.0, volume() + 1.0))
+        return;
+    DPTR_D(AudioOutput);
+    d.vol = value;
+    Q_EMIT volumeChanged(value);
+    // skip sw sample scale
+    d.sw_volume = false;
+}
+
+void AudioOutput::reportMute(bool value)
+{
+    if (value == isMute())
+        return;
+    DPTR_D(AudioOutput);
+    d.mute = value;
+    Q_EMIT muteChanged(value);
+    // skip sw sample scale
+    d.sw_mute = false;
+}
 } //namespace QtAV

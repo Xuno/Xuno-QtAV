@@ -87,6 +87,8 @@ AVPlayer::AVPlayer(QObject *parent) :
     //direct connection can not sure slot order?
     connect(d->read_thread, SIGNAL(finished()), this, SLOT(stopFromDemuxerThread()));
     connect(d->read_thread, SIGNAL(requestClockPause(bool)), masterClock(), SLOT(pause(bool)), Qt::DirectConnection);
+    connect(d->read_thread, SIGNAL(mediaStatusChanged(QtAV::MediaStatus)), this, SIGNAL(mediaStatusChanged(QtAV::MediaStatus)));
+    connect(d->read_thread, SIGNAL(bufferProgressChanged(qreal)), this, SIGNAL(bufferProgressChanged(qreal)));
 
     d->vcapture = new VideoCapture(this);
 }
@@ -236,9 +238,16 @@ qint64 AVPlayer::interruptTimeout() const
     return d->interrupt_timeout;
 }
 
-Statistics& AVPlayer::statistics()
+void AVPlayer::setFrameRate(qreal value)
 {
-    return d->statistics;
+    d->force_fps = value;
+    // clock set here will be reset in playInternal()
+    // also we can't change user's setting of ClockType and autoClock here if force frame rate is disabled.
+}
+
+qreal AVPlayer::forcedFrameRate() const
+{
+    return d->force_fps;
 }
 
 const Statistics& AVPlayer::statistics() const
@@ -1023,6 +1032,14 @@ void AVPlayer::playInternal()
     } else {
         masterClock()->reset();
     }
+    // TODO: add isVideo() or hasVideo()?
+    if (d->force_fps > 0 && d->demuxer.videoCodecContext() && d->vthread) {
+        masterClock()->setClockAuto(false);
+        masterClock()->setClockType(AVClock::VideoClock);
+        d->vthread->setFrameRate(d->force_fps);
+    } else {
+        d->vthread->setFrameRate(-1.0);
+    }
     if (masterClock()->isClockAuto()) {
         qDebug("auto select clock: audio > external");
         if (!d->demuxer.audioCodecContext() || !d->ao) {
@@ -1293,6 +1310,38 @@ void AVPlayer::setSeekType(SeekType type)
 SeekType AVPlayer::seekType() const
 {
     return d->seek_type;
+}
+
+qreal AVPlayer::bufferProgress() const
+{
+    const PacketBuffer* buf = d->read_thread->buffer();
+    return buf ? buf->bufferProgress() : 0;
+}
+
+int AVPlayer::buffered() const
+{
+    const PacketBuffer* buf = d->read_thread->buffer();
+    return buf ? buf->buffered() : 0;
+}
+
+void AVPlayer::setBufferMode(BufferMode mode)
+{
+    d->buffer_mode = mode;
+}
+
+BufferMode AVPlayer::bufferMode() const
+{
+    return d->buffer_mode;
+}
+
+void AVPlayer::setBufferValue(int value)
+{
+    d->buffer_value = value;
+}
+
+int AVPlayer::bufferValue() const
+{
+    return d->buffer_value;
 }
 
 void AVPlayer::updateClock(qint64 msecs)

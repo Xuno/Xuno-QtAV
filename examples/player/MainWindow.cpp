@@ -77,7 +77,7 @@
 #define IMGSEQOPENGL 0
 
 using namespace QtAV;
-const qreal kVolumeInterval = 0.05;
+const qreal kVolumeInterval = 0.04;
 
 extern QStringList idsToNames(QVector<VideoDecoderId> ids);
 extern QVector<VideoDecoderId> idsFromNames(const QStringList& names);
@@ -178,12 +178,14 @@ void MainWindow::initPlayer()
     connect(mpVolumeSlider, SIGNAL(valueChanged(int)), SLOT(setVolume()));
 
     connect(mpPlayer, SIGNAL(mediaStatusChanged(QtAV::MediaStatus)), SLOT(onMediaStatusChanged()));
+    connect(mpPlayer, SIGNAL(bufferProgressChanged(qreal)), SLOT(onBufferProgress(qreal)));
     connect(mpPlayer, SIGNAL(error(QtAV::AVError)), this, SLOT(handleError(QtAV::AVError)));
     connect(mpPlayer, SIGNAL(started()), this, SLOT(onStartPlay()));
     connect(mpPlayer, SIGNAL(stopped()), this, SLOT(onStopPlay()));
     connect(mpPlayer, SIGNAL(paused(bool)), this, SLOT(onPaused(bool)));
     connect(mpPlayer, SIGNAL(speedChanged(qreal)), this, SLOT(onSpeedChange(qreal)));
     connect(mpPlayer, SIGNAL(positionChanged(qint64)), this, SLOT(onPositionChange(qint64)));
+    //connect(mpPlayer, SIGNAL(volumeChanged(qreal)), SLOT(syncVolumeUi(qreal)));
     connect(mpVideoEQ, SIGNAL(brightnessChanged(int)), this, SLOT(onBrightnessChanged(int)));
     connect(mpVideoEQ, SIGNAL(contrastChanged(int)), this, SLOT(onContrastChanged(int)));
     connect(mpVideoEQ, SIGNAL(hueChanegd(int)), this, SLOT(onHueChanged(int)));
@@ -804,6 +806,7 @@ void MainWindow::play(const QString &name)
     }
 
     setWindowTitle(mTitle);
+    mpPlayer->setFrameRate(Config::instance().forceFrameRate());
     mpPlayer->enableAudio(!mNullAO);
     if (!mpRepeatEnableAction->isChecked())
         mRepeateMax = 0;
@@ -972,6 +975,7 @@ void MainWindow::onStopPlay()
     if (mpPlayer->currentRepeat() < mpPlayer->repeat())
         return;
     // use shortcut to replay in EventFilter, the options will not be set, so set here
+    mpPlayer->setFrameRate(Config::instance().forceFrameRate());
     mpPlayer->setOptionsForAudioCodec(mpDecoderConfigPage->audioDecoderOptions());
     mpPlayer->setOptionsForVideoCodec(mpDecoderConfigPage->videoDecoderOptions());
     //mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
@@ -1033,7 +1037,9 @@ void MainWindow::setVolume()
     //qreal v = qreal(mpVolumeSlider->value())*kVolumeInterval;
     qreal v = qreal(mpVolumeSlider->value())/100.;
     if (ao) {
-        ao->setVolume(v);
+        if (qAbs(int(ao->volume()/kVolumeInterval) - mpVolumeSlider->value()) >= int(0.1/kVolumeInterval)) {
+            ao->setVolume(v);
+        }
     }
     mpVolumeSlider->setToolTip(QString::number(v));
     mpVolumeBtn->setToolTip(QString::number(v));
@@ -1397,7 +1403,7 @@ void MainWindow::onTimeSliderHover(int pos, int value)
 
 void MainWindow::onTimeSliderLeave()
 {
-    if (m_preview && m_preview)
+    if (m_preview && m_preview->isVisible())
         m_preview->hide();
 }
 
@@ -1434,7 +1440,12 @@ void MainWindow::onMediaStatusChanged()
         onStopPlay();
         break;
     }
-    setWindowTitle(status);
+    setWindowTitle(status + " " + mTitle);
+}
+
+void MainWindow::onBufferProgress(qreal percent)
+{
+    setWindowTitle(QString("Buffering... %1% ").arg(percent*100.0, 0, 'f', 1) + mTitle);
 }
 
 void MainWindow::onVideoEQEngineChanged()
@@ -1628,6 +1639,14 @@ void MainWindow::changeClockType(QAction *action)
     }
     mpPlayer->masterClock()->setClockAuto(false);
     mpPlayer->masterClock()->setClockType(AVClock::ClockType(value));
+}
+
+void MainWindow::syncVolumeUi(qreal value)
+{
+    const int v(value/kVolumeInterval);
+    if (mpVolumeSlider->value() == v)
+        return;
+    mpVolumeSlider->setValue(v);
 }
 
 void MainWindow::workaroundRendererSize()

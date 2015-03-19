@@ -265,7 +265,8 @@ VideoFrame VideoDecoderFFmpegHW::copyToFrame(const VideoFormat& fmt, int surface
         // TODO: buffer pool and create VideoFrame when needed to avoid copy? also for other va
         frame = frame.clone();
     }
-    frame.setTimestamp(d.frame->pkt_pts);
+    frame.setTimestamp(double(d.frame->pkt_pts)/1000.0);
+    d.updateColorDetails(&frame);
     return frame;
 }
 

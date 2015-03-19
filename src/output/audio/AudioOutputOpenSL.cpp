@@ -1,6 +1,6 @@
 /******************************************************************************
-    AudioOutputOpenSL.cpp: description
-    Copyright (C) 2012-2014 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Media play library based on Qt and FFmpeg
+    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ class AudioOutputOpenSL : public AudioOutput
 {
     DPTR_DECLARE_PRIVATE(AudioOutputOpenSL)
 public:
-    AudioOutputOpenSL();
+    AudioOutputOpenSL(QObject *parent = 0);
     ~AudioOutputOpenSL();
 
     virtual bool isSupported(const AudioFormat& format) const;
@@ -40,12 +40,14 @@ public:
     virtual AudioFormat::ChannelLayout preferredChannelLayout() const;
     virtual bool open();
     virtual bool close();
-    virtual BufferControl supportedBufferControl() const;
-    virtual bool play();
 protected:
+    virtual BufferControl bufferControl() const;
     virtual bool write(const QByteArray& data);
+    virtual bool play();
     //default return -1. means not the control
     virtual int getPlayedCount();
+    static void bufferQueueCallback(SLBufferQueueItf bufferQueue, void *context);
+    static void playCallback(SLPlayItf player, void *ctx, SLuint32 event);
 };
 
 extern AudioOutputId AudioOutputId_OpenSL;
@@ -104,28 +106,10 @@ public:
         SL_RUN_CHECK(slCreateEngine(&engineObject, 0, 0, 0, 0, 0));
         SL_RUN_CHECK((*engineObject)->Realize(engineObject, SL_BOOLEAN_FALSE));
         SL_RUN_CHECK((*engineObject)->GetInterface(engineObject, SL_IID_ENGINE, &engine));
-        available = false;
     }
     ~AudioOutputOpenSLPrivate() {
         if (engineObject)
             (*engineObject)->Destroy(engineObject);
-    }
-    static void bufferQueueCallback(SLBufferQueueItf bufferQueue, void *context)
-    {
-        SLBufferQueueState state;
-        (*bufferQueue)->GetState(bufferQueue, &state);
-        //qDebug(">>>>>>>>>>>>>>bufferQueueCallback state.count=%lu .playIndex=%lu", state.count, state.playIndex);
-        AudioOutputOpenSLPrivate *priv = reinterpret_cast<AudioOutputOpenSLPrivate*>(context);
-        if (priv->control & AudioOutput::Callback) {
-            priv->onCallback();
-        }
-    }
-    static void playCallback(SLPlayItf player, void *ctx, SLuint32 event)
-    {
-        Q_UNUSED(player);
-        Q_UNUSED(ctx);
-        Q_UNUSED(event);
-        //qDebug("---------%s  event=%lu", __FUNCTION__, event);
     }
 
     SLObjectItf engineObject;
@@ -139,10 +123,28 @@ public:
     quint32 buffers_queued;
 };
 
-AudioOutputOpenSL::AudioOutputOpenSL()
-    :AudioOutput(*new AudioOutputOpenSLPrivate())
+void AudioOutputOpenSL::bufferQueueCallback(SLBufferQueueItf bufferQueue, void *context)
 {
-    setBufferControl(PlayedCount);
+    SLBufferQueueState state;
+    (*bufferQueue)->GetState(bufferQueue, &state);
+    //qDebug(">>>>>>>>>>>>>>bufferQueueCallback state.count=%lu .playIndex=%lu", state.count, state.playIndex);
+    AudioOutputOpenSL *ao = reinterpret_cast<AudioOutputOpenSL*>(context);
+    if (ao->bufferControl() & AudioOutput::Callback) {
+        ao->onCallback();
+    }
+}
+
+void AudioOutputOpenSL::playCallback(SLPlayItf player, void *ctx, SLuint32 event)
+{
+    Q_UNUSED(player);
+    Q_UNUSED(ctx);
+    Q_UNUSED(event);
+    //qDebug("---------%s  event=%lu", __FUNCTION__, event);
+}
+
+AudioOutputOpenSL::AudioOutputOpenSL(QObject *parent)
+    :AudioOutput(NoFeature, *new AudioOutputOpenSLPrivate(), parent)
+{
 }
 
 AudioOutputOpenSL::~AudioOutputOpenSL()
@@ -174,15 +176,14 @@ AudioFormat::ChannelLayout AudioOutputOpenSL::preferredChannelLayout() const
     return AudioFormat::ChannelLayout_Stero;
 }
 
-AudioOutput::BufferControl AudioOutputOpenSL::supportedBufferControl() const
+AudioOutput::BufferControl AudioOutputOpenSL::bufferControl() const
 {
-    return BufferControl(Callback | PlayedCount);
+    return PlayedCount;//BufferControl(Callback | PlayedCount);
 }
 
 bool AudioOutputOpenSL::open()
 {
     DPTR_D(AudioOutputOpenSL);
-    d.available = false;
     resetStatus();
     SLDataLocator_BufferQueue bufferQueueLocator = { SL_DATALOCATOR_BUFFERQUEUE, (SLuint32)d.nb_buffers };
     SLDataFormat_PCM pcmFormat = audioFormatToSL(audioFormat());
@@ -200,11 +201,11 @@ bool AudioOutputOpenSL::open()
     SL_RUN_CHECK_FALSE((*d.m_playerObject)->Realize(d.m_playerObject, SL_BOOLEAN_FALSE));
     // Buffer interface
     SL_RUN_CHECK_FALSE((*d.m_playerObject)->GetInterface(d.m_playerObject, SL_IID_BUFFERQUEUE, &d.m_bufferQueueItf));
-    SL_RUN_CHECK_FALSE((*d.m_bufferQueueItf)->RegisterCallback(d.m_bufferQueueItf, AudioOutputOpenSLPrivate::bufferQueueCallback, &d));
+    SL_RUN_CHECK_FALSE((*d.m_bufferQueueItf)->RegisterCallback(d.m_bufferQueueItf, AudioOutputOpenSL::bufferQueueCallback, &d));
     // Play interface
     SL_RUN_CHECK_FALSE((*d.m_playerObject)->GetInterface(d.m_playerObject, SL_IID_PLAY, &d.m_playItf));
     // call when SL_PLAYSTATE_STOPPED
-    SL_RUN_CHECK_FALSE((*d.m_playItf)->RegisterCallback(d.m_playItf, AudioOutputOpenSLPrivate::playCallback, this));
+    SL_RUN_CHECK_FALSE((*d.m_playItf)->RegisterCallback(d.m_playItf, AudioOutputOpenSL::playCallback, this));
 
 #if 0
     SLuint32 mask = SL_PLAYEVENT_HEADATEND;
@@ -214,26 +215,14 @@ bool AudioOutputOpenSL::open()
 #endif
     // Volume interface
     //SL_RUN_CHECK_FALSE((*d.m_playerObject)->GetInterface(d.m_playerObject, SL_IID_VOLUME, &d.m_volumeItf));
-
-    const int kBufferSize = 1024*4;
-    static char init_data[kBufferSize];
-    memset(init_data, 0, sizeof(init_data));
-    for (quint32 i = 0; i < d.nb_buffers; ++i) {
-        SL_RUN_CHECK_FALSE((*d.m_bufferQueueItf)->Enqueue(d.m_bufferQueueItf, init_data, sizeof(init_data)));
-        d.nextEnqueueInfo().data_size = sizeof(init_data);
-        d.nextEnqueueInfo().timestamp = 0;
-        d.bufferAdded();
-        d.buffers_queued++;
-    }
-    SL_RUN_CHECK_FALSE((*d.m_playItf)->SetPlayState(d.m_playItf, SL_PLAYSTATE_PLAYING));
     d.available = true;
+    playInitialData();
     return true;
 }
 
 bool AudioOutputOpenSL::close()
 {
     DPTR_D(AudioOutputOpenSL);
-    d.available = false;
     resetStatus();
     if (d.m_playItf)
         (*d.m_playItf)->SetPlayState(d.m_playItf, SL_PLAYSTATE_STOPPED);

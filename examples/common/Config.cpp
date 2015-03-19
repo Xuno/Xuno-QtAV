@@ -46,6 +46,7 @@ public:
 
     void load() {
         QSettings settings(file, QSettings::IniFormat);
+        force_fps = settings.value("force_fps", 0.0).toReal();
         settings.beginGroup("decoder");
         settings.beginGroup("video");
         QString decs_default("FFmpeg");
@@ -108,6 +109,7 @@ public:
     void save() {
         qDebug() << "sync config to " << file;
         QSettings settings(file, QSettings::IniFormat);
+        settings.setValue("force_fps", force_fps);
         settings.beginGroup("decoder");
         settings.beginGroup("video");
         settings.setValue("priority", video_decoders.join(" "));
@@ -149,6 +151,7 @@ public:
     QString dir;
     QString file;
 
+    qreal force_fps;
     QStringList video_decoders;
 
     QString capture_dir;
@@ -219,6 +222,20 @@ void Config::reload()
     emit captureFormatChanged(mpData->capture_fmt);
     emit captureQualityChanged(mpData->capture_quality);
     emit weblinksChanged();
+}
+
+qreal Config::forceFrameRate() const
+{
+    return mpData->force_fps;
+}
+
+Config& Config::setForceFrameRate(qreal value)
+{
+    if (mpData->force_fps == value)
+        return *this;
+    mpData->force_fps = value;
+    emit forceFrameRateChanged();
+    return *this;
 }
 
 QStringList Config::decoderPriorityNames() const

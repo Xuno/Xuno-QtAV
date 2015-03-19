@@ -40,6 +40,12 @@ enum MediaStatus
     InvalidMedia // what if loop > 0 or stopPosition() is not mediaStopPosition()?
 };
 
+enum BufferMode {
+    BufferTime,
+    BufferBytes,
+    BufferPackets
+};
+
 enum SeekUnit {
     SeekByTime, // only this is supported now
     SeekByByte,
@@ -49,6 +55,16 @@ enum SeekType {
     AccurateSeek, // slow
     KeyFrameSeek, // fast
     AnyFrameSeek
+};
+
+//http://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.709-5-200204-I!!PDF-E.pdf
+// TODO: other color spaces (yuv itu.xxxx, XYZ, ...)
+enum ColorSpace {
+    ColorSpace_Unknow,
+    ColorSpace_RGB,
+    ColorSpace_GBR, // for planar gbr format(e.g. video from x264) used in glsl
+    ColorSpace_BT601,
+    ColorSpace_BT709
 };
 
 enum SurfaceType {

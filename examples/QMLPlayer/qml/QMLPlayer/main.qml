@@ -96,6 +96,18 @@ Rectangle {
                 msg.error(errorString)
             }
         }
+        onVolumeChanged: {
+            if (Math.abs(control.volume - value) >= 0.01) {
+                control.volume = value
+            }
+        }
+        onStatusChanged: {
+            if (status == MediaPlayer.LoadingMedia)
+                msg.info("Loading " + source)
+        }
+        onBufferProgressChanged: {
+            msg.info("Buffering " + Math.floor(bufferProgress*100) + "%...")
+        }
     }
     Subtitle {
         id: subtitle
@@ -198,7 +210,7 @@ Rectangle {
                 player.play()
             }
         }
-        onVolumeChanged: player.volume = volume
+        volume: player.volume
         onOpenFile: fileDialog.open()
         onShowInfo: pageLoader.source = "MediaInfoPage.qml"
         onShowHelp: pageLoader.source = "About.qml"

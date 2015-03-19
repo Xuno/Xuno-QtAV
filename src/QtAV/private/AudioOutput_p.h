@@ -24,7 +24,7 @@
 #define QTAV_AUDIOOUTPUT_P_H
 
 #include <QtAV/private/AVOutput_p.h>
-#include <QtAV/AudioFrame.h>
+#include <QtAV/AudioFormat.h>
 #include <QtCore/QQueue>
 #include <QtCore/QVector>
 #include <limits>
@@ -55,14 +55,15 @@ public:
       , speed(1.0)
       , nb_buffers(8)
       , buffer_size(kBufferSize)
-      , control(0)
       , features(0)
+      , supported_features(0)
       , play_pos(0)
       , processed_remain(0)
       , scale_samples(0)
       , index_enqueue(-1)
       , index_deuqueue(-1)
     {
+        available = false;
         frame_infos.resize(nb_buffers);
     }
     virtual ~AudioOutputPrivate(){}
@@ -74,7 +75,7 @@ public:
         cond.wait(&mutex, (us+500LL)/1000LL);
     }
 
-    int bufferSizeTotal() { return nb_buffers * kBufferSize; }
+    int bufferSizeTotal() { return nb_buffers * buffer_size; }
     typedef struct {
         qreal timestamp;
         int data_size;
@@ -112,17 +113,18 @@ public:
     bool canRemoveBuffer() {
         return index_enqueue > index_deuqueue;
     }
-    void bufferRemoved() {
+    bool bufferRemoved() {
         if (index_deuqueue == index_enqueue)
-            return;
+            return false;
         if (index_deuqueue < 0 || index_deuqueue == std::numeric_limits<int>::max())
             index_deuqueue = 0;
         else
             ++index_deuqueue;
-        return;
+        return true;
         index_deuqueue = (index_deuqueue + 1) % frame_infos.size();
     }
     void resetStatus() {
+        available = false;
         play_pos = 0;
         processed_remain = 0;
 #if AO_USE_TIMER
@@ -142,11 +144,11 @@ public:
     qreal speed;
     AudioFormat format;
     QByteArray data;
-    AudioFrame audio_frame;
+    //AudioFrame audio_frame;
     quint32 nb_buffers;
     qint32 buffer_size;
-    int control;
     int features;
+    int supported_features;
     int play_pos; // index or bytes
     int processed_remain;
 #if AO_USE_TIMER

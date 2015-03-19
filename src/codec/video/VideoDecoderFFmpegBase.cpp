@@ -23,6 +23,17 @@
 #include "utils/Logger.h"
 
 namespace QtAV {
+
+extern ColorSpace colorSpaceFromFFmpeg(AVColorSpace cs);
+
+void VideoDecoderFFmpegBasePrivate::updateColorDetails(VideoFrame *f)
+{
+    ColorSpace cs = colorSpaceFromFFmpeg(av_frame_get_colorspace(frame));
+    if (cs != ColorSpace_Unknow)
+        cs = colorSpaceFromFFmpeg(codec_ctx->colorspace);
+    f->setColorSpace(cs);
+}
+
 VideoDecoderFFmpegBase::VideoDecoderFFmpegBase(VideoDecoderFFmpegBasePrivate &d):
     VideoDecoder(d)
 {
@@ -60,7 +71,7 @@ bool VideoDecoderFFmpegBase::decode(const QByteArray &encoded)
         return false;
     }
     if (!got_frame_ptr) {
-        qWarning("no frame could be decompressed: %s", av_err2str(ret));
+        //qWarning("no frame could be decompressed: %s", av_err2str(ret));
         return true;
     }
     if (!d.codec_ctx->width || !d.codec_ctx->height)
@@ -88,7 +99,7 @@ bool VideoDecoderFFmpegBase::decode(const Packet &packet)
         return false;
     }
     if (!got_frame_ptr) {
-        qWarning("no frame could be decompressed: %s", av_err2str(ret));
+        qWarning("no frame could be decompressed: %s %d/%d", av_err2str(ret), d.undecoded_size, packet.data.size());
         return true;
     }
     if (!d.codec_ctx->width || !d.codec_ctx->height)

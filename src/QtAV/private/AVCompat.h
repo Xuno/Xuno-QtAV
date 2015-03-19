@@ -24,10 +24,16 @@
 
 /*!
   NOTE: include this at last
-  TODO: runtime symble check use dllapi project? how ffmpeg version defined?
  */
 #define QTAV_USE_FFMPEG(MODULE) (MODULE##_VERSION_MICRO >= 100)
 #define QTAV_USE_LIBAV(MODULE)  !QTAV_USE_FFMPEG(MODULE)
+#define FFMPEG_MODULE_CHECK(MODULE, MAJOR, MINOR, MICRO) \
+    (QTAV_USE_FFMPEG(MODULE) && MODULE##_VERSION_INT >= AV_VERSION_INT(MAJOR, MINOR, MICRO))
+#define LIBAV_MODULE_CHECK(MODULE, MAJOR, MINOR, MICRO) \
+    (QTAV_USE_LIBAV(MODULE) && MODULE##_VERSION_INT >= AV_VERSION_INT(MAJOR, MINOR, MICRO))
+#define AV_MODULE_CHECK(MODULE, MAJOR, MINOR, MICRO, MINOR2, MICRO2) \
+    (LIBAV_MODULE_CHECK(MODULE, MAJOR, MINOR, MICRO) || FFMPEG_MODULE_CHECK(MODULE, MAJOR, MINOR2, MICRO2))
+
 #include "QtAV_Global.h"
 #ifdef __cplusplus
 extern "C"
@@ -44,7 +50,12 @@ extern "C"
 #include <libavutil/cpu.h>
 #include <libavutil/error.h>
 #include <libavutil/opt.h>
+#include <libavutil/parseutils.h>
 #include <libavutil/pixdesc.h>
+
+#if !FFMPEG_MODULE_CHECK(LIBAVUTIL, 51, 73, 101)
+#include <libavutil/channel_layout.h>
+#endif
 
 /* TODO: how to check whether we have swresample or not? how to check avresample?*/
 #include <libavutil/samplefmt.h>
@@ -79,22 +90,6 @@ extern "C"
 }
 #endif /*__cplusplus*/
 
-/* LIBAVCODEC_VERSION_CHECK checks for the right version of libav and FFmpeg
- * a is the major version
- * b and c the minor and micro versions of libav
- * d and e the minor and micro versions of FFmpeg */
-#define LIBAVCODEC_VERSION_CHECK( a, b, c, d, e ) \
-    ( (LIBAVCODEC_VERSION_MICRO <  100 && LIBAVCODEC_VERSION_INT >= AV_VERSION_INT( a, b, c ) ) || \
-      (LIBAVCODEC_VERSION_MICRO >= 100 && LIBAVCODEC_VERSION_INT >= AV_VERSION_INT( a, d, e ) ) )
-
-#define FFMPEG_MODULE_CHECK(MODULE, MAJOR, MINOR, MICRO) \
-    ( (MODULE##_VERSION_MICRO >= 100) && MODULE##_VERSION_INT >= AV_VERSION_INT(MAJOR, MINOR, MICRO) )
-#define LIBAV_MODULE_CHECK(MODULE, MAJOR, MINOR, MICRO) \
-    ( (MODULE##_VERSION_MICRO < 100) && MODULE##_VERSION_INT >= AV_VERSION_INT(MAJOR, MINOR, MICRO) )
-#define AV_MODULE_CHECK(MODULE, MAJOR, MINOR, MICRO, MINOR2, MICRO2) \
-    ( LIBAV_MODULE_CHECK(MODULE, MAJOR, MINOR, MICRO) || FFMPEG_MODULE_CHECK(MODULE, MAJOR, MINOR2, MICRO2))
-// TODO: confirm vlc's version check code
-
 /*!
  * Guide to uniform the api for different FFmpeg version(or other libraries)
  * We use the existing old api to simulater .
@@ -126,7 +121,9 @@ extern "C"
 
 void ffmpeg_version_print();
 
-
+#if !FFMPEG_MODULE_CHECK(LIBAVFORMAT, 56, 4, 101)
+int avio_feof(AVIOContext *s);
+#endif
 //TODO: always inline
 /* --gnu option of the RVCT compiler also defines __GNUC__ */
 #if defined(Q_CC_GNU) && !defined(Q_CC_RVCT)
@@ -309,7 +306,9 @@ typedef enum AVPixelFormat AVPixelFormat;
 #if !AV_MODULE_CHECK(LIBAVUTIL, 52, 3, 0, 13, 100)
 const AVPixFmtDescriptor *av_pix_fmt_desc_get(AVPixelFormat pix_fmt);
 #endif // !AV_MODULE_CHECK(LIBAVUTIL, 52, 3, 0, 13, 100)
-
+#if !FFMPEG_MODULE_CHECK(LIBAVUTIL, 52, 28, 101)
+enum AVColorSpace av_frame_get_colorspace(const AVFrame *frame);
+#endif
 /*
  * lavu 52.9.0 git 2c328a907978b61949fd20f7c991803174337855
  * FFmpeg >= 2.0.
@@ -338,7 +337,7 @@ int av_samples_copy(uint8_t **dst, uint8_t * const *src, int dst_offset,
 
 // < ffmpeg 1.0
 //#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(54, 59, 100)
-#if LIBAVCODEC_VERSION_CHECK(54, 25, 0, 51, 100)
+#if AV_MODULE_CHECK(LIBAVCODEC, 54, 25, 0, 51, 100)
 #define QTAV_CODEC_ID(X) AV_CODEC_ID_##X
 #else
 typedef enum CodecID AVCodecID;
@@ -350,7 +349,7 @@ typedef enum CodecID AVCodecID;
  * since libav10.0: 10.2 avcodec55.34.1, avutil-53.3.0
  * the same as avcodec_alloc_frame() (deprecated since 2.2). AVFrame was in avcodec.h, now in avutil/frame.h
  */
-#if !LIBAVCODEC_VERSION_CHECK(55, 34, 0, 18, 100)
+#if !AV_MODULE_CHECK(LIBAVCODEC, 55, 34, 0, 18, 100)
 #define av_frame_alloc() avcodec_alloc_frame()
 #if QTAV_USE_LIBAV(LIBAVCODEC) || FFMPEG_MODULE_CHECK(LIBAVCODEC, 54, 59, 100)
 #define av_frame_free(f) avcodec_free_frame(f)

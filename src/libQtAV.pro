@@ -15,7 +15,7 @@ CONFIG *= qtav-buildlib
 INCLUDEPATH += $$[QT_INSTALL_HEADERS]
 
 #mac: simd.prf will load qt_build_config and the result is soname will prefixed with QT_INSTALL_LIBS and link flag will append soname after QMAKE_LFLAGS_SONAME
-config_libcedarv: CONFIG *= config_simd #need by qt4 addSimdCompiler()
+config_libcedarv: CONFIG *= neon config_simd #need by qt4 addSimdCompiler(). neon or config_neon is required because tests/arch can not detect neon
 ## sse2 sse4_1 may be defined in Qt5 qmodule.pri but is not included. Qt4 defines sse and sse2
 sse4_1|config_sse4_1|contains(TARGET_ARCH_SUB, sse4.1): CONFIG *= sse4_1 config_simd
 sse2|config_sse2|contains(TARGET_ARCH_SUB, sse2): CONFIG *= sse2 config_simd
@@ -102,7 +102,7 @@ config_avdevice { #may depends on avfilter
     LIBS *= -lavdevice
     static_ffmpeg {
       win32 {
-        LIBS *= -lgdi32
+        LIBS *= -lgdi32 -loleaut32
       } else:mac:!ios { # static ffmpeg
         LIBS += -framework Foundation -framework QTKit -framework CoreMedia -framework QuartzCore -framework CoreGraphics \
                 -framework AVFoundation
@@ -159,6 +159,11 @@ config_opensl {
     DEFINES *= QTAV_HAVE_OPENSL=1
     LIBS += -lOpenSLES
 }
+config_pulseaudio {
+    SOURCES += output/audio/AudioOutputPulse.cpp
+    DEFINES *= QTAV_HAVE_PULSEAUDIO=1
+    LIBS += -lpulse
+}
 CONFIG += config_cuda #config_dllapi config_dllapi_cuda
 #CONFIG += config_cuda_link
 config_cuda {
@@ -207,7 +212,7 @@ macx:!ios: CONFIG += config_vda
 config_vda {
     DEFINES *= QTAV_HAVE_VDA=1
     SOURCES += codec/video/VideoDecoderVDA.cpp
-    LIBS += -framework VideoDecodeAcceleration -framework CoreVideo
+    LIBS += -framework VideoDecodeAcceleration -framework CoreVideo -framework CoreFoundation
 }
 
 config_gl|config_opengl {
@@ -280,6 +285,7 @@ SOURCES += \
     AudioResamplerTypes.cpp \
     codec/AVDecoder.cpp \
     codec/audio/AudioDecoder.cpp \
+    codec/audio/AudioDecoderFFmpeg.cpp \
     AVDemuxer.cpp \
     AVDemuxThread.cpp \
     ColorTransform.cpp \
@@ -292,6 +298,7 @@ SOURCES += \
     ImageConverter.cpp \
     ImageConverterFF.cpp \
     Packet.cpp \
+    PacketBuffer.cpp \
     AVError.cpp \
     AVPlayer.cpp \
     AVPlayerPrivate.cpp \
@@ -377,7 +384,6 @@ SDK_PRIVATE_HEADERS *= \
     QtAV/private/Filter_p.h \
     QtAV/private/Frame_p.h \
     QtAV/private/VideoShader_p.h \
-    QtAV/private/VideoDecoder_p.h \
     QtAV/private/VideoRenderer_p.h \
     QtAV/private/QPainterRenderer_p.h
 
@@ -391,6 +397,7 @@ HEADERS *= \
     AVThread.h \
     AVThread_p.h \
     AudioThread.h \
+    PacketBuffer.h \
     VideoThread.h \
     ImageConverter.h \
     ImageConverter_p.h \

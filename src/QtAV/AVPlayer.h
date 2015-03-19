@@ -48,6 +48,7 @@ class Q_AV_EXPORT AVPlayer : public QObject
     Q_PROPERTY(bool autoLoad READ isAutoLoad WRITE setAutoLoad NOTIFY autoLoadChanged)
     Q_PROPERTY(bool asyncLoad READ isAsyncLoad WRITE setAsyncLoad NOTIFY asyncLoadChanged)
     Q_PROPERTY(bool mute READ isMute WRITE setMute NOTIFY muteChanged)
+    Q_PROPERTY(qreal bufferProgress READ bufferProgress NOTIFY bufferProgressChanged)
     Q_PROPERTY(bool seekable READ isSeekable NOTIFY seekableChanged)
     Q_PROPERTY(qint64 position READ position WRITE setPosition NOTIFY positionChanged)
     Q_PROPERTY(qint64 startPosition READ startPosition WRITE setStartPosition NOTIFY startPositionChanged)
@@ -123,7 +124,7 @@ public:
     bool isAutoLoad() const; // NOT implemented
 
     MediaStatus mediaStatus() const;
-
+    // TODO: add hasAudio, hasVideo, isMusic(has pic)
     /*!
      * \brief relativeTimeMode
      * true (default): mediaStartPosition() is always 0. All time related API, for example setPosition(), position() and positionChanged()
@@ -211,7 +212,7 @@ public:
     AudioOutput* audio();
     void enableAudio(bool enable = true);
     void disableAudio(bool disable = true);
-    void setMute(bool mute);
+    void setMute(bool mute = true);
     bool isMute() const;
     /*!
      * \brief setSpeed set playing speed.
@@ -228,8 +229,18 @@ public:
      */
     void setInterruptTimeout(qint64 ms);
     qint64 interruptTimeout() const;
-
-    Statistics& statistics();
+    /*!
+     * \brief setFrameRate
+     * Force the (video) frame rate to a given value.
+     * Call it before playback start.
+     * If frame rate is set to a valid value(>0), the clock type will be set to
+     * User configuration of AVClock::ClockType and autoClock will be ignored.
+     * \param value <=0: ignore the value. normal playback ClockType and AVCloc
+     * >0: force to a given (video) frame rate
+     */
+    void setFrameRate(qreal value);
+    qreal forcedFrameRate() const;
+    //Statistics& statistics();
     const Statistics& statistics() const;
     /*
      * install the filter in AVThread. Filter will apply before rendering data
@@ -282,14 +293,16 @@ public:
 
 public slots:
     void togglePause();
-    void pause(bool p);
+    void pause(bool p = true);
     /*!
      * \brief play
      * If media is not loaded, load()
      */
     void play(); //replay
     void stop();
-    void playNextFrame();
+    void playNextFrame(); //deprecated
+    //void stepForward();
+    //void stepBackward();
 
     void setRelativeTimeMode(bool value);
     /*!
@@ -334,6 +347,28 @@ public slots:
     void seekBackward();
     void setSeekType(SeekType type);
     SeekType seekType() const;
+
+    /*!
+     * \brief bufferProgress
+     * How much the data buffer is currently filled. From 0.0 to 1.0.
+     * Playback can start or resume only when the buffer is entirely filled.
+     */
+    qreal bufferProgress() const;
+    /*!
+     * \brief buffered
+     * Current buffered value in msecs, bytes or packet count depending on bufferMode()
+     */
+    int buffered() const;
+    void setBufferMode(BufferMode mode);
+    BufferMode bufferMode() const;
+    /*!
+     * \brief setBufferValue
+     * Ensure the buffered msecs/bytes/packets in queue is at least the given value before playback starts
+     * \param value <0: auto; BufferBytes: bytes, BufferTime: msecs, BufferPackets: packets count
+     */
+    void setBufferValue(int value);
+    int bufferValue() const;
+
     /*!
      * \brief setNotifyInterval
      * The interval at which progress will update
@@ -350,6 +385,7 @@ public slots:
     void setSaturation(int val);
 
 signals:
+    void bufferProgressChanged(qreal);
     void relativeTimeModeChanged();
     void autoLoadChanged();
     void asyncLoadChanged();
@@ -374,7 +410,6 @@ signals:
     void contrastChanged(int val);
     void hueChanged(int val);
     void saturationChanged(int val);
-
 private slots:
     void loadInternal(); // simply load
     void unloadInternal();

@@ -80,6 +80,8 @@ AVPlayer::Private::Private()
     , audio_track(0)
     , video_track(0)
     , subtitle_track(0)
+    , buffer_mode(BufferPackets)
+    , buffer_value(-1)
     , read_thread(0)
     , clock(new AVClock(AVClock::AudioClock))
     , vo(0)
@@ -101,6 +103,7 @@ AVPlayer::Private::Private()
     , seek_target(0)
     , interrupt_timeout(30000)
     , mute(false)
+    , force_fps(0)
     , notify_interval(-500)
 {
     demuxer.setInterruptTimeout(interrupt_timeout);
@@ -122,6 +125,9 @@ AVPlayer::Private::Private()
 #endif //QTAV_HAVE(CEDARV)
             << VideoDecoderId_FFmpeg;
     ao_ids
+#if QTAV_HAVE(PULSEAUDIO)
+            << AudioOutputId_Pulse
+#endif
 #if QTAV_HAVE(OPENAL)
             << AudioOutputId_OpenAL
 #endif
@@ -216,8 +222,8 @@ void AVPlayer::Private::initCommonStatistics(int s, Statistics::Common *st, AVCo
     // AVCodecContext.codec_name is deprecated. use avcodec_get_name. check null avctx->codec?
     st->codec = avcodec_get_name(avctx->codec_id);
     st->codec_long = get_codec_long_name(avctx->codec_id);
-    st->total_time = QTime(0, 0, 0).addMSecs(stream->duration == AV_NOPTS_VALUE ? 0 : int(qreal(stream->duration)*av_q2d(stream->time_base)*1000.0));
-    st->start_time = QTime(0, 0, 0).addMSecs(stream->start_time == AV_NOPTS_VALUE ? 0 : int(qreal(stream->start_time)*av_q2d(stream->time_base)*1000.0));
+    st->total_time = QTime(0, 0, 0).addMSecs(stream->duration == (qint64)AV_NOPTS_VALUE ? 0 : int(qreal(stream->duration)*av_q2d(stream->time_base)*1000.0));
+    st->start_time = QTime(0, 0, 0).addMSecs(stream->start_time == (qint64)AV_NOPTS_VALUE ? 0 : int(qreal(stream->start_time)*av_q2d(stream->time_base)*1000.0));
     qDebug("codec: %s(%s)", qPrintable(st->codec), qPrintable(st->codec_long));
     st->bit_rate = avctx->bit_rate; //fmt_ctx
     st->frames = stream->nb_frames;
@@ -306,8 +312,8 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
         delete adec;
         adec = 0;
     }
-    adec = new AudioDecoder();
-    connect(adec, SIGNAL(error(QtAV::AVError)), player, SIGNAL(error(QtAV::AVError)));
+    adec = AudioDecoder::create("FFmpeg");
+    QObject::connect(adec, SIGNAL(error(QtAV::AVError)), player, SIGNAL(error(QtAV::AVError)));
     adec->setCodecContext(avctx);
     adec->setOptions(ac_opt);
     if (!adec->open()) {
@@ -321,7 +327,7 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
         foreach (AudioOutputId aoid, ao_ids) {
             qDebug("trying audio output '%s'", AudioOutputFactory::name(aoid).c_str());
             ao = AudioOutputFactory::create(aoid);
-            if (ao) {
+            if (ao) { //no open. open ao after format is set
                 qDebug("audio output found.");
                 break;
             }
@@ -344,7 +350,7 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
         //af.setChannels(avctx->channels);
         // FIXME: workaround. planar convertion crash now!
         if (af.isPlanar()) {
-            af.setSampleFormat(ao->preferredSampleFormat());
+            af.setSampleFormat(AudioFormat::packedSampleFormat(af.sampleFormat()));
         }
         if (!ao->isSupported(af)) {
             if (!ao->isSupported(af.sampleFormat())) {
@@ -368,11 +374,14 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
     }
     if (ao)
         adec->resampler()->setOutAudioFormat(ao->audioFormat());
+    // no need to set resampler if AudioFrame is used
+#if !USE_AUDIO_FRAME
     adec->resampler()->inAudioFormat().setSampleFormatFFmpeg(avctx->sample_fmt);
     adec->resampler()->inAudioFormat().setSampleRate(avctx->sample_rate);
     adec->resampler()->inAudioFormat().setChannels(avctx->channels);
     adec->resampler()->inAudioFormat().setChannelLayoutFFmpeg(avctx->channel_layout);
     adec->prepare();
+#endif
     if (!athread) {
         qDebug("new audio thread");
         athread = new AudioThread(player);
@@ -392,10 +401,14 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
     }
     athread->setDecoder(adec);
     player->setAudioOutput(ao);
-    int queue_min = 0.61803*qMax<qreal>(24.0, statistics.video_only.frame_rate);
-    int queue_max = int(1.61803*(qreal)queue_min); //about 1 second
-    athread->packetQueue()->setThreshold(queue_min);
-    athread->packetQueue()->setCapacity(queue_max);
+    const qreal fps = qMax<qreal>(24.0, statistics.video_only.frame_rate);
+    int bv = 0.6*fps;
+    if (buffer_mode == BufferTime)
+        bv = 600; //ms
+    else if (buffer_mode == BufferBytes)
+        bv = 1024;
+    athread->packetQueue()->setBufferMode(buffer_mode);
+    athread->packetQueue()->setBufferValue(buffer_value < 0 ? bv : buffer_value);
     initAudioStatistics(demuxer.audioStream());
     return true;
 }
@@ -442,7 +455,7 @@ bool AVPlayer::Private::setupVideoThread(AVPlayer *player)
         emit player->error(e);
         return false;
     }
-    connect(vdec, SIGNAL(error(QtAV::AVError)), player, SIGNAL(error(QtAV::AVError)));
+    QObject::connect(vdec, SIGNAL(error(QtAV::AVError)), player, SIGNAL(error(QtAV::AVError)));
     if (!vthread) {
         vthread = new VideoThread(player);
         vthread->setClock(clock);
@@ -462,10 +475,14 @@ bool AVPlayer::Private::setupVideoThread(AVPlayer *player)
     vthread->setBrightness(brightness);
     vthread->setContrast(contrast);
     vthread->setSaturation(saturation);
-    int queue_min = 0.61803*qMax<qreal>(24.0, statistics.video_only.frame_rate);
-    int queue_max = int(1.61803*(qreal)queue_min); //about 1 second
-    vthread->packetQueue()->setThreshold(queue_min);
-    vthread->packetQueue()->setCapacity(queue_max);
+    const qreal fps = qMax<qreal>(24.0, statistics.video_only.frame_rate);
+    int bv = 0.6*fps;
+    if (buffer_mode == BufferTime)
+        bv = 600; //ms
+    else if (buffer_mode == BufferBytes)
+        bv = 1024;
+    vthread->packetQueue()->setBufferMode(buffer_mode);
+    vthread->packetQueue()->setBufferValue(buffer_value < 0 ? bv : buffer_value);
     initVideoStatistics(demuxer.videoStream());
     return true;
 }

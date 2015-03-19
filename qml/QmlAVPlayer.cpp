@@ -85,7 +85,7 @@ void QmlAVPlayer::classBegin()
     connect(mpPlayer, SIGNAL(stopped()), SLOT(_q_stopped()));
     connect(mpPlayer, SIGNAL(positionChanged(qint64)), SIGNAL(positionChanged()));
     connect(mpPlayer, SIGNAL(seekableChanged()), SIGNAL(seekableChanged()));
-    connect(this, SIGNAL(volumeChanged()), SLOT(applyVolume()));
+    connect(mpPlayer, SIGNAL(bufferProgressChanged(qreal)), SIGNAL(bufferProgressChanged()));
     connect(this, SIGNAL(channelLayoutChanged()), SLOT(applyChannelLayout()));
 
     mVideoCodecs << "FFmpeg";
@@ -361,6 +361,13 @@ void QmlAVPlayer::setFastSeek(bool value)
     emit fastSeekChanged();
 }
 
+qreal QmlAVPlayer::bufferProgress() const
+{
+    if (!mpPlayer)
+        return 0;
+    return mpPlayer->bufferProgress();
+}
+
 QmlAVPlayer::Status QmlAVPlayer::status() const
 {
     return (Status)m_status;
@@ -537,7 +544,8 @@ void QmlAVPlayer::_q_started()
     mPlaybackState = PlayingState;
     applyChannelLayout();
     // applyChannelLayout() first because it may reopen audio device
-    applyVolume();
+    applyVolume(); //sender is AVPlayer
+
     mpPlayer->setMute(isMuted());
     mpPlayer->setSpeed(playbackRate());
     // TODO: in load()?
@@ -554,6 +562,15 @@ void QmlAVPlayer::_q_started()
     }
     emit playing();
     emit playbackStateChanged();
+    if (mHasAudio) {
+        connect(this, SIGNAL(volumeChanged()), SLOT(applyVolume()));
+        connect(this, SIGNAL(mutedChanged()), SLOT(applyVolume()));
+        // direct connection to ensure volume() in slots is correct
+        connect(mpPlayer->audio(), SIGNAL(volumeChanged(qreal)), SLOT(applyVolume()), Qt::DirectConnection);
+        connect(mpPlayer->audio(), SIGNAL(muteChanged(bool)), SLOT(applyVolume()), Qt::DirectConnection);
+    } else {
+        disconnect(this, SLOT(applyVolume()));
+    }
 }
 
 void QmlAVPlayer::_q_stopped()
@@ -568,9 +585,24 @@ void QmlAVPlayer::applyVolume()
     AudioOutput *ao = mpPlayer->audio();
     if (!ao || !ao->isAvailable())
         return;
-    if (ao->volume() == volume())
+    if (!sender() || qobject_cast<AudioOutput*>(sender()) != ao) {
+        if (!qFuzzyCompare(volume() + 1.0, ao->volume() + 1.0)) {
+            ao->setVolume(volume());
+        }
+        if (isMuted() != ao->isMute()) {
+            ao->setMute(isMuted());
+        }
         return;
-    ao->setVolume(volume());
+    }
+    // from ao.reportVolume()
+    if (!qFuzzyCompare(mVolume + 1.0, ao->volume() + 1.0)) {
+        mVolume = ao->volume();
+        Q_EMIT volumeChanged();
+    }
+    if (m_mute != ao->isMute()) {
+        m_mute = ao->isMute();
+        Q_EMIT mutedChanged();
+    }
 }
 
 void QmlAVPlayer::applyChannelLayout()

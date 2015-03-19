@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV Player Demo:  this file is part of QtAV examples
-    Copyright (C) 2012-2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -120,6 +120,7 @@ private slots:
     void onTimeSliderLeave();
     void handleError(const QtAV::AVError& e);
     void onMediaStatusChanged();
+    void onBufferProgress(qreal percent);
 
     void onVideoEQEngineChanged();
     void onBrightnessChanged(int b);
@@ -148,6 +149,7 @@ private slots:
     void customfpsChanged(double n);
     void changeClockType(QAction* action);
     void RepeatLoopChanged(int i);
+    void syncVolumeUi(qreal value);
 
 protected:
     virtual void closeEvent(QCloseEvent *e);
