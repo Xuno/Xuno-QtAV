@@ -112,6 +112,7 @@ MainWindow::MainWindow(QWidget *parent) :
   , mpOSD(0)
   , mpSubtitle(0)
   , mCustomFPS(0.)
+  , mPlayerScale(1.)
   , m_preview(0)
 {
     XUNOserverUrl="http://www.xuno.com";
@@ -201,8 +202,10 @@ void MainWindow::initPlayer()
 
 void MainWindow::stopUnload()
 {
-    mpPlayer->stop();
-    mpPlayer->unload();
+    if (mpPlayer){
+        mpPlayer->stop();
+        mpPlayer->unload();
+    }
 }
 
 void MainWindow::setupUi()
@@ -840,7 +843,7 @@ void MainWindow::setFpsSequenceFrame(const double fps)
 {
     Q_UNUSED (fps)
     //TODO Crash
-    //if (mpImageSequence && fps>0) mpImageSequence->setFPS(fps);
+    if (mpImageSequence && fps>0) mpImageSequence->setFPS(fps);
 }
 
 void MainWindow::setStartSequenceFrame(const quint32 sf)
@@ -858,6 +861,11 @@ void MainWindow::setRepeatLoop(const bool loop)
     if (mpRepeatLoop) {
         mpRepeatLoop->setChecked(loop);
     }
+}
+
+void MainWindow::setPlayerScale(const double scale)
+{
+    if (scale) mPlayerScale=scale;
 }
 
 void MainWindow::setVideoDecoderNames(const QStringList &vd)
@@ -1381,7 +1389,7 @@ void MainWindow::showInfo()
 void MainWindow::onTimeSliderHover(int pos, int value)
 {
     QPoint gpos = mapToGlobal(mpTimeSlider->pos() + QPoint(pos, 0));
-    QToolTip::showText(gpos, QTime(0, 0, 0).addMSecs(value).toString("HH:mm:ss"));
+    QToolTip::showText(gpos, QTime(0, 0, 0).addMSecs(value).toString("HH:mm:ss.zz"));
     if (!Config::instance().previewEnabled())
         return;
     if (!m_preview)
@@ -1686,8 +1694,8 @@ void MainWindow::reSizeByMovie()
     QSize t=mpRenderer->frameSize();
     if ((t.width()+t.height())==0){
       Statistics st=mpPlayer->statistics();
-      t.setWidth(st.video_only.width);
-      t.setHeight(st.video_only.height);
+      t.setWidth(st.video_only.width*mPlayerScale);
+      t.setHeight(st.video_only.height*mPlayerScale);
     }
     if (t.isValid() && (!t.isNull())) resize(t);
 }
@@ -1727,12 +1735,12 @@ void MainWindow::tuneRepeatMovieDuration(){
 }
 
 bool MainWindow::isFileImgageSequence(){
-    return (mFile.contains("/%0") && mFile.contains("d."));
+    return (QDir::toNativeSeparators(mFile).contains(QString(QDir::separator()).append("%0")) && mFile.contains("d."));
 }
 
 bool MainWindow::applyCustomFPS(){
     bool ret=false; // return true if custom fps was applied
-    if (isFileImgageSequence() && mCustomFPS>0){
+    if (isFileImgageSequence() && (mCustomFPS>0)){
         QVariantHash tmp=Config::instance().avformatOptions();
         tmp["framerate"]=mCustomFPS;
         mpPlayer->setOptionsForFormat(tmp);

@@ -70,6 +70,7 @@ public:
     void setEndSequenceFrame(const quint32 ef);
     void setFpsSequenceFrame(const double fps);
     void setRepeatLoop(const bool loop);
+    void setPlayerScale(const double scale);
 
 public slots:
     void play(const QString& name);
@@ -178,6 +179,7 @@ private:
     int mShowControl; //0: can hide, 1: show and playing, 2: always show(not playing)
     int mRepeateMax;
     double mCustomFPS;
+    double mPlayerScale;
     QVBoxLayout *mpPlayerLayout;
 
     QWidget *mpControl;

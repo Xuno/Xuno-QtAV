@@ -35,7 +35,7 @@ signals:
 public slots:
     void onSelectImgages();
     void setFPS(double n);
-    void setTotalFrames(quint32 n);
+    void setTotalFrames(int n);
 
 private:
     QSpinBox *mpTotalFramesBox;

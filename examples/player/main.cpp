@@ -206,6 +206,15 @@ int main(int argc, char *argv[])
     op = options.option("loop");
     window.setRepeatLoop(op.isSet());
 
+    op = options.option("scale");
+    if (op.isSet()) {
+        float scale = op.value().toFloat(0);
+        if (scale){
+            qDebug()<<"Scale for player"<<scale;
+            window.setPlayerScale(scale);
+        }
+    }
+
 
     op = options.option("vd");
     if (op.isSet()) {
