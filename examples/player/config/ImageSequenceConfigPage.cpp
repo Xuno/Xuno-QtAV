@@ -136,7 +136,7 @@ void ImageSequenceConfigPage::setTotalFrames(quint32 n){
 
 void ImageSequenceConfigPage::calculatePos(){
      qDebug()<<"calculatePos frames"<<frames;
-    if (frames<1)
+    if (frames<1 || fps<1)
         return;
     startPos=startFrame*(1000UL/fps);
     stopPos=startPos + frames*(1000UL/fps);
