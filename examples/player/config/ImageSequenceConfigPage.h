@@ -6,12 +6,23 @@
 #include <QSpinBox>
 #include <QTime>
 #include <QFileInfo>
+#include <QLineEdit>
+#include <QComboBox>
+#include <QGroupBox>
+#include <QLabel>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QFileDialog>
+#include <QtCore>
+#include <QRegularExpression>
+#include <QDialogButtonBox>
+#include <QCheckBox>
 
 
 class QPushButton;
 class QSpinBox;
 
-class ImageSequenceConfigPage : public QWidget
+class ImageSequenceConfigPage : public QDialog
 {
     Q_OBJECT
 public:

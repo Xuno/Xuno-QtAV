@@ -346,6 +346,7 @@ void MainWindow::setupUi()
     subMenu = new ClickableMenu(tr("Image Sequence"));
     mpMenu->addMenu(subMenu);
     mpImageSequence = new ImageSequenceConfigPage();
+    mpImageSequence->setWindowModality(windowModality());
     connect(mpImageSequence, SIGNAL(play(QString)), SLOT(play(QString)));
     connect(mpImageSequence, SIGNAL(stop()), this, SLOT(stopUnload()));
     connect(mpImageSequence, SIGNAL(repeatAChanged(QTime)), SLOT(repeatAChanged(QTime)));
