@@ -151,6 +151,7 @@ private slots:
     void changeClockType(QAction* action);
     void RepeatLoopChanged(int i);
     void syncVolumeUi(qreal value);
+    void onImageSequenceConfig();
 
 protected:
     virtual void closeEvent(QCloseEvent *e);
@@ -170,6 +171,7 @@ private:
     void tuneRepeatMovieDuration();
     bool isFileImgageSequence();
     bool applyCustomFPS();
+
 
 private:
     bool mIsReady, mHasPendingPlay;
@@ -231,7 +233,7 @@ private:
     QString XUNOserverUrl;
     QString XUNOpresetUrl;
 
-    ImageSequenceConfigPage *mpImageSequence;
+    ImageSequenceConfigPage *mpImageSequence = 0;
     ConfigWebMemu *mpWebMenu = 0;
 };
 

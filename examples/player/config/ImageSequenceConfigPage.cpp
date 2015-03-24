@@ -12,7 +12,6 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
 {
     setWindowTitle("Image sequence config page");
     setMaximumSize(QSize(650, 16777215));
-    setModal(true);
 
     QVBoxLayout *verticalLayoutWidget = new QVBoxLayout(this);
     setLayout(verticalLayoutWidget);
