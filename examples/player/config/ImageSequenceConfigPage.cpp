@@ -12,7 +12,6 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
 {
     setWindowTitle("Image sequence config page");
     setMaximumSize(QSize(650, 16777215));
-    setModal(true);
 
     QVBoxLayout *verticalLayoutWidget = new QVBoxLayout(this);
     setLayout(verticalLayoutWidget);
@@ -105,6 +104,20 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     );
     horizontalLayout_2->addWidget(cbColorTypeInput);
 
+    QSpacerItem *horizontalSpacer_7 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    horizontalLayout_2->addItem(horizontalSpacer_7);
+
+    QLabel *labelInputScale = new QLabel();
+    labelInputScale->setObjectName(QStringLiteral("InputScale"));
+    labelInputScale->setText(tr(" Scale:"));
+    QDoubleSpinBox *InputScale = new QDoubleSpinBox();
+    InputScale->setMinimum(0.1);
+    InputScale->setMaximum(2.0);
+    InputScale->setSingleStep(0.1);
+    InputScale->setValue(1.0);
+
+    horizontalLayout_2->addWidget(labelInputScale);
+    horizontalLayout_2->addWidget(InputScale);
 
     vb->addLayout(horizontalLayout_2);
 
@@ -167,18 +180,14 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     InputAllTotalFrame->setText(tr("of: NNNNN", 0));
     hlStart->addWidget(InputAllTotalFrame);
 
-    QLabel *labelInputScale = new QLabel();
-    labelInputScale->setObjectName(QStringLiteral("InputScale"));
-    labelInputScale->setText(tr(" Scale:"));
-    QDoubleSpinBox *InputScale = new QDoubleSpinBox();
-    InputScale->setMinimum(0.1);
-    InputScale->setMaximum(2.0);
-    InputScale->setSingleStep(0.1);
-    InputScale->setValue(1.0);
+    QSpacerItem *horizontalSpacer_6 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    hlStart->addItem(horizontalSpacer_6);
 
-    hlStart->addWidget(labelInputScale);
-    hlStart->addWidget(InputScale);
 
+    QCheckBox *checkLoop = new QCheckBox();
+    checkLoop->setObjectName(QStringLiteral("Loop"));
+    checkLoop->setText(tr("Loop"));
+    hlStart->addWidget(checkLoop);
 
     vb->addLayout(hlStart);
 
@@ -199,7 +208,9 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     QDialogButtonBox *buttonBox = new QDialogButtonBox(this);
     buttonBox->setObjectName(QStringLiteral("buttonBox"));
     buttonBox->setOrientation(Qt::Horizontal);
-    buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Ok);
+    buttonBox->setStandardButtons(QDialogButtonBox::Close);
+    connect(buttonBox,SIGNAL(rejected()),SLOT(close()));
+
     verticalLayoutWidget->addWidget(buttonBox);
 
 //    QLabel *lablelGenerate = new QLabel(tr("Generate Image Sequence"));
@@ -210,7 +221,7 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
 
 void ImageSequenceConfigPage::onSelectImgages()
 {
-    QStringList files = QFileDialog::getOpenFileNames(parentWidget()->parentWidget(), tr("Select one or more media file"),"",tr("Image Files (*.png *.jpg *.tif *.bmp)"));
+    QStringList files = QFileDialog::getOpenFileNames(parentWidget(), tr("Select one or more media file"),"",tr("Image Files (*.png *.jpg *.tif *.bmp)"));
     if (files.isEmpty())
         return;
     if (files.size()>1) mpTotalFramesBox->setValue(files.size());

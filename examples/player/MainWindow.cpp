@@ -343,10 +343,11 @@ void MainWindow::setupUi()
     mpMenu->addAction(tr("Open File"), this, SLOT(openFile()));
     mpMenu->addAction(tr("Open Url"), this, SLOT(openUrl()));
     //mpMenu->addAction(tr("Online channels"), this, SLOT(onTVMenuClick()));
-    subMenu = new ClickableMenu(tr("Image Sequence"));
-    mpMenu->addMenu(subMenu);
+
+    //    subMenu = new ClickableMenu(tr("Image Sequence"));
+    //mpMenu->addMenu(subMenu);
+
     mpImageSequence = new ImageSequenceConfigPage();
-    mpImageSequence->setWindowModality(windowModality());
     connect(mpImageSequence, SIGNAL(play(QString)), SLOT(play(QString)));
     connect(mpImageSequence, SIGNAL(stop()), this, SLOT(stopUnload()));
     connect(mpImageSequence, SIGNAL(repeatAChanged(QTime)), SLOT(repeatAChanged(QTime)));
@@ -354,9 +355,11 @@ void MainWindow::setupUi()
     connect(mpImageSequence, SIGNAL(toggleRepeat(bool)), SLOT(toggleRepeat(bool)));
     connect(mpImageSequence, SIGNAL(customfpsChanged(double)), SLOT(customfpsChanged(double)));
 
-    pWA = new QWidgetAction(0);
-    pWA->setDefaultWidget(mpImageSequence);
-    subMenu->addAction(pWA);
+    mpMenu->addAction(tr("Image Sequence"), this, SLOT(onImageSequenceConfig()));
+
+//    pWA = new QWidgetAction(0);
+//    pWA->setDefaultWidget(mpImageSequence);
+//    subMenu->addAction(pWA);
 
     mpMenu->addSeparator();
     subMenu = new QMenu(tr("Play list"));
@@ -842,8 +845,6 @@ void MainWindow::play(const QUrl &url)
 
 void MainWindow::setFpsSequenceFrame(const double fps)
 {
-    Q_UNUSED (fps)
-    //TODO Crash
     if (mpImageSequence && fps>0) mpImageSequence->setFPS(fps);
 }
 
@@ -1781,3 +1782,17 @@ bool MainWindow::applyCustomFPS(){
          return;
      }
  }
+
+ void MainWindow::onImageSequenceConfig()
+ {
+    int ret;
+    bool state=!mpPlayer->isPaused() && mpPlayer->isPlaying();
+    if (mpImageSequence) {
+        if (state) togglePlayPause();
+        mpImageSequence->setWindowFlags(Qt::WindowStaysOnTopHint);
+        ret = mpImageSequence->exec();
+        if (ret==QDialog::Rejected && state) togglePlayPause();
+    }
+    qDebug()<<"onImageSequenceConfig after show"<<ret;
+ }
+
