@@ -48,6 +48,9 @@ public slots:
     void setFPS(double n);
     void setTotalFrames(int n);
 
+private slots:
+    void on_buttonPlay_clicked();
+
 private:
     QSpinBox *mpTotalFramesBox;
     QDoubleSpinBox *mpFpsBox;
@@ -61,6 +64,19 @@ private:
     void analyzeFilename();
     int getDigetsFilename();
     bool playing_start;
+
+    const QStringList ImageTypes = QStringList()
+    <<  "bmp"
+    <<  "cr2"
+    <<  "dng"
+    <<  "dxp"
+    <<  "exr"
+    <<  "jp2"
+    <<  "png"
+    <<  "jpg"
+    <<  "tga"
+    <<  "tif"
+    <<  "tiff";
 
 };
 

@@ -72,7 +72,7 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     horizontalLayout_2->addItem(horizontalSpacer_3);
 
     QLabel *pFPSLabel = new QLabel(tr("FPS:"));
-    QHBoxLayout *hb = new QHBoxLayout;
+    //QHBoxLayout *hb = new QHBoxLayout;
     mpFpsBox = new QDoubleSpinBox(0);
     mpFpsBox->setMinimum(0.1);
     mpFpsBox->setMaximum(500);
@@ -104,6 +104,20 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     );
     horizontalLayout_2->addWidget(cbColorTypeInput);
 
+    QSpacerItem *horizontalSpacer_7 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    horizontalLayout_2->addItem(horizontalSpacer_7);
+
+    QLabel *labelInputScale = new QLabel();
+    labelInputScale->setObjectName(QStringLiteral("InputScale"));
+    labelInputScale->setText(tr(" Scale:"));
+    QDoubleSpinBox *InputScale = new QDoubleSpinBox();
+    InputScale->setMinimum(0.1);
+    InputScale->setMaximum(2.0);
+    InputScale->setSingleStep(0.1);
+    InputScale->setValue(1.0);
+
+    horizontalLayout_2->addWidget(labelInputScale);
+    horizontalLayout_2->addWidget(InputScale);
 
     vb->addLayout(horizontalLayout_2);
 
@@ -166,20 +180,17 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     InputAllTotalFrame->setText(tr("of: NNNNN", 0));
     hlStart->addWidget(InputAllTotalFrame);
 
-    QLabel *labelInputScale = new QLabel();
-    labelInputScale->setObjectName(QStringLiteral("InputScale"));
-    labelInputScale->setText(tr(" Scale:"));
-    QDoubleSpinBox *InputScale = new QDoubleSpinBox();
-    InputScale->setMinimum(0.1);
-    InputScale->setMaximum(2.0);
-    InputScale->setSingleStep(0.1);
-    InputScale->setValue(1.0);
+    QSpacerItem *horizontalSpacer_6 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    hlStart->addItem(horizontalSpacer_6);
 
-    hlStart->addWidget(labelInputScale);
-    hlStart->addWidget(InputScale);
 
+    QCheckBox *checkLoop = new QCheckBox();
+    checkLoop->setObjectName(QStringLiteral("Loop"));
+    checkLoop->setText(tr("Loop"));
+    hlStart->addWidget(checkLoop);
 
     vb->addLayout(hlStart);
+    QButtonBox *buttonBox = new QDialogButtonBox(this);
 
     verticalLayoutWidget->addWidget(groupBox1);
 
@@ -195,10 +206,10 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
 
     verticalLayoutWidget->addWidget(groupBox2);
 
-    QDialogButtonBox *buttonBox = new QDialogButtonBox(this);
-    buttonBox->setObjectName(QStringLiteral("buttonBox"));
-    buttonBox->setOrientation(Qt::Horizontal);
-    buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Ok);
+    QPushButton *buttonPlay = new QPushButton(this);
+    buttonPlay->setObjectName(QStringLiteral("buttonPlay"));
+    connect(buttonPlay,SIGNAL(clicked()),SLOT(on_buttonPlay_clicked()));
+
     verticalLayoutWidget->addWidget(buttonBox);
 
 //    QLabel *lablelGenerate = new QLabel(tr("Generate Image Sequence"));
@@ -209,7 +220,64 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
 
 void ImageSequenceConfigPage::onSelectImgages()
 {
-    QStringList files = QFileDialog::getOpenFileNames(parentWidget()->parentWidget(), tr("Select one or more media file"),"",tr("Image Files (*.png *.jpg *.tif *.bmp)"));
+    //build filter list for FileDialog Menu
+    QString type = tr("All images").append(" (");
+    for (int i = 0; i < ImageTypes.size(); ++i){
+        if (i>0) type.append(" ");
+        type.append(QString("*.").append(ImageTypes.at(i)));
+    }
+    type.append(")");
+    for (int i = 0; i < ImageTypes.size(); ++i){
+        if (i!=ImageTypes.size()) type.append(";;");
+        type.append(QString("*.").append(ImageTypes.at(i)));
+    }
+    //get latest used path
+    QString prevPath;//= config.getLastUsedPath();
+    QStringList fileNameList = QFileDialog::getOpenFileNames(this,tr("Open Input"), prevPath, type);
+    if (fileNameList.size()>0){
+        QString fileName=QDir::toNativeSeparators(fileNameList.at(0));
+        if (!fileName.isEmpty())
+        {
+            QPushButton *button = parentWidget->findChild<QPushButton *>("button1");
+            ui->btPlaySequenceInput->setEnabled(true);
+            ui->btGeneratePreviewInput->setEnabled(true);
+            ui->InputPath->setText(fileName);
+            config.setLastUsedPath(fileName);
+            int startframe=getNumberFilename(fileName);
+            int lastframe=getNumberFilename(fileNameList.last());
+            int totalframes=lastframe-startframe+1;
+            totalAllInputFrames=getTotalNumberFilename(fileName);
+            ui->InputStartFrame->setMaximum(totalAllInputFrames);
+            ui->InputEndFrame->setMaximum(totalAllInputFrames);
+            ui->InputTotalFrame->setMaximum(totalAllInputFrames);
+            ui->previewFrame->setMaximum(totalAllInputFrames);
+            ui->ImageSequenceStartFrame->setMaximum(totalAllInputFrames);
+            ui->ImageSequenceEndFrame->setMaximum(totalAllInputFrames);
+            ui->ImageSequenceTotalFrame->setMaximum(totalAllInputFrames);
+            if (startframe>0) {
+                ui->InputStartFrame->setEnabled(true);
+                ui->InputStartFrame->setValue(startframe);
+                ui->previewFrame->setValue(startframe);
+                ui->previewFrame->setEnabled(true);
+                ui->ImageSequenceStartFrame->setValue(startframe);
+                ui->ImageSequenceStartFrame->setEnabled(true);
+                ui->InputAllTotalFrame->setText(tr(" of: %1").arg(totalAllInputFrames));
+            }
+            if (lastframe>0) {
+                ui->InputEndFrame->setEnabled(true);
+                ui->InputEndFrame->setValue(lastframe);
+                ui->ImageSequenceEndFrame->setValue(lastframe);
+            }
+            if (totalframes>0) {
+                ui->InputTotalFrame->setEnabled(true);
+                ui->InputTotalFrame->setValue(totalframes);
+                ui->ImageSequenceTotalFrame->setValue(totalframes);
+            }
+        }
+    }
+
+    //---------
+    QStringList files = QFileDialog::getOpenFileNames(parentWidget(), tr("Select one or more media file"),"",tr("Image Files (*.png *.jpg *.tif *.bmp)"));
     if (files.isEmpty())
         return;
     if (files.size()>1) mpTotalFramesBox->setValue(files.size());
@@ -311,5 +379,10 @@ void ImageSequenceConfigPage::setMovieDuration(qint64 d){
         if (stopPos==0) emit repeatBChanged(mRepeatB);
         playing_start=false;
     }
+}
+
+void ImageSequenceConfigPage::on_buttonPlay_clicked()
+{
+
 }
 

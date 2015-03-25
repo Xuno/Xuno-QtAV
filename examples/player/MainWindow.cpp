@@ -1785,6 +1785,14 @@ bool MainWindow::applyCustomFPS(){
 
  void MainWindow::onImageSequenceConfig()
  {
-    if (mpImageSequence) mpImageSequence->exec();
+    int ret;
+    bool state=!mpPlayer->isPaused() && mpPlayer->isPlaying();
+    if (mpImageSequence) {
+        if (state) togglePlayPause();
+        mpImageSequence->setWindowFlags(Qt::WindowStaysOnTopHint);
+        ret = mpImageSequence->exec();
+        if (ret==QDialog::Rejected && state) togglePlayPause();
+    }
+    qDebug()<<"onImageSequenceConfig after show"<<ret;
  }
 
