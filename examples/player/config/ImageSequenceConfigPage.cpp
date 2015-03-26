@@ -10,7 +10,7 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
   ,frames(0)
   ,fileinfo(0)
 {
-    setWindowTitle("Image sequence config page");
+    setWindowTitle("Play sequence of Images");
     setMaximumSize(QSize(650, 16777215));
 
     QVBoxLayout *verticalLayoutWidget = new QVBoxLayout(this);
@@ -21,40 +21,11 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     groupBox1->setTitle(tr("Play Image Sequence"));
 
     QVBoxLayout *vb = new QVBoxLayout(groupBox1);
-    //setLayout(vb);
 
-
-    //hb->addWidget(pFPSLabel);
-    //hb->addWidget(mpFpsBox);
-
-    //vb->addLayout(hb);
-
-    QLabel *pTotalFramesLabel = new QLabel(tr("Total frames:"));
-    mpTotalFramesBox = new QSpinBox(0);
-    mpTotalFramesBox->setRange(0, 9999999UL);
-    mpTotalFramesBox->setValue(0);
-    //mpTotalFramesBox->setMinimumWidth(50);
-    mpTotalFramesBox->setToolTip("total frames - 0: " + tr("infinity"));
-    connect(mpTotalFramesBox, SIGNAL(valueChanged(int)), SLOT(setTotalFrames(int)));
-//    QHBoxLayout *hb = new QHBoxLayout;
-//    hb->addWidget(pTotalFramesLabel);
-//    hb->addWidget(mpTotalFramesBox);
-//    vb->addLayout(hb);
-//    mpSelectImgButton = new QPushButton(tr("Select Image"));
-//    connect(mpSelectImgButton, SIGNAL(clicked()), SLOT(onSelectImgages()));
-//    vb->addWidget(mpSelectImgButton,Qt::AlignHCenter);
-
-    //-------------------------
-//    QWidget *tInput = new QWidget();
-//    tInput->setObjectName(QStringLiteral("tInput"));
-//    QVBoxLayout *vlBatchInput = new QVBoxLayout(tInput);
-//    vlBatchInput->setSpacing(6);
-//    vlBatchInput->setContentsMargins(11, 11, 11, 11);
-//    vlBatchInput->setObjectName(QStringLiteral("vlBatchInput"));
     vb->setSpacing(6);
     vb->setContentsMargins(11, 11, 11, 11);
 
-    QLineEdit *InputPath = new QLineEdit();
+    InputPath = new QLineEdit();
     InputPath->setObjectName(QStringLiteral("InputPath"));
     vb->addWidget(InputPath);
 
@@ -72,7 +43,7 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     horizontalLayout_2->addItem(horizontalSpacer_3);
 
     QLabel *pFPSLabel = new QLabel(tr("FPS:"));
-    //QHBoxLayout *hb = new QHBoxLayout;
+
     mpFpsBox = new QDoubleSpinBox(0);
     mpFpsBox->setMinimum(0.1);
     mpFpsBox->setMaximum(500);
@@ -130,7 +101,7 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
 
     hlStart->addWidget(label_2);
 
-    QSpinBox *InputStartFrame = new QSpinBox();
+    InputStartFrame = new QSpinBox();
     InputStartFrame->setObjectName(QStringLiteral("InputStartFrame"));
     InputStartFrame->setEnabled(false);
     InputStartFrame->setMinimum(1);
@@ -149,7 +120,7 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
 
     hlStart->addWidget(label_28);
 
-    QSpinBox *InputEndFrame = new QSpinBox();
+    InputEndFrame = new QSpinBox();
     InputEndFrame->setObjectName(QStringLiteral("InputEndFrame"));
     InputEndFrame->setEnabled(false);
     InputEndFrame->setMinimum(1);
@@ -167,15 +138,16 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     label_4->setText(tr("Total Frames:", 0));
     hlStart->addWidget(label_4);
 
-    QSpinBox *InputTotalFrame = new QSpinBox();
+    InputTotalFrame = new QSpinBox();
     InputTotalFrame->setObjectName(QStringLiteral("InputTotalFrame"));
     InputTotalFrame->setEnabled(false);
     InputTotalFrame->setMinimum(1);
     InputTotalFrame->setMaximum(999999999);
+    InputTotalFrame->setValue(1);
 
     hlStart->addWidget(InputTotalFrame);
 
-    QLabel *InputAllTotalFrame = new QLabel();
+    InputAllTotalFrame = new QLabel();
     InputAllTotalFrame->setObjectName(QStringLiteral("InputAllTotalFrame"));
     InputAllTotalFrame->setText(tr("of: NNNNN", 0));
     hlStart->addWidget(InputAllTotalFrame);
@@ -183,14 +155,12 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     QSpacerItem *horizontalSpacer_6 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     hlStart->addItem(horizontalSpacer_6);
 
-
-    QCheckBox *checkLoop = new QCheckBox();
-    checkLoop->setObjectName(QStringLiteral("Loop"));
+    checkLoop = new QCheckBox();
+    checkLoop->setObjectName(QStringLiteral("checkLoop"));
     checkLoop->setText(tr("Loop"));
     hlStart->addWidget(checkLoop);
 
     vb->addLayout(hlStart);
-    QButtonBox *buttonBox = new QDialogButtonBox(this);
 
     verticalLayoutWidget->addWidget(groupBox1);
 
@@ -199,16 +169,24 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     groupBox2->setTitle(tr("Generate Image Sequence"));
 
     QVBoxLayout *vb2 = new QVBoxLayout(groupBox2);
-    QCheckBox *checkBox = new QCheckBox(groupBox2);
-    checkBox->setObjectName(QStringLiteral("checkBox"));
-    checkBox->setText(tr("Enable Frame Extractor"));
-    vb2->addWidget(checkBox);
+    QCheckBox *checkBoxExtractor = new QCheckBox(groupBox2);
+    checkBoxExtractor->setObjectName(QStringLiteral("checkBoxExtractor"));
+    checkBoxExtractor->setText(tr("Enable Frame Extractor"));
+    //connect(checkBoxExtractor,SIGNAL(toggled(bool)),SLOT(on_checkBoxExtractor_toggled(bool)));
+    vb2->addWidget(checkBoxExtractor);
 
     verticalLayoutWidget->addWidget(groupBox2);
 
-    QPushButton *buttonPlay = new QPushButton(this);
-    buttonPlay->setObjectName(QStringLiteral("buttonPlay"));
-    connect(buttonPlay,SIGNAL(clicked()),SLOT(on_buttonPlay_clicked()));
+    QDialogButtonBox *buttonBox = new QDialogButtonBox(this);
+    buttonBox->setObjectName(QStringLiteral("buttonBox"));
+    buttonBox->setOrientation(Qt::Horizontal);
+    buttonBox->setStandardButtons(QDialogButtonBox::Cancel);
+    buttonBox->setCenterButtons(true);
+    buttonPlay = buttonBox->addButton(QObject::tr("Play"), QDialogButtonBox::AcceptRole);
+    buttonPlay->setDisabled(InputPath->text().isEmpty());
+    connect(buttonBox,SIGNAL(rejected()),SLOT(close()));
+    connect(buttonBox,SIGNAL(accepted()), SLOT(playImgages()));
+
 
     verticalLayoutWidget->addWidget(buttonBox);
 
@@ -216,6 +194,8 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
 //    vb->addWidget(lablelGenerate);
 
 
+
+    QMetaObject::connectSlotsByName(this);
 }
 
 void ImageSequenceConfigPage::onSelectImgages()
@@ -232,60 +212,49 @@ void ImageSequenceConfigPage::onSelectImgages()
         type.append(QString("*.").append(ImageTypes.at(i)));
     }
     //get latest used path
-    QString prevPath;//= config.getLastUsedPath();
+    QString prevPath="E:\\public\\Videos\\OWN\\work\\image-seq\\outbmp-bgr24";//= config.getLastUsedPath();
     QStringList fileNameList = QFileDialog::getOpenFileNames(this,tr("Open Input"), prevPath, type);
     if (fileNameList.size()>0){
         QString fileName=QDir::toNativeSeparators(fileNameList.at(0));
         if (!fileName.isEmpty())
         {
-            QPushButton *button = parentWidget->findChild<QPushButton *>("button1");
-            ui->btPlaySequenceInput->setEnabled(true);
-            ui->btGeneratePreviewInput->setEnabled(true);
-            ui->InputPath->setText(fileName);
-            config.setLastUsedPath(fileName);
+            InputPath->setText(getSequenceFilename(fileName));
+            buttonPlay->setDisabled(InputPath->text().isEmpty());
+            //config.setLastUsedPath(fileName);
             int startframe=getNumberFilename(fileName);
             int lastframe=getNumberFilename(fileNameList.last());
             int totalframes=lastframe-startframe+1;
             totalAllInputFrames=getTotalNumberFilename(fileName);
-            ui->InputStartFrame->setMaximum(totalAllInputFrames);
-            ui->InputEndFrame->setMaximum(totalAllInputFrames);
-            ui->InputTotalFrame->setMaximum(totalAllInputFrames);
-            ui->previewFrame->setMaximum(totalAllInputFrames);
-            ui->ImageSequenceStartFrame->setMaximum(totalAllInputFrames);
-            ui->ImageSequenceEndFrame->setMaximum(totalAllInputFrames);
-            ui->ImageSequenceTotalFrame->setMaximum(totalAllInputFrames);
+            InputStartFrame->setMaximum(totalAllInputFrames);
+            InputEndFrame->setMaximum(totalAllInputFrames);
+            InputTotalFrame->setMaximum(totalAllInputFrames);
             if (startframe>0) {
-                ui->InputStartFrame->setEnabled(true);
-                ui->InputStartFrame->setValue(startframe);
-                ui->previewFrame->setValue(startframe);
-                ui->previewFrame->setEnabled(true);
-                ui->ImageSequenceStartFrame->setValue(startframe);
-                ui->ImageSequenceStartFrame->setEnabled(true);
-                ui->InputAllTotalFrame->setText(tr(" of: %1").arg(totalAllInputFrames));
+                setStartFrame(startframe);
+                InputAllTotalFrame->setText(tr(" of: %1").arg(totalAllInputFrames));
             }
             if (lastframe>0) {
-                ui->InputEndFrame->setEnabled(true);
-                ui->InputEndFrame->setValue(lastframe);
-                ui->ImageSequenceEndFrame->setValue(lastframe);
+                InputEndFrame->setEnabled(true);
+                InputEndFrame->setValue(lastframe);
             }
             if (totalframes>0) {
-                ui->InputTotalFrame->setEnabled(true);
-                ui->InputTotalFrame->setValue(totalframes);
-                ui->ImageSequenceTotalFrame->setValue(totalframes);
+                setTotalFrames(totalframes);
+                InputTotalFrame->setEnabled(true);
             }
         }
     }
 
-    //---------
-    QStringList files = QFileDialog::getOpenFileNames(parentWidget(), tr("Select one or more media file"),"",tr("Image Files (*.png *.jpg *.tif *.bmp)"));
-    if (files.isEmpty())
-        return;
-    if (files.size()>1) mpTotalFramesBox->setValue(files.size());
-    fileinfo = QFileInfo(files.at(0));
-    analyzeFilename();
     calculatePos();
-    playImgages();
-    return;
+
+//---------
+//    QStringList files = QFileDialog::getOpenFileNames(parentWidget(), tr("Select one or more media file"),"",tr("Image Files (*.png *.jpg *.tif *.bmp)"));
+//    if (files.isEmpty())
+//        return;
+//    if (files.size()>1) mpTotalFramesBox->setValue(files.size());
+//    fileinfo = QFileInfo(files.at(0));
+//    analyzeFilename();
+
+//    playImgages();
+//    return;
 }
 
 void ImageSequenceConfigPage::analyzeFilename(){
@@ -309,16 +278,23 @@ int ImageSequenceConfigPage::getDigetsFilename() {
 
 void ImageSequenceConfigPage::playImgages()
 {
-    calculatePos();
-    int digs=getDigetsFilename();
-    //qDebug()<<"playImgages :: getDigetsFilename :"<<digs;
-    QString filename=fileinfo.absolutePath().append("/%0").append(QString("%1d.").arg(digs)).append(fileinfo.suffix());
-    //qDebug()<<"playImgages :: filename :"<<filename;
-    if (digs==0) return;
-    emit customfpsChanged(fps);
-    if (startPos) emit toggleRepeat(true);
-    playing_start=true;
-    emit play(filename);
+//    calculatePos();
+//    int digs=getDigetsFilename();
+//    //qDebug()<<"playImgages :: getDigetsFilename :"<<digs;
+//    QString filename=fileinfo.absolutePath().append("/%0").append(QString("%1d.").arg(digs)).append(fileinfo.suffix());
+//    //qDebug()<<"playImgages :: filename :"<<filename;
+//    if (digs==0) return;
+     emit customfpsChanged(fps);
+//    //if (startPos) emit toggleRepeat(true);
+//    playing_start=true;
+    emit stop();
+    emit play(InputPath->text());
+    qDebug()<<"playImgages :: filename :";
+   // emit finished(QDialog::Accepted);
+    //emit accepted();
+    //setResult (QDialog::Accepted);
+    //hide();
+    accept();
 }
 
 void ImageSequenceConfigPage::setFPS(double n){
@@ -343,15 +319,21 @@ void ImageSequenceConfigPage::setFPS(double n){
 void ImageSequenceConfigPage::setStartFrame(quint32 n){
     startFrame = n;
     if (startFrame) {
+        InputStartFrame->setValue(startFrame);
+        InputStartFrame->setEnabled(true);
         emit toggleRepeat(true);
         calculatePos();
     }
 }
 
 void ImageSequenceConfigPage::setEndFrame(quint32 n){
-  //qDebug()<<"ImageSequenceConfigPage::setEndFrame"<<n;
-  mpTotalFramesBox->setValue(n-startFrame+1);
-  setTotalFrames(n-startFrame+1);
+    qDebug()<<"ImageSequenceConfigPage::setEndFrame"<<n<<startFrame;
+    if (n){
+        InputEndFrame->setValue(n);
+        InputEndFrame->setEnabled(true);
+        InputTotalFrame->setValue(n-startFrame+1UL);
+        setTotalFrames(n-startFrame+1);
+    }
 }
 
 void ImageSequenceConfigPage::setTotalFrames(int n){
@@ -360,7 +342,25 @@ void ImageSequenceConfigPage::setTotalFrames(int n){
   calculatePos();
 }
 
+void ImageSequenceConfigPage::setImageSequenceFileName(QString fname){
+    QString fileName=fname;
+    if (!fileName.isEmpty())
+    {
+        InputPath->setText(fileName);
+        buttonPlay->setDisabled(InputPath->text().isEmpty());
+        totalAllInputFrames=getTotalNumberFilename(fileName);
+        //qDebug()<<"setImageSequenceFileName"<<fileName<<totalAllInputFrames;
+        InputStartFrame->setMaximum(totalAllInputFrames);
+        InputEndFrame->setMaximum(totalAllInputFrames);
+        InputTotalFrame->setMaximum(totalAllInputFrames);
+        InputAllTotalFrame->setText(tr(" of: %1").arg(totalAllInputFrames));
+    }
+}
+
 void ImageSequenceConfigPage::calculatePos(){
+    startFrame=InputStartFrame->value();
+    frames=InputTotalFrame->value();
+
      qDebug()<<"calculatePos frames"<<frames;
     if (frames<1 || fps<1)
         return;
@@ -381,8 +381,102 @@ void ImageSequenceConfigPage::setMovieDuration(qint64 d){
     }
 }
 
-void ImageSequenceConfigPage::on_buttonPlay_clicked()
+void ImageSequenceConfigPage::on_checkBoxExtractor_toggled(bool state)
 {
+    qDebug()<<"on_checkBoxExtractor_toggled"<<state;
+}
 
+void ImageSequenceConfigPage::on_checkLoop_toggled(bool state)
+{
+    qDebug()<<"on_checkLoop_toggled"<<state;
+}
+
+int ImageSequenceConfigPage::getDigetsFilename(QString filename) {
+    QFileInfo fileinfo = QFileInfo(filename);
+    int i=0;
+    QRegularExpression re("(\\d+)$");
+    QRegularExpressionMatch match = re.match(fileinfo.baseName());
+    if (match.hasMatch()) {
+        i=match.captured(0).count();
+    }
+    return i;
+}
+
+int ImageSequenceConfigPage::getNumberFilename(QString filename) {
+    QFileInfo fileinfo = QFileInfo(filename);
+    QDir dirinfo=fileinfo.absoluteDir();
+    fileinfo.completeSuffix();
+    QStringList filelist = dirinfo.entryList(QStringList()<<QString("*").append(fileinfo.completeSuffix()),QDir::Files,QDir::Name);
+    int i=filelist.indexOf(fileinfo.fileName())+1;
+    return i;
+}
+
+int ImageSequenceConfigPage::getTotalNumberFilename(QString filename) {
+    QFileInfo fileinfo = QFileInfo(filename);
+    QDir dirinfo=fileinfo.absoluteDir();
+    fileinfo.completeSuffix();
+    QStringList filelist = dirinfo.entryList(QStringList()<<QString("*").append(fileinfo.completeSuffix()),QDir::Files,QDir::Name);
+    return filelist.size();
+}
+
+QString ImageSequenceConfigPage::getSequenceFilename(QString filename) {
+    QFileInfo fileinfo = QFileInfo(filename);
+    int digs=getDigetsFilename(filename);
+    //qDebug()<<"playImgages :: getDigetsFilename :"<<digs;
+    QString newfilename=QDir::toNativeSeparators(fileinfo.absolutePath()).append(QDir::separator()).append("%0").append(QString("%1d.").arg(digs)).append(fileinfo.suffix());
+    //qDebug()<<"playImgages :: filename :"<<newfilename;
+    return (newfilename);
+}
+
+void ImageSequenceConfigPage::updateInputTotalFrameValue(){
+    qint32 start=InputStartFrame->value();
+    qint32 end=InputEndFrame->value();
+    if (start>0 && end>0){
+        qint32 total=end-start+1;
+        InputTotalFrame->setEnabled(total>0);
+        if (total) {
+            InputTotalFrame->setValue(total);
+            //qDebug()<<"updateInputTotalFrameValue"<<totalAllInputFrames<<start;
+            //InputTotalFrame->setMaximum(totalAllInputFrames-start+1);
+        }
+    }
+}
+
+void ImageSequenceConfigPage::updateInputEndFrameValue(){
+    qint32 start=InputStartFrame->value();
+    qint32 total=InputTotalFrame->value();
+    qint32 end=start+total-1;
+    InputEndFrame->setEnabled(end>0);
+    if (end) {
+        InputEndFrame->setValue(end);
+    }
+}
+
+
+void ImageSequenceConfigPage::on_InputStartFrame_valueChanged(int arg1)
+{
+    Q_UNUSED (arg1);
+    updateInputEndFrameValue();
+    updateInputTotalFrameValue();
+}
+
+void ImageSequenceConfigPage::on_InputEndFrame_valueChanged(int arg1)
+{
+    qint32 start=InputStartFrame->value();
+    if (arg1<start) InputEndFrame->setValue(start);
+    updateInputTotalFrameValue();
+}
+
+void ImageSequenceConfigPage::on_InputTotalFrame_valueChanged(int arg1)
+{
+    Q_UNUSED (arg1);
+    updateInputEndFrameValue();
+}
+
+
+void ImageSequenceConfigPage::setRepeatLoop(bool loop)
+{
+    if (loop != checkLoop->isChecked())
+        checkLoop->setChecked(loop);
 }
 

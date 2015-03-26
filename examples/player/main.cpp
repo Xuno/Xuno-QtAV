@@ -215,6 +215,15 @@ int main(int argc, char *argv[])
         }
     }
 
+    op = options.option("f");
+    if (op.isSet()) {
+        QString fname = op.value().toString();
+        if (!fname.isEmpty()){
+            qDebug()<<"Name filename"<<fname;
+            window.setFileName(fname);
+        }
+    }
+
 
     op = options.option("vd");
     if (op.isSet()) {

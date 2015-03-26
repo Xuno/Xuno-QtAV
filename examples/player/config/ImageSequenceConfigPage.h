@@ -28,10 +28,11 @@ class ImageSequenceConfigPage : public QDialog
 public:
     explicit ImageSequenceConfigPage(QWidget *parent = 0);
     void openFiles();
-    void playImgages();
     void setMovieDuration(qint64 d);
     void setStartFrame(quint32 n);
     void setEndFrame(quint32 n);
+    void setImageSequenceFileName(QString fname);
+    void setRepeatLoop(bool loop);
 
 
 signals:
@@ -49,7 +50,13 @@ public slots:
     void setTotalFrames(int n);
 
 private slots:
-    void on_buttonPlay_clicked();
+    void on_checkBoxExtractor_toggled(bool state);
+    void on_checkLoop_toggled(bool state);
+
+    void on_InputStartFrame_valueChanged(int arg1);
+    void on_InputEndFrame_valueChanged(int arg1);
+    void on_InputTotalFrame_valueChanged(int arg1);
+    void playImgages();
 
 private:
     QSpinBox *mpTotalFramesBox;
@@ -57,8 +64,14 @@ private:
     QPushButton *mpSelectImgButton, *mpPlayImgButton;
     quint64 startPos,stopPos;
     double fps;
-    quint32 startFrame, frames;
+    quint32 startFrame, frames, totalAllInputFrames;
     QFileInfo fileinfo;
+    QPushButton *buttonPlay;
+    QLineEdit *InputPath;
+    QSpinBox *InputStartFrame, *InputEndFrame, *InputTotalFrame;
+    QLabel *InputAllTotalFrame;
+    QCheckBox *checkLoop;
+
 
     void calculatePos();
     void analyzeFilename();
@@ -78,6 +91,12 @@ private:
     <<  "tif"
     <<  "tiff";
 
+    int getDigetsFilename(QString filename);
+    int getNumberFilename(QString filename);
+    int getTotalNumberFilename(QString filename);
+    QString getSequenceFilename(QString filename);
+    void updateInputTotalFrameValue();
+    void updateInputEndFrameValue();
 };
 
 #endif // IMAGESEQUENCECONFIGPAGE_H

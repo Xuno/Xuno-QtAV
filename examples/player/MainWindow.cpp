@@ -349,7 +349,7 @@ void MainWindow::setupUi()
 
     mpImageSequence = new ImageSequenceConfigPage();
     connect(mpImageSequence, SIGNAL(play(QString)), SLOT(play(QString)));
-    connect(mpImageSequence, SIGNAL(stop()), this, SLOT(stopUnload()));
+    connect(mpImageSequence, SIGNAL(stop()), SLOT(stopUnload()));
     connect(mpImageSequence, SIGNAL(repeatAChanged(QTime)), SLOT(repeatAChanged(QTime)));
     connect(mpImageSequence, SIGNAL(repeatBChanged(QTime)), SLOT(repeatBChanged(QTime)));
     connect(mpImageSequence, SIGNAL(toggleRepeat(bool)), SLOT(toggleRepeat(bool)));
@@ -863,12 +863,27 @@ void MainWindow::setRepeatLoop(const bool loop)
     if (mpRepeatLoop) {
         mpRepeatLoop->setChecked(loop);
     }
+    if (mpImageSequence)
+        mpImageSequence->setRepeatLoop(loop);
+
 }
 
 void MainWindow::setPlayerScale(const double scale)
 {
     if (scale) mPlayerScale=scale;
 }
+
+void MainWindow::setFileName(const QString fname)
+{
+    if (!fname.isEmpty()){
+        mFile=fname;
+        qDebug()<<"Name filename"<<fname;
+        if (isFileImgageSequence() && mpImageSequence){
+            mpImageSequence->setImageSequenceFileName(fname);
+        }
+    }
+}
+
 
 void MainWindow::setVideoDecoderNames(const QStringList &vd)
 {
@@ -1788,8 +1803,9 @@ bool MainWindow::applyCustomFPS(){
     int ret;
     bool state=!mpPlayer->isPaused() && mpPlayer->isPlaying();
     if (mpImageSequence) {
-        if (state) togglePlayPause();
+        if (state) stopUnload();//togglePlayPause();
         mpImageSequence->setWindowFlags(Qt::WindowStaysOnTopHint);
+        if (isFileImgageSequence()) mpImageSequence->setImageSequenceFileName(mFile);
         ret = mpImageSequence->exec();
         if (ret==QDialog::Rejected && state) togglePlayPause();
     }
