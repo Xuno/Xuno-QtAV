@@ -10,7 +10,7 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
   ,frames(0)
   ,fileinfo(0)
 {
-    setWindowTitle("Play sequence of Images");
+    setWindowTitle("Play Image Sequence");
     setMaximumSize(QSize(650, 16777215));
 
     QVBoxLayout *verticalLayoutWidget = new QVBoxLayout(this);
@@ -169,10 +169,18 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     groupBox2->setTitle(tr("Generate Image Sequence"));
 
     QVBoxLayout *vb2 = new QVBoxLayout(groupBox2);
-    QCheckBox *checkBoxExtractor = new QCheckBox(groupBox2);
-    checkBoxExtractor->setObjectName(QStringLiteral("checkBoxExtractor"));
+//    QCheckBox *checkBoxExtractor = new QCheckBox(groupBox2);
+//    checkBoxExtractor->setObjectName(QStringLiteral("checkBoxExtractor"));
+//    checkBoxExtractor->setText(tr("Enable Frame Extractor"));
+    checkBoxExtractor = new QPushButton(groupBox2);
     checkBoxExtractor->setText(tr("Enable Frame Extractor"));
-    //connect(checkBoxExtractor,SIGNAL(toggled(bool)),SLOT(on_checkBoxExtractor_toggled(bool)));
+    checkBoxExtractor->setCheckable(true);
+    QSizePolicy sizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+    sizePolicy.setHorizontalStretch(0);
+    sizePolicy.setVerticalStretch(0);
+    sizePolicy.setHeightForWidth(checkBoxExtractor->sizePolicy().hasHeightForWidth());
+    checkBoxExtractor->setSizePolicy(sizePolicy);
+    connect(checkBoxExtractor,SIGNAL(toggled(bool)),SLOT(on_checkBoxExtractor_toggled(bool)));
     vb2->addWidget(checkBoxExtractor);
 
     verticalLayoutWidget->addWidget(groupBox2);
@@ -193,9 +201,11 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
 //    QLabel *lablelGenerate = new QLabel(tr("Generate Image Sequence"));
 //    vb->addWidget(lablelGenerate);
 
-
-
     QMetaObject::connectSlotsByName(this);
+
+    //initValues
+
+    setEnableFrameExtractor(true);
 }
 
 void ImageSequenceConfigPage::onSelectImgages()
@@ -384,6 +394,16 @@ void ImageSequenceConfigPage::setMovieDuration(qint64 d){
 void ImageSequenceConfigPage::on_checkBoxExtractor_toggled(bool state)
 {
     qDebug()<<"on_checkBoxExtractor_toggled"<<state;
+    QPushButton* button = dynamic_cast<QPushButton*>(sender());
+    QString text=button->text();
+    const QString enable=tr("Enable");
+    const QString enabled=tr("Enabled");
+    if (state)
+        text.replace(enable,enabled);
+    else
+        text.replace(enabled,enable);
+    button->setText(text);
+    emit toogledFrameExtractor(state);
 }
 
 void ImageSequenceConfigPage::on_checkLoop_toggled(bool state)
@@ -480,3 +500,12 @@ void ImageSequenceConfigPage::setRepeatLoop(bool loop)
         checkLoop->setChecked(loop);
 }
 
+void ImageSequenceConfigPage::setEnableFrameExtractor(bool s)
+{
+     checkBoxExtractor->setChecked(s);
+}
+
+bool ImageSequenceConfigPage::getEnableFrameExtractor()
+{
+     return checkBoxExtractor->isChecked();
+}

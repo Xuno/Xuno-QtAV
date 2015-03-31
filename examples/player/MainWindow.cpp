@@ -354,6 +354,7 @@ void MainWindow::setupUi()
     connect(mpImageSequence, SIGNAL(repeatBChanged(QTime)), SLOT(repeatBChanged(QTime)));
     connect(mpImageSequence, SIGNAL(toggleRepeat(bool)), SLOT(toggleRepeat(bool)));
     connect(mpImageSequence, SIGNAL(customfpsChanged(double)), SLOT(customfpsChanged(double)));
+    connect(mpImageSequence, SIGNAL(toogledFrameExtractor(bool)), SLOT(onImageSequenceToogledFrameExtractor(bool)));
 
     mpMenu->addAction(tr("Image Sequence"), this, SLOT(onImageSequenceConfig()));
 
@@ -1812,3 +1813,7 @@ bool MainWindow::applyCustomFPS(){
     qDebug()<<"onImageSequenceConfig after show"<<ret;
  }
 
+ void MainWindow::onImageSequenceToogledFrameExtractor(bool state)
+ {
+       qDebug()<<"onImageSequenceToogledFrameExtractor "<<state;
+ }

@@ -33,6 +33,8 @@ public:
     void setEndFrame(quint32 n);
     void setImageSequenceFileName(QString fname);
     void setRepeatLoop(bool loop);
+    void setEnableFrameExtractor(bool s);
+    bool getEnableFrameExtractor();
 
 
 signals:
@@ -42,6 +44,7 @@ signals:
     void repeatBChanged(QTime);
     void toggleRepeat(bool);
     void customfpsChanged(double);
+    void toogledFrameExtractor(bool state);
 
 
 public slots:
@@ -71,6 +74,7 @@ private:
     QSpinBox *InputStartFrame, *InputEndFrame, *InputTotalFrame;
     QLabel *InputAllTotalFrame;
     QCheckBox *checkLoop;
+    QPushButton *checkBoxExtractor;
 
 
     void calculatePos();
@@ -97,6 +101,7 @@ private:
     QString getSequenceFilename(QString filename);
     void updateInputTotalFrameValue();
     void updateInputEndFrameValue();
+
 };
 
 #endif // IMAGESEQUENCECONFIGPAGE_H

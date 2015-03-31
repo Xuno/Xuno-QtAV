@@ -153,6 +153,7 @@ private slots:
     void RepeatLoopChanged(int i);
     void syncVolumeUi(qreal value);
     void onImageSequenceConfig();
+    void onImageSequenceToogledFrameExtractor(bool state);
 
 protected:
     virtual void closeEvent(QCloseEvent *e);
