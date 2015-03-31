@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -24,17 +24,14 @@
 
 #include <QtAV/Filter.h>
 
-// It works only if build against libavfilter. Currently not does not support libav's libavfilter.
 namespace QtAV {
 
-class LibAVFilterPrivate;
-class Q_AV_EXPORT LibAVFilter : public VideoFilter
+class Q_AV_EXPORT LibAVFilter
 {
-    Q_OBJECT
-    DPTR_DECLARE_PRIVATE(LibAVFilter)
-    Q_PROPERTY(Status status READ status WRITE setStatus NOTIFY statusChanged)
-    Q_PROPERTY(QString options READ options WRITE setOptions NOTIFY optionsChanged)
 public:
+    static QString filterDescription(const QString& filterName);
+    static QStringList videoFilters();
+    static QStringList audioFilters();
     /*!
      * \brief The Status enum
      * Status of filter graph.
@@ -45,13 +42,11 @@ public:
     enum Status {
         NotConfigured,
         ConfigureFailed,
-        ConfigreOk
+        ConfigureOk
     };
 
-    LibAVFilter(QObject *parent = 0);
+    LibAVFilter();
     virtual ~LibAVFilter();
-    /*!
-     * */
     /*!
      * \brief setOptions
      * Set new option. Filter graph will be setup if receives a frame if options changed.
@@ -61,13 +56,50 @@ public:
     QString options() const;
 
     Status status() const;
-    void setStatus(Status value);
+protected:
+    virtual QString sourceArguments() const = 0;
+    bool pushVideoFrame(Frame* frame, bool changed);
+    bool pushAudioFrame(Frame* frame, bool changed);
+    void* pullFrameHolder();
+    static QStringList registeredFilters(int type); // filters whose input/output type matches
+private:
+    virtual void emitOptionsChanged() {}
+    class Private;
+    Private *priv;
+};
 
-signals:
-    void statusChanged();
+class Q_AV_EXPORT LibAVFilterVideo : public VideoFilter, public LibAVFilter
+{
+    Q_OBJECT
+    Q_PROPERTY(QString options READ options WRITE setOptions NOTIFY optionsChanged)
+    Q_PROPERTY(QStringList filters READ filters)
+public:
+    LibAVFilterVideo(QObject *parent = 0);
+    QStringList filters() const; //the same as LibAVFilter::videoFilters
+Q_SIGNALS:
     void optionsChanged();
 protected:
-    virtual void process(Statistics *statistics, VideoFrame *frame);
+    void process(Statistics *statistics, VideoFrame *frame) Q_DECL_FINAL;
+    QString sourceArguments() const Q_DECL_FINAL;
+private:
+    void emitOptionsChanged() Q_DECL_FINAL;
+};
+
+class Q_AV_EXPORT LibAVFilterAudio : public AudioFilter, public LibAVFilter
+{
+    Q_OBJECT
+    Q_PROPERTY(QString options READ options WRITE setOptions NOTIFY optionsChanged)
+    Q_PROPERTY(QStringList filters READ filters)
+public:
+    LibAVFilterAudio(QObject *parent = 0);
+    QStringList filters() const; //the same as LibAVFilter::audioFilters
+Q_SIGNALS:
+    void optionsChanged();
+protected:
+    void process(Statistics *statistics, AudioFrame *frame) Q_DECL_FINAL;
+    QString sourceArguments() const Q_DECL_FINAL;
+private:
+    void emitOptionsChanged() Q_DECL_FINAL;
 };
 
 } //namespace QtAV

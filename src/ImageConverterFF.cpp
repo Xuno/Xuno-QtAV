@@ -36,14 +36,14 @@ void RegisterImageConverterFF_Man()
     FACTORY_REGISTER_ID_MAN(ImageConverter, FF, "FFmpeg")
 }
 
-class ImageConverterFFPrivate : public ImageConverterPrivate
+class ImageConverterFFPrivate Q_DECL_FINAL: public ImageConverterPrivate
 {
 public:
     ImageConverterFFPrivate()
         : sws_ctx(0)
         , update_eq(true)
     {}
-    ~ImageConverterFFPrivate() Q_DECL_FINAL {
+    ~ImageConverterFFPrivate() {
         if (sws_ctx) {
             sws_freeContext(sws_ctx);
             sws_ctx = 0;
@@ -165,17 +165,17 @@ bool ImageConverterFFPrivate::setupColorspaceDetails(bool force)
     const int srcRange = 1;
     const int dstRange = 0;
     // TODO: SWS_CS_DEFAULT?
-    sws_setColorspaceDetails(sws_ctx, sws_getCoefficients(SWS_CS_DEFAULT)
+    bool supported = sws_setColorspaceDetails(sws_ctx, sws_getCoefficients(SWS_CS_DEFAULT)
                              , srcRange, sws_getCoefficients(SWS_CS_DEFAULT)
                              , dstRange
                              , ((brightness << 16) + 50)/100
                              , (((contrast + 100) << 16) + 50)/100
                              , (((saturation + 100) << 16) + 50)/100
-                             );
+                             ) >= 0;
     // TODO: b, c, s map function?
     //sws_init_context(d.sws_ctx, NULL, NULL);
     update_eq = false;
-    return true;
+    return supported;
 }
 
 } //namespace QtAV

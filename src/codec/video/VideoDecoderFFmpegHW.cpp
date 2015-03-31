@@ -23,7 +23,9 @@
 #include "VideoDecoderFFmpegHW_p.h"
 #include <algorithm>
 #include "utils/Logger.h"
-
+#ifndef Q_UNLIKELY
+#define Q_UNLIKELY(x) (!!(x))
+#endif
 namespace QtAV {
 
 static AVPixelFormat ffmpeg_get_va_format(struct AVCodecContext *c, const AVPixelFormat * ff)
@@ -297,6 +299,7 @@ bool VideoDecoderFFmpegHW::prepare()
     }
     //// From vlc begin
     d.codec_ctx->thread_safe_callbacks = true; //?
+#pragma warning(disable:4065) //vc: switch has default but no case
     switch (d.codec_ctx->codec_id) {
 # if (LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55, 1, 0))
         /// tested libav-9.x + va-api. If remove this code:  Bug detected, please report the issue. Context scratch buffers could not be allocated due to unknown size

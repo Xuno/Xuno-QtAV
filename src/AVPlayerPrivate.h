@@ -137,7 +137,6 @@ public:
     bool ao_enabled;
     OutputSet *vos, *aos;
     QVector<VideoDecoderId> vc_ids;
-    QVector<AudioOutputId> ao_ids;
     int brightness, contrast, saturation;
 
     QVariantHash ac_opt, vc_opt;
@@ -146,12 +145,12 @@ public:
     SeekType seek_type;
     qint64 seek_target; // relative time if relativeTimeMode is true
     qint64 interrupt_timeout;
-    bool mute;
 
     qreal force_fps;
     // timerEvent interval in ms. can divide 1000. depends on media duration, fps etc.
     // <0: auto compute internally, |notify_interval| is the real interval
     int notify_interval;
+    MediaStatus status; // status changes can be from demuxer or demux thread
 };
 
 } //namespace QtAV

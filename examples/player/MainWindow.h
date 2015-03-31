@@ -32,7 +32,8 @@ class AVError;
 class AVPlayer;
 class AVClock;
 class VideoRenderer;
-class LibAVFilter;
+class LibAVFilterAudio;
+class LibAVFilterVideo;
 class SubtitleFilter;
 class VideoPreviewWidget;
 }
@@ -133,9 +134,9 @@ private slots:
     void onFilterSharpChanged(int s);
 
     void onCaptureConfigChanged();
-    void onAVFilterConfigChanged();
     void onPreviewEnabledChanged();
-
+    void onAVFilterVideoConfigChanged();
+    void onAVFilterAudioConfigChanged();
     void donate();
     void setup();
 
@@ -212,7 +213,8 @@ private:
     QtAV::AVClock *mpClock;
     QtAV::AVPlayer *mpPlayer;
     QtAV::VideoRenderer *mpRenderer, *mpTempRenderer;
-    QtAV::LibAVFilter *mpAVFilter;
+    QtAV::LibAVFilterVideo *mpVideoFilter;
+    QtAV::LibAVFilterAudio *mpAudioFilter;
     QString mFile;
     QString mTitle;
     QPixmap mPlayPixmap;

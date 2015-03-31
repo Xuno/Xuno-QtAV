@@ -107,7 +107,8 @@ MainWindow::MainWindow(QWidget *parent) :
   , mpPlayer(0)
   , mpRenderer(0)
   , mpTempRenderer(0)
-  , mpAVFilter(0)
+  , mpVideoFilter(0)
+  , mpAudioFilter(0)
   , mpStatisticsView(0)
   , mpOSD(0)
   , mpSubtitle(0)
@@ -165,12 +166,14 @@ void MainWindow::initPlayer()
     connect(ef, SIGNAL(helpRequested()), SLOT(help()));
     connect(ef, SIGNAL(showNextOSD()), SLOT(showNextOSD()));
     onCaptureConfigChanged();
-    onAVFilterConfigChanged();
+    onAVFilterVideoConfigChanged();
+    onAVFilterAudioConfigChanged();
     connect(&Config::instance(), SIGNAL(captureDirChanged(QString)), SLOT(onCaptureConfigChanged()));
     connect(&Config::instance(), SIGNAL(captureFormatChanged(QString)), SLOT(onCaptureConfigChanged()));
     connect(&Config::instance(), SIGNAL(captureQualityChanged(int)), SLOT(onCaptureConfigChanged()));
-    connect(&Config::instance(), SIGNAL(avfilterChanged()), SLOT(onAVFilterConfigChanged()));
     connect(&Config::instance(), SIGNAL(previewEnabledChanged()), SLOT(onPreviewEnabledChanged()));
+    connect(&Config::instance(), SIGNAL(avfilterVideoChanged()), SLOT(onAVFilterVideoConfigChanged()));
+    connect(&Config::instance(), SIGNAL(avfilterAudioChanged()), SLOT(onAVFilterAudioConfigChanged()));
     connect(mpStopBtn, SIGNAL(clicked()), this, SLOT(stopUnload()));
     connect(mpForwardBtn, SIGNAL(clicked()), mpPlayer, SLOT(seekForward()));
     connect(mpBackwardBtn, SIGNAL(clicked()), mpPlayer, SLOT(seekBackward()));
@@ -1581,20 +1584,37 @@ void MainWindow::onCaptureConfigChanged()
 
 }
 
-void MainWindow::onAVFilterConfigChanged()
+void MainWindow::onAVFilterVideoConfigChanged()
 {
-    if (Config::instance().avfilterEnable()) {
-        if (!mpAVFilter) {
-            mpAVFilter = new LibAVFilter();
+    if (Config::instance().avfilterVideoEnable()) {
+        if (!mpVideoFilter) {
+            mpVideoFilter = new LibAVFilterVideo(this);
         }
-        mpAVFilter->setEnabled(true);
-        mpPlayer->installVideoFilter(mpAVFilter);
-        mpAVFilter->setOptions(Config::instance().avfilterOptions());
+        mpVideoFilter->setEnabled(true);
+        mpPlayer->installVideoFilter(mpVideoFilter);
+        mpVideoFilter->setOptions(Config::instance().avfilterVideoOptions());
     } else {
-        if (mpAVFilter) {
-            mpAVFilter->setEnabled(false);
+        if (mpVideoFilter) {
+            mpVideoFilter->setEnabled(false);
         }
-        mpPlayer->uninstallFilter(mpAVFilter);
+        mpPlayer->uninstallFilter(mpVideoFilter);
+    }
+}
+
+void MainWindow::onAVFilterAudioConfigChanged()
+{
+    if (Config::instance().avfilterAudioEnable()) {
+        if (!mpAudioFilter) {
+            mpAudioFilter = new LibAVFilterAudio(this);
+        }
+        mpAudioFilter->setEnabled(true);
+        mpPlayer->installAudioFilter(mpAudioFilter);
+        mpAudioFilter->setOptions(Config::instance().avfilterAudioOptions());
+    } else {
+        if (mpAudioFilter) {
+            mpAudioFilter->setEnabled(false);
+        }
+        mpPlayer->uninstallFilter(mpAudioFilter);
     }
 }
 

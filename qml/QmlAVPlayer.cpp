@@ -68,7 +68,6 @@ QmlAVPlayer::QmlAVPlayer(QObject *parent) :
   , mVolume(1.0)
   , mPlaybackState(StoppedState)
   , mError(NoError)
-  , m_status(QtAV::NoMedia)
   , mpPlayer(0)
   , mChannelLayout(ChannelLayoutAuto)
   , m_timeout(30000)
@@ -306,6 +305,7 @@ qreal QmlAVPlayer::volume() const
     return mVolume;
 }
 
+// mVolume, m_mute are required by qml properties. player.audio()->setXXX is not enought because player maybe not created
 void QmlAVPlayer::setVolume(qreal volume)
 {
     if (mVolume < 0) {
@@ -328,8 +328,6 @@ void QmlAVPlayer::setMuted(bool m)
     if (isMuted() == m)
         return;
     m_mute = m;
-    if (mpPlayer)
-        mpPlayer->setMute(m);
     emit mutedChanged();
 }
 
@@ -370,7 +368,9 @@ qreal QmlAVPlayer::bufferProgress() const
 
 QmlAVPlayer::Status QmlAVPlayer::status() const
 {
-    return (Status)m_status;
+    if (!mpPlayer)
+        return NoMedia;
+    return (Status)mpPlayer->mediaStatus();
 }
 
 QmlAVPlayer::Error QmlAVPlayer::error() const
@@ -523,7 +523,6 @@ void QmlAVPlayer::_q_error(const AVError &e)
 
 void QmlAVPlayer::_q_statusChanged()
 {
-    m_status = mpPlayer->mediaStatus();
     emit statusChanged();
 }
 

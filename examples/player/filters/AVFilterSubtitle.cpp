@@ -5,11 +5,11 @@
 #include <QtCore/QTextStream>
 
 AVFilterSubtitle::AVFilterSubtitle(QObject *parent)
-    :  LibAVFilter(parent)
+    :  LibAVFilterVideo(parent)
     , m_auto(true)
     , m_player(0)
 {
-    connect(this, SIGNAL(statusChanged()), SLOT(onStatusChanged()));
+    //connect(this, SIGNAL(statusChanged()), SLOT(onStatusChanged()));
 }
 
 void AVFilterSubtitle::setPlayer(AVPlayer *player)
@@ -130,7 +130,7 @@ void AVFilterSubtitle::onPlayerStart()
 
 void AVFilterSubtitle::onStatusChanged()
 {
-    if (status() == ConfigreOk) {
+    if (status() == ConfigureOk) {
         emit loaded();
     } else if (status() == ConfigureFailed) {
         if (options().isEmpty())

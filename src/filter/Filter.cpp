@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2013-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -112,10 +112,9 @@ bool AudioFilter::installTo(AVPlayer *player)
     return player->installAudioFilter(this);
 }
 
-void AudioFilter::apply(Statistics *statistics, const QByteArray &data)
+void AudioFilter::apply(Statistics *statistics, AudioFrame *frame)
 {
-    Q_UNUSED(statistics);
-    Q_UNUSED(data);
+    process(statistics, frame);
 }
 
 VideoFilter::VideoFilter(QObject *parent)
