@@ -24,6 +24,8 @@
 #include <QWidget>
 #include <QUrl>
 #include "config/configwebmemu.h"
+#include "config/ImageSequenceConfigPage.h"
+#include "config/ImageSequenceExtractControl.h"
 
 class QWidgetAction;
 namespace QtAV {
@@ -55,6 +57,7 @@ class OSDFilter;
 class AVFilterSubtitle;
 class Preview;
 class ImageSequenceConfigPage;
+
 
 class MainWindow : public QWidget
 {
@@ -239,6 +242,7 @@ private:
 
     ImageSequenceConfigPage *mpImageSequence = 0;
     ConfigWebMemu *mpWebMenu = 0;
+    ImgSeqExtractControl *mpImgSeqExtract=0;
 };
 
 

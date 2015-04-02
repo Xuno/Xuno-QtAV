@@ -60,7 +60,7 @@
 #include "playlist/PlayList.h"
 #include "../common/common.h"
 #include <QUrl>
-#include "config/ImageSequenceConfigPage.h"
+
 
 
 //#include <QWebView>
@@ -219,9 +219,9 @@ void MainWindow::setupUi()
     setLayout(mainLayout);
 
     mpPlayerLayout = new QVBoxLayout();
+    //QVBoxLayout *mpControlLayout = new QVBoxLayout();
     mpControl = new QWidget(this);
     mpControl->setMaximumHeight(25);
-
     //mpPreview = new QLable(this);
 
     mpTimeSlider = new Slider(mpControl);
@@ -231,6 +231,8 @@ void MainWindow::setupUi()
     mpTimeSlider->setTracking(true);
     mpTimeSlider->setOrientation(Qt::Horizontal);
     mpTimeSlider->setMinimum(0);
+
+
     mpCurrent = new QLabel(mpControl);
     mpCurrent->setToolTip(tr("Current time"));
     mpCurrent->setMargin(2);
@@ -596,14 +598,21 @@ void MainWindow::setupUi()
     mpVOAction->setChecked(true);
 
 
+    //mpImgSeqExtract->hide();
     mainLayout->addLayout(mpPlayerLayout);
     mainLayout->addWidget(mpTimeSlider);
     mainLayout->addWidget(mpControl);
+   // mpControlLayout->addWidget(mpImgSeqExtract);
+    //mainLayout->addWidget(mpControl);
+
+    QVBoxLayout *controlVLayout = new QVBoxLayout();
+    controlVLayout->setSpacing(0);
+    controlVLayout->setMargin(0);
 
     QHBoxLayout *controlLayout = new QHBoxLayout();
     controlLayout->setSpacing(0);
     controlLayout->setMargin(1);
-    mpControl->setLayout(controlLayout);
+    mpControl->setLayout(controlVLayout);
     controlLayout->addWidget(mpCurrent);
     //controlLayout->addWidget(mpTitle);
     //QSpacerItem *space = new QSpacerItem(mpPlayPauseBtn->width(), mpPlayPauseBtn->height(), QSizePolicy::MinimumExpanding);
@@ -629,6 +638,12 @@ void MainWindow::setupUi()
     space = new QSpacerItem(mpPlayPauseBtn->width(), mpPlayPauseBtn->height(), QSizePolicy::Expanding);
     controlLayout->addSpacerItem(space);
     controlLayout->addWidget(mpEnd);
+
+    controlVLayout->setSizeConstraint(QLayout::SetMinimumSize);
+    mpImgSeqExtract = new ImgSeqExtractControl(mpControl);
+    controlVLayout->addWidget(mpImgSeqExtract);
+    controlVLayout->addLayout(controlLayout);
+    mpImgSeqExtract->setVisible(false);
 
     //connect(pSpeedBox, SIGNAL(valueChanged(double)), SLOT(onSpinBoxChanged(double)));
     connect(mpOpenBtn, SIGNAL(clicked()), SLOT(openFile()));
@@ -1019,7 +1034,7 @@ void MainWindow::onStopPlay()
     mpEnd->setText("00:00:00");
     tryShowControlBar();
     ScreenSaver::instance().enable();
-    toggleRepeat(mpRepeatEnableAction->isChecked());  //after stop not reset repeat task
+    //toggleRepeat(mpRepeatEnableAction->isChecked());  //after stop not reset repeat task
     //mRepeateMax = 0;
     killTimer(mCursorTimer);
     unsetCursor();
@@ -1400,6 +1415,8 @@ void MainWindow::tryShowControlBar()
 
 void MainWindow::showInfo()
 {
+    mpImgSeqExtract->setVisible(mpImgSeqExtract->isHidden()); //TODO remove it after test mpImgSeqExtract
+    return;
     if (!mpStatisticsView)
         mpStatisticsView = new StatisticsView();
     if (mpPlayer)
