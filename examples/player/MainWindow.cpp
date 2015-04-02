@@ -989,6 +989,7 @@ void MainWindow::onStartPlay()
     mpTimeSlider->setValue(0);
     mpTimeSlider->setEnabled(mpPlayer->isSeekable());
     mpEnd->setText(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()).toString("HH:mm:ss"));
+    if (mpImgSeqExtract) mpImgSeqExtract->setEndTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
     setVolume();
     mShowControl = 0;
     QTimer::singleShot(3000, this, SLOT(tryHideControlBar()));
@@ -1032,6 +1033,10 @@ void MainWindow::onStopPlay()
     mpTimeSlider->setMaximum(0);
     mpCurrent->setText("00:00:00");
     mpEnd->setText("00:00:00");
+    if (mpImgSeqExtract){
+        mpImgSeqExtract->setEndTime(QTime(0, 0, 0));
+        mpImgSeqExtract->setStartTime(QTime(0, 0, 0));
+    }
     tryShowControlBar();
     ScreenSaver::instance().enable();
     //toggleRepeat(mpRepeatEnableAction->isChecked());  //after stop not reset repeat task
@@ -1121,6 +1126,7 @@ void MainWindow::onPositionChange(qint64 pos)
     if (mpPlayer->isSeekable())
         mpTimeSlider->setValue(pos);
     mpCurrent->setText(QTime(0, 0, 0).addMSecs(pos).toString("HH:mm:ss"));
+    if (mpImgSeqExtract) mpImgSeqExtract->setStartTime(QTime(0, 0, 0).addMSecs(pos));
 }
 
 void MainWindow::repeatAChanged(const QTime& t)
@@ -1416,6 +1422,11 @@ void MainWindow::tryShowControlBar()
 void MainWindow::showInfo()
 {
     mpImgSeqExtract->setVisible(mpImgSeqExtract->isHidden()); //TODO remove it after test mpImgSeqExtract
+
+    mpCurrent->setVisible(mpImgSeqExtract->isHidden());
+    mpEnd->setVisible(mpImgSeqExtract->isHidden());
+
+
     return;
     if (!mpStatisticsView)
         mpStatisticsView = new StatisticsView();

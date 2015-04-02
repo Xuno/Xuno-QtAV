@@ -56,6 +56,8 @@ public:
     QLineEdit *OutputFileNumberingSeperator;
     QPushButton *buttonExtractFrames;
     void setVisible(bool visible) Q_DECL_OVERRIDE;
+    void setStartTime(QTime time);
+    void setEndTime(QTime time);
 
 private:
     void retranslateUi();

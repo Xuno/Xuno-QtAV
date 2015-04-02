@@ -15,6 +15,8 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QTime>
+
 
 
 ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
@@ -37,7 +39,7 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
 
     hlStart_6->addWidget(startTime);
 
-    hs_start = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    hs_start = new QSpacerItem(12, 20, QSizePolicy::Minimum, QSizePolicy::Minimum);
 
     hlStart_6->addItem(hs_start);
 
@@ -98,7 +100,7 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
 
     hlStart_6->addWidget(buttonSetEndFrame);
 
-    horizontalSpacer_10 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    horizontalSpacer_10 = new QSpacerItem(12, 20, QSizePolicy::Minimum, QSizePolicy::Minimum);
 
     hlStart_6->addItem(horizontalSpacer_10);
 
@@ -187,40 +189,40 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
 }
 void ImgSeqExtractControl::retranslateUi()
 {
-    startTime->setText(QApplication::translate("Dialog", "00:00:00.0000", 0));
-    labelSF->setText(QApplication::translate("Dialog", " Start Frames:", 0));
-    buttonSetStartFrame->setText(QApplication::translate("Dialog", "Set", 0));
-    labelTF->setText(QApplication::translate("Dialog", " Total Frames:", 0));
-    labelEF->setText(QApplication::translate("Dialog", " End Frame:", 0));
-    buttonSetEndFrame->setText(QApplication::translate("Dialog", "Set", 0));
-    endTime->setText(QApplication::translate("Dialog", "00:00:00.0000", 0));
-    btSelectOutputPath->setText(QApplication::translate("Dialog", "Select Output Path", 0));
+    startTime->setText(QApplication::translate("ImageSequenceExtract", "00:00:00.000", 0));
+    labelSF->setText(QApplication::translate("ImageSequenceExtract", " Start Frames:", 0));
+    buttonSetStartFrame->setText(QApplication::translate("ImageSequenceExtract", "Set", 0));
+    labelTF->setText(QApplication::translate("ImageSequenceExtract", " Total Frames:", 0));
+    labelEF->setText(QApplication::translate("ImageSequenceExtract", " End Frame:", 0));
+    buttonSetEndFrame->setText(QApplication::translate("ImageSequenceExtract", "Set", 0));
+    endTime->setText(QApplication::translate("ImageSequenceExtract", "00:00:00.000", 0));
+    btSelectOutputPath->setText(QApplication::translate("ImageSequenceExtract", "Select Output Path", 0));
     cb_OutputType->clear();
     cb_OutputType->insertItems(0, QStringList()
-                               << QApplication::translate("Dialog", "...", 0)
-                               << QApplication::translate("Dialog", ".bmp", 0)
-                               << QApplication::translate("Dialog", ".cr2", 0)
-                               << QApplication::translate("Dialog", ".dng", 0)
-                               << QApplication::translate("Dialog", ".exr", 0)
-                               << QApplication::translate("Dialog", ".dxp", 0)
-                               << QApplication::translate("Dialog", ".jp2", 0)
-                               << QApplication::translate("Dialog", ".png", 0)
-                               << QApplication::translate("Dialog", ".jpg", 0)
-                               << QApplication::translate("Dialog", ".tga", 0)
-                               << QApplication::translate("Dialog", ".tiff", 0)
-                               << QApplication::translate("Dialog", ".tif", 0)
+                               << QApplication::translate("ImageSequenceExtract", "...", 0)
+                               << QApplication::translate("ImageSequenceExtract", ".bmp", 0)
+                               << QApplication::translate("ImageSequenceExtract", ".cr2", 0)
+                               << QApplication::translate("ImageSequenceExtract", ".dng", 0)
+                               << QApplication::translate("ImageSequenceExtract", ".exr", 0)
+                               << QApplication::translate("ImageSequenceExtract", ".dxp", 0)
+                               << QApplication::translate("ImageSequenceExtract", ".jp2", 0)
+                               << QApplication::translate("ImageSequenceExtract", ".png", 0)
+                               << QApplication::translate("ImageSequenceExtract", ".jpg", 0)
+                               << QApplication::translate("ImageSequenceExtract", ".tga", 0)
+                               << QApplication::translate("ImageSequenceExtract", ".tiff", 0)
+                               << QApplication::translate("ImageSequenceExtract", ".tif", 0)
                                );
     cbColorTypeOutput->clear();
     cbColorTypeOutput->insertItems(0, QStringList()
-                                   << QApplication::translate("Dialog", "8-bit RGB", 0)
-                                   << QApplication::translate("Dialog", "10-bit RGB", 0)
-                                   << QApplication::translate("Dialog", "12-bit RGB", 0)
-                                   << QApplication::translate("Dialog", "14-bit RGB", 0)
-                                   << QApplication::translate("Dialog", "16-bit RGB", 0)
+                                   << QApplication::translate("ImageSequenceExtract", "8-bit RGB", 0)
+                                   << QApplication::translate("ImageSequenceExtract", "10-bit RGB", 0)
+                                   << QApplication::translate("ImageSequenceExtract", "12-bit RGB", 0)
+                                   << QApplication::translate("ImageSequenceExtract", "14-bit RGB", 0)
+                                   << QApplication::translate("ImageSequenceExtract", "16-bit RGB", 0)
                                    );
-    labelFilePrefix->setText(QApplication::translate("Dialog", " Prefix", 0));
-    labelFileSeparator->setText(QApplication::translate("Dialog", " Separator", 0));
-    buttonExtractFrames->setText(QApplication::translate("Dialog", "Extract Frames", 0));
+    labelFilePrefix->setText(QApplication::translate("ImageSequenceExtract", " Prefix", 0));
+    labelFileSeparator->setText(QApplication::translate("ImageSequenceExtract", " Separator", 0));
+    buttonExtractFrames->setText(QApplication::translate("ImageSequenceExtract", "Extract Frames", 0));
 } // retranslateUi
 
 
@@ -241,4 +243,14 @@ void ImgSeqExtractControl::setVisible(bool visible)
 {
     RecalculateParentHeight(visible);
     QWidget::setVisible(visible);
+}
+
+void ImgSeqExtractControl::setStartTime(QTime time)
+{
+    startTime->setText(time.toString("hh:mm:ss.zzz"));
+}
+
+void ImgSeqExtractControl::setEndTime(QTime time)
+{
+    endTime->setText(time.toString("hh:mm:ss.zzz"));
 }
