@@ -2,22 +2,25 @@
 #define IMGSEQEXTRACTCONTROL_H
 
 #include <QtCore/QVariant>
-#include <QtWidgets/QAction>
-#include <QtWidgets/QApplication>
-#include <QtWidgets/QButtonGroup>
-#include <QtWidgets/QComboBox>
-#include <QtWidgets/QDialog>
-#include <QtWidgets/QHBoxLayout>
-#include <QtWidgets/QHeaderView>
-#include <QtWidgets/QLabel>
-#include <QtWidgets/QLineEdit>
-#include <QtWidgets/QPushButton>
-#include <QtWidgets/QSpacerItem>
-#include <QtWidgets/QSpinBox>
-#include <QtWidgets/QToolButton>
-#include <QtWidgets/QVBoxLayout>
-#include <QtWidgets/QWidget>
 #include <QDebug>
+#include <QTime>
+#include <QtCore/QVariant>
+#include <QAction>
+#include <QApplication>
+#include <QButtonGroup>
+#include <QComboBox>
+#include <QDialog>
+#include <QHBoxLayout>
+#include <QHeaderView>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QSpacerItem>
+#include <QSpinBox>
+#include <QToolButton>
+#include <QVBoxLayout>
+#include <QWidget>
+#include <QTime>
 
 
 class ImgSeqExtractControl : public QWidget
@@ -58,11 +61,34 @@ public:
     void setVisible(bool visible) Q_DECL_OVERRIDE;
     void setStartTime(QTime time);
     void setEndTime(QTime time);
+    void setTotalFrames(int frames);
+    void setStartFrame(int frame);
+    void setEndFrame(int frame);
+    int getTotalFrames() const;
+    int getStartFrame() const;
+    int getEndFrame() const;
+    void calcStartFrame();
+    void calcStartFrame(QTime t);
+    void calcEndFrame();
+    void calcEndFrame(QTime t);
+    void calcTotalFrames();
+    void setFPS(float fps);
 
 private:
+    QTime isStartTime,isEndTime;
+    float isFPS;
     void retranslateUi();
     int baseParentMaxHeight;
     void RecalculateParentHeight(bool visible);
+    QTime frameToTime(int f);
+    int timeToFrame(QTime t);
+
+private slots:
+    void on_buttonSetStartFrame_clicked(bool state);
+    void on_buttonSetEndFrame_clicked(bool state);
+    void on_ImageSequenceEndFrame_valueChanged(int i);
+    void on_ImageSequenceStartFrame_valueChanged(int i);
+    void on_ImageSequenceTotalFrame_valueChanged(int i);
 
 
 

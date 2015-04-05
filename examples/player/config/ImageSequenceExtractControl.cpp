@@ -1,42 +1,29 @@
 #include "ImageSequenceExtractControl.h"
-#include <QtCore/QVariant>
-#include <QAction>
-#include <QApplication>
-#include <QButtonGroup>
-#include <QComboBox>
-#include <QDialog>
-#include <QHBoxLayout>
-#include <QHeaderView>
-#include <QLabel>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QSpacerItem>
-#include <QSpinBox>
-#include <QToolButton>
-#include <QVBoxLayout>
-#include <QWidget>
-#include <QTime>
+
 
 
 
 ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
-    QWidget (parent)
+    QWidget (parent),
+    isFPS(25.)
 {
 
     baseParentMaxHeight=parentWidget()->maximumHeight();
 
     verticalLayoutWidget=this;
+    verticalLayoutWidget->setObjectName(QStringLiteral("verticalLayoutWidget"));
     verticalLayout = new QVBoxLayout(verticalLayoutWidget);
     verticalLayoutWidget->setLayout(verticalLayout);
     verticalLayout->setSpacing(2);
     verticalLayout->setObjectName(QStringLiteral("verticalLayout"));
-    verticalLayout->setContentsMargins(0, 0, 0, 0);
+    verticalLayout->setContentsMargins(4, 0, 4, 0);
+
     hlStart_6 = new QHBoxLayout();
-    hlStart_6->setSpacing(0);
+    hlStart_6->setSpacing(2);
     hlStart_6->setObjectName(QStringLiteral("hlStart_6"));
+    hlStart_6->addItem(new QSpacerItem(1, 1, QSizePolicy::Minimum, QSizePolicy::Minimum));
     startTime = new QLabel(verticalLayoutWidget);
     startTime->setObjectName(QStringLiteral("startTime"));
-
     hlStart_6->addWidget(startTime);
 
     hs_start = new QSpacerItem(12, 20, QSizePolicy::Minimum, QSizePolicy::Minimum);
@@ -50,7 +37,7 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
 
     ImageSequenceStartFrame = new QSpinBox(verticalLayoutWidget);
     ImageSequenceStartFrame->setObjectName(QStringLiteral("ImageSequenceStartFrame"));
-    ImageSequenceStartFrame->setEnabled(false);
+    ImageSequenceStartFrame->setEnabled(true);
     ImageSequenceStartFrame->setMinimum(1);
     ImageSequenceStartFrame->setMaximum(999999999);
 
@@ -109,10 +96,12 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
 
     hlStart_6->addWidget(endTime);
 
+    hlStart_6->addItem(new QSpacerItem(1, 1, QSizePolicy::Minimum, QSizePolicy::Minimum));
 
     verticalLayout->addLayout(hlStart_6);
 
     horizontalLayout_6 = new QHBoxLayout();
+    horizontalLayout_6->setSpacing(2);
     horizontalLayout_6->setObjectName(QStringLiteral("horizontalLayout_6"));
     btSelectOutputPath = new QPushButton(verticalLayoutWidget);
     btSelectOutputPath->setObjectName(QStringLiteral("btSelectOutputPath"));
@@ -139,22 +128,25 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
     cbColorTypeOutput->setObjectName(QStringLiteral("cbColorTypeOutput"));
 
     horizontalLayout_6->addWidget(cbColorTypeOutput);
-
+    horizontalLayout_6->addItem(new QSpacerItem(1, 1, QSizePolicy::Minimum, QSizePolicy::Minimum));
 
     verticalLayout->addLayout(horizontalLayout_6);
 
     hlPrefix_3 = new QHBoxLayout();
+    hlPrefix_3->setSpacing(2);
     hlPrefix_3->setObjectName(QStringLiteral("hlPrefix_3"));
+    hlPrefix_3->addItem(new QSpacerItem(1, 1, QSizePolicy::Minimum, QSizePolicy::Minimum));
     labelFilePrefix = new QLabel(verticalLayoutWidget);
     labelFilePrefix->setObjectName(QStringLiteral("labelFilePrefix"));
-
     hlPrefix_3->addWidget(labelFilePrefix);
 
     OutputFileNumberingPrefix = new QLineEdit(verticalLayoutWidget);
     OutputFileNumberingPrefix->setObjectName(QStringLiteral("OutputFileNumberingPrefix"));
-    OutputFileNumberingPrefix->setMaxLength(50);
+    OutputFileNumberingPrefix->setMaxLength(80);
 
     hlPrefix_3->addWidget(OutputFileNumberingPrefix);
+
+    hlPrefix_3->addItem(new QSpacerItem(8, 1, QSizePolicy::Minimum, QSizePolicy::Minimum));
 
     labelFileSeparator = new QLabel(verticalLayoutWidget);
     labelFileSeparator->setObjectName(QStringLiteral("labelFileSeparator"));
@@ -174,18 +166,20 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
 
     hlPrefix_3->addWidget(OutputFileNumberingSeperator, 0, Qt::AlignRight);
 
+    hlPrefix_3->addItem(new QSpacerItem(8, 1, QSizePolicy::Minimum, QSizePolicy::Minimum));
+
+
     buttonExtractFrames = new QPushButton(verticalLayoutWidget);
     buttonExtractFrames->setObjectName(QStringLiteral("buttonExtractFrames"));
 
     hlPrefix_3->addWidget(buttonExtractFrames);
-
 
     verticalLayout->addLayout(hlPrefix_3);
 
     retranslateUi();
     adjustSize();
 
-    //QMetaObject::connectSlotsByName(Dialog);
+    QMetaObject::connectSlotsByName(verticalLayoutWidget);
 }
 void ImgSeqExtractControl::retranslateUi()
 {
@@ -220,8 +214,8 @@ void ImgSeqExtractControl::retranslateUi()
                                    << QApplication::translate("ImageSequenceExtract", "14-bit RGB", 0)
                                    << QApplication::translate("ImageSequenceExtract", "16-bit RGB", 0)
                                    );
-    labelFilePrefix->setText(QApplication::translate("ImageSequenceExtract", " Prefix", 0));
-    labelFileSeparator->setText(QApplication::translate("ImageSequenceExtract", " Separator", 0));
+    labelFilePrefix->setText(QApplication::translate("ImageSequenceExtract", "Prefix:", 0));
+    labelFileSeparator->setText(QApplication::translate("ImageSequenceExtract", "Separator:", 0));
     buttonExtractFrames->setText(QApplication::translate("ImageSequenceExtract", "Extract Frames", 0));
 } // retranslateUi
 
@@ -247,10 +241,145 @@ void ImgSeqExtractControl::setVisible(bool visible)
 
 void ImgSeqExtractControl::setStartTime(QTime time)
 {
+    if (isStartTime==time) return;
+    isStartTime=time;
     startTime->setText(time.toString("hh:mm:ss.zzz"));
+    startTime->setToolTip(tr("Frame:%1").arg(timeToFrame(time)));
 }
 
 void ImgSeqExtractControl::setEndTime(QTime time)
 {
+    if (isEndTime==time) return;
+    isEndTime=time;
+    int frame=timeToFrame(time);
     endTime->setText(time.toString("hh:mm:ss.zzz"));
+    endTime->setToolTip(tr("Frame:%1").arg(frame));
+    ImageSequenceStartFrame->setMaximum(frame);
+    ImageSequenceEndFrame->setMaximum(frame);
+    ImageSequenceTotalFrame->setMaximum(frame);
+    calcEndFrame(time);
 }
+
+void ImgSeqExtractControl::setTotalFrames(int frames)
+{
+    if (frames>0 && (ImageSequenceTotalFrame->value()!=frames)){
+        if (!ImageSequenceTotalFrame->isEnabled()) ImageSequenceTotalFrame->setEnabled(true);
+        ImageSequenceTotalFrame->setValue(frames);
+    }
+}
+
+void ImgSeqExtractControl::setStartFrame(int frame)
+{
+    if (frame>0 && (ImageSequenceStartFrame->value()!=frame)){
+        if (!ImageSequenceStartFrame->isEnabled()) ImageSequenceStartFrame->setEnabled(true);
+        ImageSequenceStartFrame->setValue(frame);
+    }
+}
+
+void ImgSeqExtractControl::setEndFrame(int frame)
+{
+    if (frame>0 && (ImageSequenceEndFrame->value()!=frame)){
+        if (!ImageSequenceEndFrame->isEnabled()) ImageSequenceEndFrame->setEnabled(true);
+        ImageSequenceEndFrame->setValue(frame);
+    }
+}
+
+int ImgSeqExtractControl::getTotalFrames() const
+{
+    return ImageSequenceTotalFrame->value();
+}
+
+int ImgSeqExtractControl::getStartFrame() const
+{
+    return ImageSequenceStartFrame->value();
+}
+
+int ImgSeqExtractControl::getEndFrame() const
+{
+    return ImageSequenceEndFrame->value();
+}
+
+void ImgSeqExtractControl::calcStartFrame()
+{
+  setStartFrame(getTotalFrames()-getEndFrame()+1);
+}
+
+
+void ImgSeqExtractControl::calcStartFrame(QTime t)
+{
+    setStartFrame(timeToFrame(t));
+    calcTotalFrames();
+}
+
+int ImgSeqExtractControl::timeToFrame(QTime t)
+{
+    return 1-t.msecsTo(QTime(0,0,0))/1000.*isFPS;
+}
+
+QTime ImgSeqExtractControl::frameToTime(int f)
+{
+    return QTime(0,0,0).addMSecs((float(f)/isFPS)*1000);
+}
+
+void ImgSeqExtractControl::calcEndFrame()
+{
+    //qDebug()<<"calcEndFrame"<<getTotalFrames()+getStartFrame()-1;
+    setEndFrame(getTotalFrames()+getStartFrame()-1);
+}
+
+void ImgSeqExtractControl::calcEndFrame(QTime t)
+{
+    setEndFrame(timeToFrame(t));
+    calcTotalFrames();
+}
+
+void ImgSeqExtractControl::calcTotalFrames()
+{
+  setTotalFrames(getEndFrame()-getStartFrame()+1);
+}
+
+
+void ImgSeqExtractControl::setFPS(float fps)
+{
+  isFPS=fps;
+}
+
+
+// ---------------  SLOTS  ---------------------
+
+void ImgSeqExtractControl::on_buttonSetStartFrame_clicked(bool state)
+{
+    Q_UNUSED(state);
+    qDebug()<<"on_buttonSetStartFrame_clicked"<<state;
+    calcStartFrame(isStartTime);
+}
+
+void ImgSeqExtractControl::on_buttonSetEndFrame_clicked(bool state)
+{
+    Q_UNUSED(state);
+    qDebug()<<"on_buttonSetEndFrame_clicked"<<state;
+    calcEndFrame(isStartTime);
+}
+
+void ImgSeqExtractControl::on_ImageSequenceStartFrame_valueChanged(int i)
+{
+    QSpinBox *sb = qobject_cast<QSpinBox *>(sender());
+    sb->setToolTip(frameToTime(i).toString("hh:mm:ss.zzz"));
+    calcTotalFrames();
+}
+
+void ImgSeqExtractControl::on_ImageSequenceEndFrame_valueChanged(int i)
+{
+    QSpinBox *sb = qobject_cast<QSpinBox *>(sender());
+    sb->setToolTip(frameToTime(i).toString("hh:mm:ss.zzz"));
+    calcTotalFrames();
+}
+
+
+void ImgSeqExtractControl::on_ImageSequenceTotalFrame_valueChanged(int i)
+{
+    QSpinBox *sb = qobject_cast<QSpinBox *>(sender());
+    sb->setToolTip(frameToTime(i).toString("hh:mm:ss.zzz"));
+    calcEndFrame();
+}
+

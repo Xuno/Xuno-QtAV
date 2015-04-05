@@ -1069,6 +1069,7 @@ void MainWindow::seek()
     m_preview->setWindowFlags(m_preview->windowFlags() |Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
     m_preview->resize(w, h);
     m_preview->show();
+    if (mpImgSeqExtract) mpImgSeqExtract->setStartTime(QTime(0,0,0).addMSecs((qint64)mpTimeSlider->value()));
 }
 
 void MainWindow::showHideVolumeBar()
@@ -1427,7 +1428,6 @@ void MainWindow::showInfo()
     mpEnd->setVisible(mpImgSeqExtract->isHidden());
 
 
-    return;
     if (!mpStatisticsView)
         mpStatisticsView = new StatisticsView();
     if (mpPlayer)
@@ -1438,7 +1438,7 @@ void MainWindow::showInfo()
 void MainWindow::onTimeSliderHover(int pos, int value)
 {
     QPoint gpos = mapToGlobal(mpTimeSlider->pos() + QPoint(pos, 0));
-    QToolTip::showText(gpos, QTime(0, 0, 0).addMSecs(value).toString("HH:mm:ss.zz"));
+    QToolTip::showText(gpos, QTime(0, 0, 0).addMSecs(value).toString("HH:mm:ss.zzz"));
     if (!Config::instance().previewEnabled())
         return;
     if (!m_preview)
@@ -1795,6 +1795,7 @@ void MainWindow::setPlayerPosFromRepeat(){
 
 void MainWindow::customfpsChanged(double n){
   mCustomFPS=n;
+  if (mpImgSeqExtract) mpImgSeqExtract->setFPS(n);
 }
 void MainWindow::tuneRepeatMovieDuration(){
      mpImageSequence->setMovieDuration(mpPlayer->mediaStopPosition());
