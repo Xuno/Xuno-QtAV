@@ -74,6 +74,9 @@ public:
     void calcTotalFrames();
     void setFPS(float fps);
 
+signals:
+    void seek(QTime time);
+
 private:
     QTime isStartTime,isEndTime;
     float isFPS;
@@ -89,9 +92,6 @@ private slots:
     void on_ImageSequenceEndFrame_valueChanged(int i);
     void on_ImageSequenceStartFrame_valueChanged(int i);
     void on_ImageSequenceTotalFrame_valueChanged(int i);
-
-
-
 };
 
 #endif // IMGSEQEXTRACTCONTROL_H

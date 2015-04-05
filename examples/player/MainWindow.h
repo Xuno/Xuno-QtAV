@@ -113,6 +113,8 @@ private slots:
     void onSpeedChange(qreal speed);
     void seekToMSec(int msec);
     void seek();
+    void seek(qint64 msec);
+    void seek(QTime time);
     void showHideVolumeBar();
     void setVolume();
     void tryHideControlBar();
@@ -177,6 +179,7 @@ private:
     void tuneRepeatMovieDuration();
     bool isFileImgageSequence();
     bool applyCustomFPS();
+    void analyeUsedFPS();
 
 
 private:

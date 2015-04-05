@@ -231,8 +231,23 @@ void MainWindow::setupUi()
     mpTimeSlider->setTracking(true);
     mpTimeSlider->setOrientation(Qt::Horizontal);
     mpTimeSlider->setMinimum(0);
-
-
+    mpTimeSlider->setStyleSheet(" \
+QSlider::groove:horizontal { \
+    margin: 4px 0px 2px 0px;\
+    background-color: solid #F8F8F8; \
+} \
+QSlider::handle:horizontal { \
+    width: 7px;  \
+    border: 1px solid #5c5c5c; \
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #8f8f8f); \
+    border-radius: 2px;\
+    margin: -2px 0;\
+}\
+   QSlider::sub-page:horizontal { \
+    margin: 2px 0px 3px 0px;\
+    background-color: #0066FF; \
+} \
+        ");
     mpCurrent = new QLabel(mpControl);
     mpCurrent->setToolTip(tr("Current time"));
     mpCurrent->setMargin(2);
@@ -641,6 +656,7 @@ void MainWindow::setupUi()
 
     controlVLayout->setSizeConstraint(QLayout::SetMinimumSize);
     mpImgSeqExtract = new ImgSeqExtractControl(mpControl);
+    connect(mpImgSeqExtract,SIGNAL(seek(QTime)),SLOT(seek(QTime)));
     controlVLayout->addWidget(mpImgSeqExtract);
     controlVLayout->addLayout(controlLayout);
     mpImgSeqExtract->setVisible(false);
@@ -989,7 +1005,6 @@ void MainWindow::onStartPlay()
     mpTimeSlider->setValue(0);
     mpTimeSlider->setEnabled(mpPlayer->isSeekable());
     mpEnd->setText(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()).toString("HH:mm:ss"));
-    if (mpImgSeqExtract) mpImgSeqExtract->setEndTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
     setVolume();
     mShowControl = 0;
     QTimer::singleShot(3000, this, SLOT(tryHideControlBar()));
@@ -1011,6 +1026,8 @@ void MainWindow::onStartPlay()
 
     if (mpStatisticsView && mpStatisticsView->isVisible())
         mpStatisticsView->setStatistics(mpPlayer->statistics());
+    analyeUsedFPS();
+    if (mpImgSeqExtract) mpImgSeqExtract->setEndTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
     reSizeByMovie();
 }
 
@@ -1070,6 +1087,15 @@ void MainWindow::seek()
     m_preview->resize(w, h);
     m_preview->show();
     if (mpImgSeqExtract) mpImgSeqExtract->setStartTime(QTime(0,0,0).addMSecs((qint64)mpTimeSlider->value()));
+}
+
+void MainWindow::seek(qint64 msec)
+{
+    mpPlayer->seek(msec);
+}
+void MainWindow::seek(QTime time)
+{
+    mpPlayer->seek((qint64)QTime(0,0,0).msecsTo(time));
 }
 
 void MainWindow::showHideVolumeBar()
@@ -1475,22 +1501,22 @@ void MainWindow::onMediaStatusChanged()
     AVPlayer *player = qobject_cast<AVPlayer*>(sender());
     switch (player->mediaStatus()) {
     case NoMedia:
-        status = "No media";
+        status = QObject::tr("No media");
         break;
     case InvalidMedia:
-        status = "Invalid meida";
+        status = QObject::tr("Invalid meida");
         break;
     case BufferingMedia:
-        status = "Buffering...";
+        status = QObject::tr("Buffering...");
         break;
     case BufferedMedia:
-        status = "Buffered";
+        status = QObject::tr("Buffered");
         break;
     case LoadingMedia:
-        status = "Loading...";
+        status = QObject::tr("Loading...");
         break;
     case LoadedMedia:
-        status = "Loaded";
+        status = QObject::tr("Loaded");
         break;
     default:
         status = "";
@@ -1865,4 +1891,16 @@ bool MainWindow::applyCustomFPS(){
  void MainWindow::onImageSequenceToogledFrameExtractor(bool state)
  {
        qDebug()<<"onImageSequenceToogledFrameExtractor "<<state;
+ }
+
+ void MainWindow::analyeUsedFPS()
+ {
+     Statistics st=mpPlayer->statistics();
+     qDebug()<<"analyeUsedFPS"<<st.video.frame_rate;
+     if (mCustomFPS==0.)
+         if (mpImgSeqExtract){
+             //Statistics st=mpPlayer->statistics();
+             if (st.video.frame_rate>0.)
+                 mpImgSeqExtract->setFPS(st.video.frame_rate);
+         }
  }

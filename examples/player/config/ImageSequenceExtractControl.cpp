@@ -5,7 +5,7 @@
 
 ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
     QWidget (parent),
-    isFPS(25.)
+    isFPS(0.)
 {
 
     baseParentMaxHeight=parentWidget()->maximumHeight();
@@ -241,7 +241,8 @@ void ImgSeqExtractControl::setVisible(bool visible)
 
 void ImgSeqExtractControl::setStartTime(QTime time)
 {
-    if (isStartTime==time) return;
+    qDebug()<<"setStartTime"<<time.toString("hh:mm:ss.zzz");
+    if (isFPS==0. ||isStartTime==time) return;
     isStartTime=time;
     startTime->setText(time.toString("hh:mm:ss.zzz"));
     startTime->setToolTip(tr("Frame:%1").arg(timeToFrame(time)));
@@ -249,7 +250,8 @@ void ImgSeqExtractControl::setStartTime(QTime time)
 
 void ImgSeqExtractControl::setEndTime(QTime time)
 {
-    if (isEndTime==time) return;
+    qDebug()<<"setEndTime"<<time.toString("hh:mm:ss.zzz");
+    if (isFPS==0. || isEndTime==time) return;
     isEndTime=time;
     int frame=timeToFrame(time);
     endTime->setText(time.toString("hh:mm:ss.zzz"));
@@ -366,6 +368,7 @@ void ImgSeqExtractControl::on_ImageSequenceStartFrame_valueChanged(int i)
     QSpinBox *sb = qobject_cast<QSpinBox *>(sender());
     sb->setToolTip(frameToTime(i).toString("hh:mm:ss.zzz"));
     calcTotalFrames();
+    emit seek(frameToTime(i));
 }
 
 void ImgSeqExtractControl::on_ImageSequenceEndFrame_valueChanged(int i)
@@ -373,6 +376,7 @@ void ImgSeqExtractControl::on_ImageSequenceEndFrame_valueChanged(int i)
     QSpinBox *sb = qobject_cast<QSpinBox *>(sender());
     sb->setToolTip(frameToTime(i).toString("hh:mm:ss.zzz"));
     calcTotalFrames();
+    emit seek(frameToTime(i));
 }
 
 
