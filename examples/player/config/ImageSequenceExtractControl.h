@@ -21,7 +21,9 @@
 #include <QVBoxLayout>
 #include <QWidget>
 #include <QTime>
+#include "Button.h"
 
+class Button;
 
 class ImgSeqExtractControl : public QWidget
 {
@@ -58,6 +60,10 @@ public:
     QLabel *labelFileSeparator;
     QLineEdit *OutputFileNumberingSeperator;
     QPushButton *buttonExtractFrames;
+    QPixmap mPlayPixmap;
+    QPixmap mPausePixmap;
+    Button *mpPlayPauseBtn;
+    bool playing;
     void setVisible(bool visible) Q_DECL_OVERRIDE;
     void setStartTime(QTime time);
     void setEndTime(QTime time);
@@ -92,6 +98,7 @@ private slots:
     void on_ImageSequenceEndFrame_valueChanged(int i);
     void on_ImageSequenceStartFrame_valueChanged(int i);
     void on_ImageSequenceTotalFrame_valueChanged(int i);
+    void on_mpPlayPauseBtn_clicked();
 };
 
 #endif // IMGSEQEXTRACTCONTROL_H

@@ -239,7 +239,7 @@ QSlider::groove:horizontal { \
 QSlider::handle:horizontal { \
     width: 7px;  \
     border: 1px solid #5c5c5c; \
-    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #8f8f8f); \
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #ffffff); \
     border-radius: 2px;\
     margin: -2px 0;\
 }\

@@ -1,11 +1,10 @@
 #include "ImageSequenceExtractControl.h"
 
 
-
-
 ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
     QWidget (parent),
-    isFPS(0.)
+    isFPS(0.),
+    playing(false)
 {
 
     baseParentMaxHeight=parentWidget()->maximumHeight();
@@ -64,6 +63,23 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
     ImageSequenceTotalFrame->setMaximum(999999999);
 
     hlStart_6->addWidget(ImageSequenceTotalFrame);
+
+    mPlayPixmap = QPixmap(":/theme/button-play-pause.png");
+    int w = mPlayPixmap.width(), h = mPlayPixmap.height();
+    mPausePixmap = mPlayPixmap.copy(QRect(w/2, 0, w/2, h));
+    mPlayPixmap = mPlayPixmap.copy(QRect(0, 0, w/2, h));
+    qDebug("mPlayPixmap %d x %d", mPlayPixmap.width(), mPlayPixmap.height());
+    mpPlayPauseBtn = new Button(verticalLayoutWidget);
+    int a = qMin(w/2, h);
+    const int kMaxButtonIconWidth = 20;
+    const int kMaxButtonIconMargin = kMaxButtonIconWidth/3;
+    a = qMin(a, kMaxButtonIconWidth);
+    mpPlayPauseBtn->setIconWithSates(mPlayPixmap);
+    mpPlayPauseBtn->setIconSize(QSize(a, a/2));
+    mpPlayPauseBtn->setMaximumSize(a+kMaxButtonIconMargin+2, a+kMaxButtonIconMargin);
+    connect(mpPlayPauseBtn, SIGNAL(clicked()), SLOT(on_mpPlayPauseBtn_clicked()));
+
+    hlStart_6->addWidget(mpPlayPauseBtn);
 
     hs_end = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
@@ -241,7 +257,7 @@ void ImgSeqExtractControl::setVisible(bool visible)
 
 void ImgSeqExtractControl::setStartTime(QTime time)
 {
-    qDebug()<<"setStartTime"<<time.toString("hh:mm:ss.zzz");
+    //qDebug()<<"setStartTime"<<time.toString("hh:mm:ss.zzz");
     if (isFPS==0. ||isStartTime==time) return;
     isStartTime=time;
     startTime->setText(time.toString("hh:mm:ss.zzz"));
@@ -250,7 +266,7 @@ void ImgSeqExtractControl::setStartTime(QTime time)
 
 void ImgSeqExtractControl::setEndTime(QTime time)
 {
-    qDebug()<<"setEndTime"<<time.toString("hh:mm:ss.zzz");
+    //qDebug()<<"setEndTime"<<time.toString("hh:mm:ss.zzz");
     if (isFPS==0. || isEndTime==time) return;
     isEndTime=time;
     int frame=timeToFrame(time);
@@ -387,3 +403,9 @@ void ImgSeqExtractControl::on_ImageSequenceTotalFrame_valueChanged(int i)
     calcEndFrame();
 }
 
+void ImgSeqExtractControl::on_mpPlayPauseBtn_clicked()
+{
+    qDebug()<<"on_mpPlayPauseBtn_clicked";
+    playing=!playing;
+    mpPlayPauseBtn->setIconWithSates(playing?mPausePixmap:mPlayPixmap);
+}
