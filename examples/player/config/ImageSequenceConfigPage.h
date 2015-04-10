@@ -25,6 +25,8 @@ class QSpinBox;
 class ImageSequenceConfigPage : public QDialog
 {
     Q_OBJECT
+    Q_PROPERTY(bool EnableFrameExtractor READ getEnableFrameExtractor WRITE setEnableFrameExtractor)
+
 public:
     explicit ImageSequenceConfigPage(QWidget *parent = 0);
     void openFiles();
@@ -34,7 +36,7 @@ public:
     void setImageSequenceFileName(QString fname);
     void setRepeatLoop(bool loop);
     void setEnableFrameExtractor(bool s);
-    bool getEnableFrameExtractor();
+    bool getEnableFrameExtractor() const;
 
 
 signals:

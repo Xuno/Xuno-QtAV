@@ -25,6 +25,9 @@
 #define SLIDER_H
 
 #include <QSlider>
+#include <QFrame>
+#include <QPainter>
+#include <QLabel>
 
 class Slider : public QSlider
 {
@@ -39,10 +42,12 @@ signals:
     void onHover(int pos, int value);
 
 protected:
+    void addLimitBar();
     virtual void enterEvent(QEvent* event);
     virtual void leaveEvent(QEvent *e);
     virtual void mouseMoveEvent(QMouseEvent* event);
     virtual void mousePressEvent(QMouseEvent *event);
+    virtual void paintEvent(QPaintEvent *e);
 //#if CODE_FOR_CLICK == 1
 	inline int pick(const QPoint &pt) const;
 	int pixelPosToRangeValue(int pos) const;

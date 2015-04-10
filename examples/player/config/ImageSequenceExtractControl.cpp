@@ -70,6 +70,7 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
     mPlayPixmap = mPlayPixmap.copy(QRect(0, 0, w/2, h));
     qDebug("mPlayPixmap %d x %d", mPlayPixmap.width(), mPlayPixmap.height());
     mpPlayPauseBtn = new Button(verticalLayoutWidget);
+    mpPlayPauseBtn->setObjectName(QStringLiteral("mpPlayPauseBtn"));
     int a = qMin(w/2, h);
     const int kMaxButtonIconWidth = 20;
     const int kMaxButtonIconMargin = kMaxButtonIconWidth/3;
@@ -77,7 +78,7 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
     mpPlayPauseBtn->setIconWithSates(mPlayPixmap);
     mpPlayPauseBtn->setIconSize(QSize(a, a/2));
     mpPlayPauseBtn->setMaximumSize(a+kMaxButtonIconMargin+2, a+kMaxButtonIconMargin);
-    connect(mpPlayPauseBtn, SIGNAL(clicked()), SLOT(on_mpPlayPauseBtn_clicked()));
+    //connect(mpPlayPauseBtn, SIGNAL(clicked()), SLOT(on_mpPlayPauseBtn_clicked()));
 
     hlStart_6->addWidget(mpPlayPauseBtn);
 

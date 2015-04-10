@@ -1448,12 +1448,6 @@ void MainWindow::tryShowControlBar()
 
 void MainWindow::showInfo()
 {
-    mpImgSeqExtract->setVisible(mpImgSeqExtract->isHidden()); //TODO remove it after test mpImgSeqExtract
-
-    mpCurrent->setVisible(mpImgSeqExtract->isHidden());
-    mpEnd->setVisible(mpImgSeqExtract->isHidden());
-
-
     if (!mpStatisticsView)
         mpStatisticsView = new StatisticsView();
     if (mpPlayer)
@@ -1890,7 +1884,13 @@ bool MainWindow::applyCustomFPS(){
 
  void MainWindow::onImageSequenceToogledFrameExtractor(bool state)
  {
-       qDebug()<<"onImageSequenceToogledFrameExtractor "<<state;
+     qDebug()<<"onImageSequenceToogledFrameExtractor "<<state;
+
+     mpImgSeqExtract->setVisible(state);
+
+     mpCurrent->setVisible(!state);
+     mpEnd->setVisible(!state);
+
  }
 
  void MainWindow::analyeUsedFPS()

@@ -169,18 +169,16 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     groupBox2->setTitle(tr("Generate Image Sequence"));
 
     QVBoxLayout *vb2 = new QVBoxLayout(groupBox2);
-//    QCheckBox *checkBoxExtractor = new QCheckBox(groupBox2);
-//    checkBoxExtractor->setObjectName(QStringLiteral("checkBoxExtractor"));
-//    checkBoxExtractor->setText(tr("Enable Frame Extractor"));
     checkBoxExtractor = new QPushButton(groupBox2);
+    checkBoxExtractor->setObjectName(QStringLiteral("checkBoxExtractor"));
     checkBoxExtractor->setText(tr("Enable Frame Extractor"));
     checkBoxExtractor->setCheckable(true);
+    checkBoxExtractor->setChecked(false);
     QSizePolicy sizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
     sizePolicy.setHorizontalStretch(0);
     sizePolicy.setVerticalStretch(0);
     sizePolicy.setHeightForWidth(checkBoxExtractor->sizePolicy().hasHeightForWidth());
     checkBoxExtractor->setSizePolicy(sizePolicy);
-    connect(checkBoxExtractor,SIGNAL(toggled(bool)),SLOT(on_checkBoxExtractor_toggled(bool)));
     vb2->addWidget(checkBoxExtractor);
 
     verticalLayoutWidget->addWidget(groupBox2);
@@ -205,7 +203,7 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
 
     //initValues
 
-    setEnableFrameExtractor(true);
+    setEnableFrameExtractor(false);
 }
 
 void ImageSequenceConfigPage::onSelectImgages()
@@ -505,7 +503,7 @@ void ImageSequenceConfigPage::setEnableFrameExtractor(bool s)
      checkBoxExtractor->setChecked(s);
 }
 
-bool ImageSequenceConfigPage::getEnableFrameExtractor()
+bool ImageSequenceConfigPage::getEnableFrameExtractor() const
 {
      return checkBoxExtractor->isChecked();
 }

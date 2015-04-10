@@ -24,6 +24,7 @@
 #include "Slider.h"
 #include <QApplication>
 #include <QMouseEvent>
+#include <QDebug>
 
 #if CODE_FOR_CLICK <= 1
 #include <QStyle>
@@ -42,6 +43,7 @@ Slider::Slider(QWidget *parent):
 {
     setOrientation(Qt::Horizontal);
     setMouseTracking(true); //mouseMoveEvent without press.
+    addLimitBar();
 }
 
 Slider::~Slider()
@@ -101,6 +103,36 @@ int Slider::pixelPosToRangeValue(int pos) const
     return QStyle::sliderValueFromPosition(minimum(), maximum(), pos - sliderMin,
                                            sliderMax - sliderMin, opt.upsideDown);
 }
+
+
+void Slider::addLimitBar()
+{
+    qDebug()<<"Slider::addLimitBar(), w:"<<width()<<"h:"<<height();
+    //style()
+    QLabel *label= new QLabel("TTTTTT",this);
+    //QWidget *bar= new QWidget(this);
+    QFrame *line = new QFrame(this);
+    line->setObjectName(QStringLiteral("line"));
+    line->setGeometry(QRect(0, 0, width(), 10));
+    line->setFrameShadow(QFrame::Plain);
+    line->setLineWidth(10);
+    line->setFrameShape(QFrame::HLine);
+    label->raise();
+
+}
+
+void Slider::paintEvent(QPaintEvent *e)
+{
+//    QPainter painter(this);
+
+//    QStyleOptionFocusRect option;
+//    option.initFrom(this);
+//    option.backgroundColor = palette().color(QPalette::BrightText/*QPalette::Background*/);
+
+//    style()->drawPrimitive(QStyle::PE_FrameFocusRect, &option, &painter, this);
+    QSlider::paintEvent(e);
+}
+
 
 void Slider::enterEvent(QEvent *event)
 {
