@@ -58,6 +58,7 @@ public:
      * \brief initialize
      * \param shaderProgram: 0 means create a shader program internally. if not linked, vertex/fragment shader will be added and linked
      */
+    // initialize(VideoMaterial*, QOpenGLShaderProgram*)
     virtual void initialize(QOpenGLShaderProgram* shaderProgram = 0);
     /*!
      * \brief textureLocationCount
@@ -77,8 +78,10 @@ public:
     int gammaRGBLocation() const;
     int pixeloffsetLocation() const;
     int filterkernelLocation() const;
+    int channelMapLocation() const;
     VideoFormat videoFormat() const;
-    void setVideoFormat(const VideoFormat& format);
+    // defalut is GL_TEXTURE_2D
+    int textureTarget() const;
     QOpenGLShaderProgram* program();
     bool update(VideoMaterial* material);
 protected:
@@ -87,9 +90,12 @@ protected:
 
     VideoShader(VideoShaderPrivate &d);
     DPTR_DECLARE(VideoShader)
+private:
+    void setVideoFormat(const VideoFormat& format);
+    void setTextureTarget(int type);
+    friend class VideoMaterial;
 };
 
-class MaterialType {};
 class VideoMaterialPrivate;
 /*!
  * \brief The VideoMaterial class
@@ -105,7 +111,7 @@ public:
     void setCurrentFrame(const VideoFrame& frame);
     VideoFormat currentFormat() const;
     VideoShader* createShader() const;
-    virtual MaterialType* type() const;
+    virtual const char* type() const;
 
     bool bind(); // TODO: roi
     void unbind();
@@ -114,6 +120,7 @@ public:
     bool hasAlpha() const;
     const QMatrix4x4 &colorMatrix() const;
     const QMatrix4x4& matrix() const;
+    const QMatrix4x4& channelMap() const;
     int bpp() const; //1st plane
     int planeCount() const;
     qreal gammaRGB() const;
@@ -135,12 +142,21 @@ public:
     QSize frameSize() const;
     /*!
      * \brief normalizedROI
-     * \param roi logical roi of a video frame
-     * \return
-     * valid and normalized roi. \sa validTextureWidth()
+     * \param roi logical roi of a video frame.
+     * the same as mapToTexture(roi, 1)
      */
     QRectF normalizedROI(const QRectF& roi) const;
     QVector2D pixeloffset() const;
+    /*!
+     * \brief mapToFrame
+     * map a point p or a rect r to video texture (of 1st plane) and scaled to valid width.
+     * p or r is in video frame's rect.
+     * \param normalize -1: auto(do not normalize for rectangle texture). 0: no. 1: yes
+     * \return
+     * point or rect in current texture valid coordinates. \sa validTextureWidth()
+     */
+    QPointF mapToTexture(const QPointF& p, int normalize = -1) const;
+    QRectF mapToTexture(const QRectF& r, int normalize = -1) const;
     void setBrightness(qreal value);
     void setContrast(qreal value);
     void setHue(qreal value);

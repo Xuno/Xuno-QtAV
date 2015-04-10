@@ -177,4 +177,15 @@ void main() {
 #endif //USED_GAMMA
 
   //gl_FragColor = u_colorMatrix*texture2D(u_Texture0, v_TexCoords) * u_opacity;
+#ifdef PACKED_YUV
+uniform mat4 u_c;
+#endif //PACKED_YUV
+
+void main() {
+    vec4 c = texture2D(u_Texture0, v_TexCoords);
+#ifdef PACKED_YUV
+    c = u_c * c;
+    c.a = 1.0;
+#endif //PACKED_YUV
+    gl_FragColor = clamp(u_colorMatrix * c, 0.0, 1.0) * u_opacity;
 }

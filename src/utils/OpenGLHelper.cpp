@@ -163,6 +163,11 @@ bool videoFormatToGL(const VideoFormat& fmt, GLint* internal_format, GLenum* dat
 #endif //QT_OPENGL_DYNAMIC
     // Very special formats, for which OpenGL happens to have direct support
     static const fmt_entry pixfmt_gl_entry_common[] = {
+        // TODO: review rgb formats & yuv packed to upload correct rgba
+        {VideoFormat::Format_UYVY, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE },
+        {VideoFormat::Format_YUYV, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE },
+        {VideoFormat::Format_VYUY, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE },
+        {VideoFormat::Format_YVYU, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE },
         {VideoFormat::Format_RGBA32, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE }, // only tested for osx, win, angle
         {VideoFormat::Format_ABGR32, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE }, // only tested for osx, win, angle
         {VideoFormat::Format_RGB48, GL_RGB, GL_RGB, GL_UNSIGNED_SHORT },
@@ -210,6 +215,10 @@ int bytesOfGLFormat(GLenum format, GLenum dataType)
 {
     int component_size = 0;
     switch (dataType) {
+#ifdef GL_UNSIGNED_INT_8_8_8_8_REV
+    case GL_UNSIGNED_INT_8_8_8_8_REV:
+        return 4;
+#endif
 #ifdef GL_UNSIGNED_BYTE_3_3_2
     case GL_UNSIGNED_BYTE_3_3_2:
         return 1;
@@ -234,11 +243,22 @@ int bytesOfGLFormat(GLenum format, GLenum dataType)
     case GL_UNSIGNED_BYTE:
         component_size = 1;
         break;
+        // mpv returns 2
+#ifdef GL_UNSIGNED_SHORT_8_8_APPLE
+    case GL_UNSIGNED_SHORT_8_8_APPLE:
+    case GL_UNSIGNED_SHORT_8_8_REV_APPLE:
+        return 2;
+#endif
     case GL_UNSIGNED_SHORT:
         component_size = 2;
         break;
     }
     switch (format) {
+#ifdef GL_RGB_422_APPLE
+      case GL_YCBCR_422_APPLE:
+      case GL_RGB_422_APPLE:
+        return 2;
+#endif
 #ifdef GL_BGRA //ifndef GL_ES
       case GL_BGRA:
 #endif
@@ -250,6 +270,7 @@ int bytesOfGLFormat(GLenum format, GLenum dataType)
       case GL_RGB:
         return 3*component_size;
       case GL_LUMINANCE_ALPHA:
+        // mpv returns 2
         return 2*component_size;
       case GL_LUMINANCE:
       case GL_ALPHA:

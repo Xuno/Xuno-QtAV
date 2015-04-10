@@ -30,13 +30,9 @@
 
 #define YUVA_DONE 0
 #define GLSL_BICUBIC 0  // if used in GLSL own function for BICUBIC Interpolation
-/*
- * TODO: glActiveTexture for Qt4
- * texture target (rectangle for VDA)
- */
+#define glsl(x) #x "\n"
 
 namespace QtAV {
-
 
 TexturedGeometry::TexturedGeometry(int count, Triangle t)
     : tri(t)
@@ -113,15 +109,15 @@ char const *const* VideoShader::attributeNames() const
 
 const char* VideoShader::vertexShader() const
 {
-    static const char kVertexShader[] =
-        "attribute vec4 a_Position;\n"
-        "attribute vec2 a_TexCoords;\n"
-        "uniform mat4 u_MVP_matrix;\n"
-        "varying vec2 v_TexCoords;\n"
-        "void main() {\n"
-        "  gl_Position = u_MVP_matrix * a_Position;\n"
-        "  v_TexCoords = a_TexCoords; \n"
-        "}\n";
+    static const char kVertexShader[] = glsl(
+        attribute vec4 a_Position;
+        attribute vec2 a_TexCoords;
+        uniform mat4 u_MVP_matrix;
+        varying vec2 v_TexCoords;
+        void main() {
+          gl_Position = u_MVP_matrix * a_Position;
+          v_TexCoords = a_TexCoords;
+        });
     return kVertexShader;
 }
 
@@ -132,7 +128,7 @@ const char* VideoShader::fragmentShader() const
     if (d.video_format.isPlanar()) {
         d.planar_frag = shaderSourceFromFile("shaders/planar.f.glsl");
     } else {
-        d.packed_frag = shaderSourceFromFile("shaders/rgb.f.glsl");
+        d.packed_frag = shaderSourceFromFile("shaders/packed.f.glsl");
     }
     QByteArray& frag = d.video_format.isPlanar() ? d.planar_frag : d.packed_frag;
     if (frag.isEmpty()) {
@@ -144,11 +140,21 @@ const char* VideoShader::fragmentShader() const
         frag.prepend("#define PLANE_4\n");
     }
 #endif
-    if (d.video_format.isPlanar() && d.video_format.bytesPerPixel(0) == 2) {
-        if (d.video_format.isBigEndian())
-            frag.prepend("#define LA_16BITS_BE\n");
-        else
-            frag.prepend("#define LA_16BITS_LE\n");
+    if (d.video_format.isPlanar()) {
+        if (d.video_format.bytesPerPixel(0) == 2) {
+            if (d.video_format.isBigEndian())
+                frag.prepend("#define LA_16BITS_BE\n");
+            else
+                frag.prepend("#define LA_16BITS_LE\n");
+        }
+    } else {
+        if (!d.video_format.isRGB())
+            frag.prepend("#define PACKED_YUV");
+    }
+    if (d.texture_target == GL_TEXTURE_RECTANGLE) {
+        frag.prepend("#extension GL_ARB_texture_rectangle : enable\n"
+                     "#define texture2D texture2DRect\n"
+                     "#define sampler2D sampler2DRect\n");
     }
 #if (GLSL_BICUBIC)
             frag.prepend("#define USED_BiCubic\n");
@@ -177,19 +183,23 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
     d.u_gammaRGB = shaderProgram->uniformLocation("u_gammaRGB");
     d.u_pix = shaderProgram->uniformLocation("u_pix");
     d.u_filterkernel = shaderProgram->uniformLocation("u_filterkernel");
+    d.u_c = shaderProgram->uniformLocation("u_c");
     d.u_Texture.resize(textureLocationCount());
     for (int i = 0; i < d.u_Texture.size(); ++i) {
-        QString tex_var = QString("u_Texture%1").arg(i);
+        const QString tex_var = QString("u_Texture%1").arg(i);
         d.u_Texture[i] = shaderProgram->uniformLocation(tex_var);
         qDebug("glGetUniformLocation(\"%s\") = %d", tex_var.toUtf8().constData(), d.u_Texture[i]);
     }
     qDebug("glGetUniformLocation(\"u_MVP_matrix\") = %d", d.u_MVP_matrix);
     qDebug("glGetUniformLocation(\"u_colorMatrix\") = %d", d.u_colorMatrix);
-    qDebug("glGetUniformLocation(\"u_bpp\") = %d", d.u_bpp);
     qDebug("glGetUniformLocation(\"u_opacity\") = %d", d.u_opacity);
     qDebug("glGetUniformLocation(\"u_gammaRGB\") = %d", d.u_gammaRGB);
     qDebug("glGetUniformLocation(\"u_pix\") = %d", d.u_pix);
     qDebug("glGetUniformLocation(\"u_filterkernel\") = %d", d.u_filterkernel);
+    if (d.u_c >= 0)
+        qDebug("glGetUniformLocation(\"u_c\") = %d", d.u_c);
+    if (d.u_bpp >= 0)
+        qDebug("glGetUniformLocation(\"u_bpp\") = %d", d.u_bpp);
 }
 
 int VideoShader::textureLocationCount() const
@@ -241,6 +251,20 @@ int VideoShader::pixeloffsetLocation() const
 int VideoShader::filterkernelLocation() const
 {
     return d_func().u_filterkernel;
+}
+int VideoShader::channelMapLocation() const
+{
+    return d_func().u_c;
+}
+
+int VideoShader::textureTarget() const
+{
+    return d_func().texture_target;
+}
+
+void VideoShader::setTextureTarget(int type)
+{
+    d_func().texture_target = type;
 }
 
 VideoFormat VideoShader::videoFormat() const
@@ -300,6 +324,8 @@ bool VideoShader::update(VideoMaterial *material)
     program()->setUniformValue(colorMatrixLocation(), material->colorMatrix());
     if (bppLocation() >= 0)
         program()->setUniformValue(bppLocation(), (GLfloat)material->bpp());
+    if (channelMapLocation() >= 0)
+        program()->setUniformValue(channelMapLocation(), material->channelMap());
     //program()->setUniformValue(matrixLocation(), material->matrix()); //what about sgnode? state.combindMatrix()?
     // uniform end. attribute begins
     program()->setUniformValue(gammaRGBLocation(), (GLfloat)material->gammaRGB());
@@ -362,6 +388,16 @@ void VideoMaterial::setCurrentFrame(const VideoFrame &frame)
     d.bpp = frame.format().bitsPerPixel(0);
     d.width = frame.width();
     d.height = frame.height();
+    GLenum new_target = GL_TEXTURE_2D; // not d.target. because metadata "target" is not always set
+    QByteArray t = frame.metaData("target").toByteArray().toLower();
+    if (t == "rect")
+        new_target = GL_TEXTURE_RECTANGLE;
+    if (new_target != d.target) {
+        // FIXME: not thread safe (in qml)
+        d.target = new_target;
+        d.init_textures_required = true;
+    }
+
     const VideoFormat fmt(frame.format());
     d.bpp = fmt.bitsPerPixel(0);
     // http://forum.doom9.org/archive/index.php/t-160211.html
@@ -398,48 +434,43 @@ VideoShader* VideoMaterial::createShader() const
     DPTR_D(const VideoMaterial);
     VideoShader *shader = new VideoShader();
     shader->setVideoFormat(d.video_format);
+    shader->setTextureTarget(d.target);
     //resize texture locations to avoid access format later
     return shader;
 }
 
-MaterialType* VideoMaterial::type() const
+const char *VideoMaterial::type() const
 {
-    static MaterialType rgbType;
-    static MaterialType packedType; // TODO: uyuy, yuy2
-    static MaterialType planar16leType;
-    static MaterialType planar16beType;
-    static MaterialType yuv8Type;
-    static MaterialType planar16le_4plane_Type;
-    static MaterialType planar16be_4plane_Type;
-    static MaterialType yuv8_4plane_Type;
-
-    static MaterialType invalidType;
-    const VideoFormat &fmt = d_func().video_format;
-    if (fmt.isRGB() && !fmt.isPlanar())
-        return &rgbType;
-    if (!fmt.isPlanar())
-        return &packedType;
+    DPTR_D(const VideoMaterial);
+    const VideoFormat &fmt = d.video_format;
+    if (!fmt.isPlanar()) {
+        if (fmt.isRGB())
+            return "packed rgb material";
+        if (d.target == GL_TEXTURE_2D)
+            return "packed yuv material";
+        return "packed yuv + rectangle texture material";
+    }
     if (fmt.bytesPerPixel(0) == 1) {
         if (fmt.planeCount() == 4)
-            return &yuv8_4plane_Type;
-        return &yuv8Type;
+            return "8bit 4plane yuv material";
+        return "8bit yuv material";
     }
     if (fmt.isBigEndian()) {
         if (fmt.planeCount() == 4)
-            return &planar16be_4plane_Type;
-        return &planar16beType;
+            return "4plane 16bit-be material";
+        return "planar 16bit-be material";
     } else {
         if (fmt.planeCount() == 4)
-            return &planar16le_4plane_Type;
-        return &planar16leType;
+            return "4plane 16bit-le material";
+        return "planar 16bit-le material";
     }
-    return &invalidType;
+    return "invalid material";
 }
 
 bool VideoMaterial::bind()
 {
     DPTR_D(VideoMaterial);
-    if (!d.updateTexturesIfNeeded())
+    if (!d.ensureResources())
         return false;
     const int nb_planes = d.textures.size(); //number of texture id
     if (nb_planes <= 0)
@@ -453,23 +484,43 @@ bool VideoMaterial::bind()
         d.update_texure = false;
         d.frame = VideoFrame();
     }
+    d.init_textures_required = false;
     return true;
 }
 
 void VideoMaterial::bindPlane(int p, bool updateTexture)
 {
     DPTR_D(VideoMaterial);
+    GLuint &tex = d.textures[p];
+    if (d.init_textures_required) {
+        if (tex) {
+            qDebug("deleting texture for plane: %d", p);
+            DYGL(glDeleteTextures(1, &tex));
+            tex = 0;
+        }
+    }
+    if (!tex) {
+        qDebug("creating texture for plane: %d", p);
+        GLuint* handle = (GLuint*)d.frame.createInteropHandle(&tex, GLTextureSurface, p);
+        if (handle) {
+            tex = *handle;
+        } else {
+            DYGL(glGenTextures(1, &tex));
+            d.initTexture(tex, d.internal_format[p], d.data_format[p], d.data_type[p], d.texture_size[p].width(), d.texture_size[p].height());
+        }
+        qDebug("texture for plane %d is created: %u", p, tex);
+    }
     if (!updateTexture) {
         OpenGLHelper::glActiveTexture(GL_TEXTURE0 + p); //0 must active?
-        DYGL(glBindTexture(d.target, d.textures[p]));
+        DYGL(glBindTexture(d.target, tex));
         return;
     }
     //setupQuality?
     // try_pbo ? pbo_id : 0. 0= > interop.createHandle
-    if (d.frame.map(GLTextureSurface, &d.textures[p])) {
+    if (d.frame.map(GLTextureSurface, &tex, p)) {
         //TODO: move to map()?
         OpenGLHelper::glActiveTexture(GL_TEXTURE0 + p); //0 must active?
-        DYGL(glBindTexture(d.target, d.textures[p]));
+        DYGL(glBindTexture(d.target, tex));
         return;
     }
     // FIXME: why happens on win?
@@ -492,11 +543,12 @@ void VideoMaterial::bindPlane(int p, bool updateTexture)
     }
     OpenGLHelper::glActiveTexture(GL_TEXTURE0 + p);
     //qDebug("bpl[%d]=%d width=%d", p, frame.bytesPerLine(p), frame.planeWidth(p));
-    DYGL(glBindTexture(d.target, d.textures[p]));
+    DYGL(glBindTexture(d.target, tex));
     //d.setupQuality();
     // This is necessary for non-power-of-two textures
     DYGL(glTexParameteri(d.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
     DYGL(glTexParameteri(d.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+    // TODO: data address use surfaceinterop.map()
     DYGL(glTexSubImage2D(d.target, 0, 0, 0, d.texture_upload_size[p].width(), d.texture_upload_size[p].height(), d.data_format[p], d.data_type[p], d.try_pbo ? 0 : d.frame.bits(p)));
     if (d.try_pbo) {
         d.pbo[p].release();
@@ -507,7 +559,7 @@ int VideoMaterial::compare(const VideoMaterial *other) const
 {
     DPTR_D(const VideoMaterial);
     for (int i = 0; i < d.textures.size(); ++i) {
-        const int diff = d.textures[i] - other->d_func().textures[i];
+        const int diff = d.textures[i] - other->d_func().textures[i]; //TODO
         if (diff)
             return diff;
     }
@@ -535,6 +587,11 @@ const QMatrix4x4& VideoMaterial::colorMatrix() const
 const QMatrix4x4& VideoMaterial::matrix() const
 {
     return d_func().matrix;
+}
+
+const QMatrix4x4 &VideoMaterial::channelMap() const
+{
+    return d_func().channel_map;
 }
 
 int VideoMaterial::bpp() const
@@ -607,24 +664,87 @@ QSize VideoMaterial::frameSize() const
 {
     return QSize(d_func().width, d_func().height);
 }
-
 QRectF VideoMaterial::normalizedROI(const QRectF &roi) const
 {
+    return mapToTexture(roi, 1);
+}
+
+QPointF VideoMaterial::mapToTexture(const QPointF &p, int normalize) const
+{
+    if (p.isNull())
+        return p;
     DPTR_D(const VideoMaterial);
-    if (!roi.isValid())
-        return QRectF(0, 0, 1, 1);
+    float x = p.x();
+    float y = p.y();
+    const qreal texW = d.texture_size[0].width();
+    const qreal s = texW/qreal(d.width); // only apply to unnormalized input roi
+    if (normalize < 0)
+        normalize = d.target != GL_TEXTURE_RECTANGLE;
+    if (normalize) {
+        if (qAbs(x) > 1) {
+            x /= (float)texW;
+            x *= s;
+        }
+        if (qAbs(y) > 1)
+            y /= (float)d.height;
+    } else {
+        if (qAbs(x) <= 1)
+            x *= (float)texW;
+        else
+            x *= s;
+        if (qAbs(y) <= 1)
+            y *= (float)d.height;
+    }
+    // multiply later because we compare with 1 before it
+    x *= d.effective_tex_width_ratio;
+    return QPointF(x, y);
+}
+
+// mapToTexture
+QRectF VideoMaterial::mapToTexture(const QRectF &roi, int normalize) const
+{
+    DPTR_D(const VideoMaterial);
+    const qreal texW = d.texture_size[0].width();
+    const qreal s = texW/qreal(d.width); // only apply to unnormalized input roi
+    if (!roi.isValid()) {
+        if (normalize)
+            return QRectF(0, 0, d.effective_tex_width_ratio, 1); //NOTE: not (0, 0, 1, 1)
+        return QRectF(0, 0, texW, d.height);
+    }
     float x = roi.x();
-    float w = roi.width();
-    if (qAbs(x) > 1)
-        x /= (float)d.width;
+    float w = roi.width(); //TODO: texturewidth
     float y = roi.y();
-    if (qAbs(y) > 1)
-        y /= (float)d.height;
-    if (qAbs(w) > 1)
-        w /= (float)d.width;
     float h = roi.height();
-    if (qAbs(h) > 1)
-        h /= (float)d.height;
+    if (normalize < 0)
+        normalize = d.target != GL_TEXTURE_RECTANGLE;
+    if (normalize) {
+        if (qAbs(x) > 1) {
+            x /= texW;
+            x *= s;
+        }
+        if (qAbs(y) > 1)
+            y /= (float)d.height;
+        if (qAbs(w) > 1) {
+            w /= texW;
+            w *= s;
+        }
+        if (qAbs(h) > 1)
+            h /= (float)d.height;
+    } else { //FIXME: what about ==1?
+        if (qAbs(x) <= 1)
+            x *= texW;
+        else
+            x *= s;
+        if (qAbs(y) <= 1)
+            y *= (float)d.height;
+        if (qAbs(w) <= 1)
+            w *= texW;
+        else
+            w *= s;
+        if (qAbs(h) <= 1)
+            h *= (float)d.height;
+    }
+    // multiply later because we compare with 1 before it
     x *= d.effective_tex_width_ratio;
     w *= d.effective_tex_width_ratio;
     return QRectF(x, y, w, h);
@@ -676,7 +796,7 @@ VideoMaterialPrivate::~VideoMaterialPrivate()
         pbo[i].destroy();
 }
 
-bool VideoMaterialPrivate::initTextures(const VideoFormat& fmt)
+bool VideoMaterialPrivate::updateTextureParameters(const VideoFormat& fmt)
 {
     // isSupported(pixfmt)
     if (!fmt.isValid())
@@ -694,6 +814,7 @@ bool VideoMaterialPrivate::initTextures(const VideoFormat& fmt)
      * GL ES2 support: GL_RGB, GL_RGBA, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_ALPHA
      * http://stackoverflow.com/questions/18688057/which-opengl-es-2-0-texture-formats-are-color-depth-or-stencil-renderable
      */
+    const int nb_planes = fmt.planeCount();
     if (!fmt.isPlanar()) {
         GLint internal_fmt;
         GLenum data_fmt;
@@ -703,22 +824,22 @@ bool VideoMaterialPrivate::initTextures(const VideoFormat& fmt)
             qDebug() << fmt;
             return false;
         }
-        internal_format = QVector<GLint>(fmt.planeCount(), internal_fmt);
-        data_format = QVector<GLenum>(fmt.planeCount(), data_fmt);
-        data_type = QVector<GLenum>(fmt.planeCount(), data_t);
+        internal_format = QVector<GLint>(nb_planes, internal_fmt);
+        data_format = QVector<GLenum>(nb_planes, data_fmt);
+        data_type = QVector<GLenum>(nb_planes, data_t);
         //glPixelStorei(GL_UNPACK_ALIGNMENT, fmt.bytesPerPixel());
         // TODO: if no alpha, data_fmt is not GL_BGRA. align at every upload?
     } else {
-        internal_format.resize(fmt.planeCount());
-        data_format.resize(fmt.planeCount());
-        data_type = QVector<GLenum>(fmt.planeCount(), GL_UNSIGNED_BYTE);
+        internal_format.resize(nb_planes);
+        data_format.resize(nb_planes);
+        data_type = QVector<GLenum>(nb_planes, GL_UNSIGNED_BYTE);
         /*!
          * GLES internal_format == data_format, GL_LUMINANCE_ALPHA is 2 bytes
          * so if NV12 use GL_LUMINANCE_ALPHA, YV12 use GL_ALPHA
          */
         qDebug("///////////bpp %d", fmt.bytesPerPixel());
         internal_format[0] = data_format[0] = GL_LUMINANCE; //or GL_RED for GL
-        if (fmt.planeCount() == 2) {
+        if (nb_planes == 2) {
             // NV12/21 semi-planar
             internal_format[1] = data_format[1] = GL_LUMINANCE_ALPHA;
         } else {
@@ -729,14 +850,14 @@ bool VideoMaterialPrivate::initTextures(const VideoFormat& fmt)
             } else {
                 internal_format[1] = data_format[1] = GL_LUMINANCE; //vec4(L,L,L,1)
                 internal_format[2] = data_format[2] = GL_ALPHA;//GL_ALPHA;
-                if (fmt.planeCount() == 4)
+                if (nb_planes == 4)
                     internal_format[3] = data_format[3] = GL_ALPHA; //GL_ALPHA
             }
         }
     }
-    for (int i = 0; i < fmt.planeCount(); ++i) {
+    for (int i = 0; i < nb_planes; ++i) {
         //qDebug("format: %#x GL_LUMINANCE_ALPHA=%#x", data_format[i], GL_LUMINANCE_ALPHA);
-        if (fmt.bytesPerPixel(i) == 2 && fmt.planeCount() == 3) {
+        if (fmt.bytesPerPixel(i) == 2 && nb_planes == 3) {
             //data_type[i] = GL_UNSIGNED_SHORT;
         }
         const int bpp_gl = OpenGLHelper::bytesOfGLFormat(data_format[i], data_type[i]);
@@ -757,49 +878,86 @@ bool VideoMaterialPrivate::initTextures(const VideoFormat& fmt)
      * But the number of actural textures we upload is plane count.
      * Which means the number of texture id equals to plane count
      */
-    if (textures.size() != fmt.planeCount()) {
-        qDebug("delete %d textures", textures.size());
-        if (!textures.isEmpty()) {
-            DYGL(glDeleteTextures(textures.size(), textures.data()));
-            textures.clear();
+    // always delete old textures otherwise old textures are not initialized with correct parameters
+    // TODO: use a struct for each plane: texid, initialized...
+    // FIXME: texture lazy will cause the first frame display red, seems some planes are not uploaded. why?
+    // currently only vda zero copy(uyvy) needs lazy delete, only 1 plane so no red display issue.
+    if (target == GL_TEXTURE_2D) {
+        if (textures.size() != nb_planes) {
+            const int nb_delete = textures.size();
+            qDebug("delete %d textures", nb_delete);
+            if (!textures.isEmpty()) {
+                DYGL(glDeleteTextures(nb_delete, textures.data()));
+                textures.clear();
+            }
+            textures.resize(nb_planes);
+            textures.fill(0);
+            DYGL(glGenTextures(textures.size(), textures.data()));
         }
-        textures.resize(fmt.planeCount());
-        DYGL(glGenTextures(textures.size(), textures.data()));
-    }
-    qDebug("init textures...");
-    for (int i = 0; i < textures.size(); ++i) {
-        initTexture(textures[i], internal_format[i], data_format[i], data_type[i], texture_size[i].width(), texture_size[i].height());
+        qDebug("init textures...");
+        for (int i = 0; i < textures.size(); ++i) {
+            // can not init for vda!
+            initTexture(textures[i], internal_format[i], data_format[i], data_type[i], texture_size[i].width(), texture_size[i].height());
+        }
+        init_textures_required = false;
+    } else {
+        if (textures.size() > nb_planes) {
+            const int nb_delete = textures.size() - nb_planes;
+            qDebug("delete %d textures", nb_delete);
+            if (!textures.isEmpty()) {
+                DYGL(glDeleteTextures(nb_delete, textures.data() + nb_planes));
+            }
+        }
+        textures.resize(nb_planes);
+        init_textures_required = true;
     }
     return true;
 }
 
-bool VideoMaterialPrivate::updateTexturesIfNeeded()
+void VideoMaterialPrivate::updateChannelMap(const VideoFormat &fmt)
+{
+    channel_map = QMatrix4x4();
+    if (fmt.isPlanar() || fmt.isRGB())
+        return;
+    switch (fmt.pixelFormat()) {
+    case VideoFormat::Format_UYVY:
+        channel_map = QMatrix4x4(0.0f, 0.5f, 0.0f, 0.5f,
+                                 1.0f, 0.0f, 0.0f, 0.0f,
+                                 0.0f, 0.0f, 1.0f, 0.0f,
+                                 0.0f, 0.0f, 0.0f, 1.0f);
+        break;
+    case VideoFormat::Format_YUYV:
+        channel_map = QMatrix4x4(0.5f, 0.0f, 0.5f, 0.0f,
+                                 0.0f, 1.0f, 0.0f, 0.0f,
+                                 0.0f, 0.0f, 0.0f, 1.0f,
+                                 0.0f, 0.0f, 0.0f, 1.0f);
+        break;
+    case VideoFormat::Format_VYUY:
+        channel_map = QMatrix4x4(0.0f, 0.5f, 0.0f, 0.5f,
+                                 0.0f, 0.0f, 1.0f, 0.0f,
+                                 1.0f, 0.0f, 0.0f, 0.0f,
+                                 0.0f, 0.0f, 0.0f, 1.0f);
+        break;
+    case VideoFormat::Format_YVYU:
+        channel_map = QMatrix4x4(0.5f, 0.0f, 0.5f, 0.0f,
+                                 0.0f, 0.0f, 0.0f, 1.0f,
+                                 0.0f, 1.0f, 0.0f, 0.0f,
+                                 0.0f, 0.0f, 0.0f, 1.0f);
+        break;
+    default:
+        break;
+    }
+}
+
+bool VideoMaterialPrivate::ensureResources()
 {
     if (!update_texure) //video frame is already uploaded and displayed
         return true;
     const VideoFormat &fmt = video_format;
     if (!fmt.isValid())
         return false;
-    bool update_textures = false;
-    GLenum new_target = target;
-    QByteArray t = frame.metaData("target").toByteArray().toLower();
-#ifndef GL_TEXTURE_RECTANGLE
-#define GL_TEXTURE_RECTANGLE 0x84F5
-#endif
-    if (t == "rect")
-        new_target = GL_TEXTURE_RECTANGLE;
-#ifdef GL_TEXTURE_3D
-    else if (t == "3d")
-        new_target = GL_TEXTURE_3D;
-#endif //GL_TEXTURE_3D
-#ifdef GL_TEXTURE_1D
-    else if (t == "1d")
-        new_target = GL_TEXTURE_1D;
-#endif //GL_TEXTURE_1D
-    if (new_target != target) {
-        target = new_target;
-        update_textures = true;
-    }
+
+    bool update_textures = init_textures_required;
     const int nb_planes = fmt.planeCount();
     // will this take too much time?
     const qreal wr = (qreal)frame.effectiveBytesPerLine(nb_planes-1)/(qreal)frame.bytesPerLine(nb_planes-1);
@@ -842,7 +1000,8 @@ bool VideoMaterialPrivate::updateTexturesIfNeeded()
         plane0Size.setHeight(frame.height());
     }
     if (update_textures) {
-        initTextures(fmt);
+        updateTextureParameters(fmt);
+        updateChannelMap(fmt);
         // check pbo support
         // TODO: complete pbo extension set
         try_pbo = try_pbo && OpenGLHelper::isPBOSupported();

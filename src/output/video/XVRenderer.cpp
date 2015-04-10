@@ -89,7 +89,11 @@ private:
 };
 typedef XVRenderer VideoRendererXV;
 extern VideoRendererId VideoRendererId_XV;
+#if 0
 FACTORY_REGISTER_ID_AUTO(VideoRenderer, XV, "XVideo")
+#else
+VideoRenderer* __create_VideoRendererXV() { return new VideoRendererXV();}
+#endif
 
 void RegisterVideoRendererXV_Man()
 {

@@ -148,7 +148,7 @@ void OpenGLVideoPrivate::bindAttributes(VideoShader* shader, const QRectF &t, co
     if (!update_geo)
         goto end;
     //qDebug("updating geometry...");
-    geometry.setRect(target_rect, material->normalizedROI(roi));
+    geometry.setRect(target_rect, material->mapToTexture(roi));
     update_geo = false;
     if (!try_vbo)
         goto end;
@@ -214,8 +214,7 @@ OpenGLVideo::OpenGLVideo() {}
 
 bool OpenGLVideo::isSupported(VideoFormat::PixelFormat pixfmt)
 {
-    return pixfmt != VideoFormat::Format_YUYV && pixfmt != VideoFormat::Format_UYVY
-            && pixfmt != VideoFormat::Format_RGB48BE;
+    return pixfmt != VideoFormat::Format_RGB48BE;
 }
 
 // TODO: set surface/device size here (viewport?)
