@@ -86,6 +86,7 @@ sse2 {
 DEFINES += __STDC_CONSTANT_MACROS
 android: CONFIG += config_opensl
 win32: CONFIG += config_dsound
+win32: CONFIG += config_openal
 
 config_swresample {
     DEFINES += QTAV_HAVE_SWRESAMPLE=1
