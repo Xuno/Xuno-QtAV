@@ -109,29 +109,43 @@ void Slider::addLimitBar()
 {
     qDebug()<<"Slider::addLimitBar(), w:"<<width()<<"h:"<<height();
     //style()
-    QLabel *label= new QLabel("TTTTTT",this);
+    //QLabel *label= new QLabel("TTTTTT",this);
     //QWidget *bar= new QWidget(this);
-    QFrame *line = new QFrame(this);
+    line = new QFrame(this);
     line->setObjectName(QStringLiteral("line"));
-    line->setGeometry(QRect(0, 0, width(), 10));
+    line->setGeometry(QRect(0, 0, 0, 8));
     line->setFrameShadow(QFrame::Plain);
-    line->setLineWidth(10);
+    line->setLineWidth(1);
     line->setFrameShape(QFrame::HLine);
-    label->raise();
+    line->setContentsMargins(0,0,0,7);
+    line->setStyleSheet("#line {color: red}");
+    line->lower();
+    this->raise();
 
 }
 
-void Slider::paintEvent(QPaintEvent *e)
+//void Slider::paintEvent(QPaintEvent *e)
+//{
+////    QPainter painter(this);
+
+////    QStyleOptionFocusRect option;
+////    option.initFrom(this);
+////    option.backgroundColor = palette().color(QPalette::BrightText/*QPalette::Background*/);
+
+////    style()->drawPrimitive(QStyle::PE_FrameFocusRect, &option, &painter, this);
+//    QSlider::paintEvent(e);
+//}
+
+void Slider::resizeEvent(QResizeEvent *event)
 {
-//    QPainter painter(this);
-
-//    QStyleOptionFocusRect option;
-//    option.initFrom(this);
-//    option.backgroundColor = palette().color(QPalette::BrightText/*QPalette::Background*/);
-
-//    style()->drawPrimitive(QStyle::PE_FrameFocusRect, &option, &painter, this);
-    QSlider::paintEvent(e);
+    //const QSize size, const QSize oldSize
+    //QSize  oldSize = event->oldSize();
+    QSize size = event->size();
+    line->setGeometry(QRect(0, 0, size.width()-1, size.height()));
+    //qDebug()<<"resizeEvent size,oldSize"<<size.width()<<oldSize.width();
+    QSlider::resizeEvent(event);
 }
+
 
 
 void Slider::enterEvent(QEvent *event)

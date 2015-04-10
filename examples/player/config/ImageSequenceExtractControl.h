@@ -10,6 +10,7 @@
 #include <QButtonGroup>
 #include <QComboBox>
 #include <QDialog>
+#include <QFileDialog>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
@@ -99,6 +100,7 @@ private slots:
     void on_ImageSequenceStartFrame_valueChanged(int i);
     void on_ImageSequenceTotalFrame_valueChanged(int i);
     void on_mpPlayPauseBtn_clicked();
+    void on_btSelectOutputPath_clicked();
 };
 
 #endif // IMGSEQEXTRACTCONTROL_H

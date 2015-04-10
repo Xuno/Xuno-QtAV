@@ -28,6 +28,7 @@
 #include <QFrame>
 #include <QPainter>
 #include <QLabel>
+#include <QResizeEvent>
 
 class Slider : public QSlider
 {
@@ -48,11 +49,14 @@ protected:
     virtual void mouseMoveEvent(QMouseEvent* event);
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void paintEvent(QPaintEvent *e);
+    virtual void resizeEvent(QResizeEvent *event) Q_DECL_OVERRIDE;
 //#if CODE_FOR_CLICK == 1
 	inline int pick(const QPoint &pt) const;
 	int pixelPosToRangeValue(int pos) const;
     void initStyleOption_Qt430(QStyleOptionSlider *option) const;
 //#endif
+private:
+    QFrame *line;
 };
 
 #endif //SLIDER_H

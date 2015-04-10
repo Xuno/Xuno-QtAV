@@ -395,11 +395,12 @@ void ImageSequenceConfigPage::on_checkBoxExtractor_toggled(bool state)
     QPushButton* button = dynamic_cast<QPushButton*>(sender());
     QString text=button->text();
     const QString enable=tr("Enable");
-    const QString enabled=tr("Enabled");
+    //const QString enabled=tr("Enabled");
+    const QString disable=tr("Disable");
     if (state)
-        text.replace(enable,enabled);
+        text.replace(enable,disable);
     else
-        text.replace(enabled,enable);
+        text.replace(disable,enable);
     button->setText(text);
     emit toogledFrameExtractor(state);
 }

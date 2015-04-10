@@ -210,7 +210,7 @@ void ImgSeqExtractControl::retranslateUi()
     btSelectOutputPath->setText(QApplication::translate("ImageSequenceExtract", "Select Output Path", 0));
     cb_OutputType->clear();
     cb_OutputType->insertItems(0, QStringList()
-                               << QApplication::translate("ImageSequenceExtract", "...", 0)
+                               << QApplication::translate("ImageSequenceExtract", ".tif", 0)
                                << QApplication::translate("ImageSequenceExtract", ".bmp", 0)
                                << QApplication::translate("ImageSequenceExtract", ".cr2", 0)
                                << QApplication::translate("ImageSequenceExtract", ".dng", 0)
@@ -221,7 +221,6 @@ void ImgSeqExtractControl::retranslateUi()
                                << QApplication::translate("ImageSequenceExtract", ".jpg", 0)
                                << QApplication::translate("ImageSequenceExtract", ".tga", 0)
                                << QApplication::translate("ImageSequenceExtract", ".tiff", 0)
-                               << QApplication::translate("ImageSequenceExtract", ".tif", 0)
                                );
     cbColorTypeOutput->clear();
     cbColorTypeOutput->insertItems(0, QStringList()
@@ -409,4 +408,16 @@ void ImgSeqExtractControl::on_mpPlayPauseBtn_clicked()
     qDebug()<<"on_mpPlayPauseBtn_clicked";
     playing=!playing;
     mpPlayPauseBtn->setIconWithSates(playing?mPausePixmap:mPlayPixmap);
+}
+
+void ImgSeqExtractControl::on_btSelectOutputPath_clicked()
+{
+    qDebug()<<"on_btSelectOutputPath_clicked";
+    //get latest used path
+    QString prevPath="E:\\public\\Videos\\OWN\\work\\image-seq\\outbmp-bgr24";//= config.getLastUsedPath();
+    QString directory = QDir::toNativeSeparators(QFileDialog::getExistingDirectory(this,tr("Directory path for exctract"), prevPath, QFileDialog::ShowDirsOnly));
+    if (!directory.isEmpty()){
+         qDebug()<<"on_btSelectOutputPath_clicked"<<directory;
+         OutputPath->setText(directory);
+    }
 }
