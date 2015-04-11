@@ -43,7 +43,6 @@ Slider::Slider(QWidget *parent):
 {
     setOrientation(Qt::Horizontal);
     setMouseTracking(true); //mouseMoveEvent without press.
-    addLimitBar();
 }
 
 Slider::~Slider()
@@ -104,13 +103,17 @@ int Slider::pixelPosToRangeValue(int pos) const
                                            sliderMax - sliderMin, opt.upsideDown);
 }
 
+void Slider::addVisualLimits(int min, int max)
+{
+    visualLimitsMin = qMin(qMax(min, minimum()),maximum());
+    visualLimitsMax = qMax(qMin(max, maximum()),minimum());
+    qDebug()<<"Slider::addVisualLimits"<<visualLimitsMin<<visualLimitsMax;
+    if (!line) addLimitBar();
+}
+
 
 void Slider::addLimitBar()
 {
-    qDebug()<<"Slider::addLimitBar(), w:"<<width()<<"h:"<<height();
-    //style()
-    //QLabel *label= new QLabel("TTTTTT",this);
-    //QWidget *bar= new QWidget(this);
     line = new QFrame(this);
     line->setObjectName(QStringLiteral("line"));
     line->setGeometry(QRect(0, 0, 0, 8));
@@ -119,30 +122,38 @@ void Slider::addLimitBar()
     line->setFrameShape(QFrame::HLine);
     line->setContentsMargins(0,0,0,7);
     line->setStyleSheet("#line {color: red}");
-    line->lower();
-    this->raise();
-
+    qDebug()<<"Slider::addVisualLimits"<<visualLimitsMin<<visualLimitsMax;
 }
-
-//void Slider::paintEvent(QPaintEvent *e)
-//{
-////    QPainter painter(this);
-
-////    QStyleOptionFocusRect option;
-////    option.initFrom(this);
-////    option.backgroundColor = palette().color(QPalette::BrightText/*QPalette::Background*/);
-
-////    style()->drawPrimitive(QStyle::PE_FrameFocusRect, &option, &painter, this);
-//    QSlider::paintEvent(e);
-//}
 
 void Slider::resizeEvent(QResizeEvent *event)
 {
-    //const QSize size, const QSize oldSize
-    //QSize  oldSize = event->oldSize();
-    QSize size = event->size();
-    line->setGeometry(QRect(0, 0, size.width()-1, size.height()));
-    //qDebug()<<"resizeEvent size,oldSize"<<size.width()<<oldSize.width();
+    if (line) {
+        QSize size = event->size();
+
+        QStyleOptionSlider opt;
+        initStyleOption(&opt);
+        QRect gr = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderGroove, this);
+        QRect sr = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, this);
+       qDebug()<<"Slider::resizeEvent SC_SliderGroove"<<gr;
+       qDebug()<<"Slider::resizeEvent SC_SliderHandle"<<sr;
+       int sliderLength;
+        if (orientation() == Qt::Horizontal) {
+            sliderLength = sr.width();
+        }else{
+            sliderLength = sr.height();
+        }
+
+        int offset=sliderLength/2;
+        int minmax=maximum()-minimum();
+        int w=gr.width();
+
+        if (minmax){
+            int xmin=(((qreal)visualLimitsMin/minmax)*w);
+            int xmax=(((qreal)visualLimitsMax/minmax)*w);
+            line->setGeometry(QRect(xmin+2, 0, xmax-xmin-3, size.height()));
+            qDebug()<<"Slider::resizeEvent size,xmin,xmax"<<w<<xmin<<xmax<<sliderLength;
+        }
+    }
     QSlider::resizeEvent(event);
 }
 

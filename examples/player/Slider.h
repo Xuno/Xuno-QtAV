@@ -36,6 +36,7 @@ class Slider : public QSlider
 public:
     Slider(QWidget *parent = 0);
     ~Slider();
+    void addVisualLimits(int min, int max);
 
 signals:
     void onEnter();
@@ -48,7 +49,7 @@ protected:
     virtual void leaveEvent(QEvent *e);
     virtual void mouseMoveEvent(QMouseEvent* event);
     virtual void mousePressEvent(QMouseEvent *event);
-    virtual void paintEvent(QPaintEvent *e);
+    //virtual void paintEvent(QPaintEvent *e);
     virtual void resizeEvent(QResizeEvent *event) Q_DECL_OVERRIDE;
 //#if CODE_FOR_CLICK == 1
 	inline int pick(const QPoint &pt) const;
@@ -56,7 +57,9 @@ protected:
     void initStyleOption_Qt430(QStyleOptionSlider *option) const;
 //#endif
 private:
-    QFrame *line;
+    QFrame *line = 0;
+    int visualLimitsMin = 0;
+    int visualLimitsMax = 0;
 };
 
 #endif //SLIDER_H

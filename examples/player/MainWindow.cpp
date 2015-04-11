@@ -319,6 +319,7 @@ QSlider::handle:horizontal { \
     mpVolumeSlider->setMaximumWidth(88);
     //mpVolumeSlider->setValue(int(1.0/kVolumeInterval*qreal(kVolumeSliderMax)/100.0));
     mpVolumeSlider->setValue(80);
+    mpVolumeSlider->addVisualLimits(80,100);
     setVolume();
 
     mpWebBtn = new Button();
