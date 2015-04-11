@@ -248,6 +248,7 @@ QSlider::handle:horizontal { \
     background-color: #0066FF; \
 } \
         ");
+    mpTimeSlider->addVisualLimits();
     mpCurrent = new QLabel(mpControl);
     mpCurrent->setToolTip(tr("Current time"));
     mpCurrent->setMargin(2);
@@ -319,7 +320,6 @@ QSlider::handle:horizontal { \
     mpVolumeSlider->setMaximumWidth(88);
     //mpVolumeSlider->setValue(int(1.0/kVolumeInterval*qreal(kVolumeSliderMax)/100.0));
     mpVolumeSlider->setValue(80);
-    mpVolumeSlider->addVisualLimits(80,100);
     setVolume();
 
     mpWebBtn = new Button();
@@ -1163,6 +1163,7 @@ void MainWindow::repeatAChanged(const QTime& t)
     if (!mpPlayer)
         return;
     mpPlayer->setStartPosition(QTime(0, 0, 0).msecsTo(t));
+    mpTimeSlider->setVisualMinLimit(QTime(0, 0, 0).msecsTo(t));
 }
 
 void MainWindow::repeatBChanged(const QTime& t)
@@ -1174,6 +1175,7 @@ void MainWindow::repeatBChanged(const QTime& t)
     if (!mpPlayer)
         return;
     mpPlayer->setStopPosition(QTime(0, 0, 0).msecsTo(t));
+    mpTimeSlider->setVisualMaxLimit(QTime(0, 0, 0).msecsTo(t));
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *e)
@@ -1393,6 +1395,7 @@ void MainWindow::toggleRepeat(bool r)
     }
     if (mpPlayer) {
         mpPlayer->setRepeat(mpRepeatLoop->isChecked()?-1:mRepeateMax-1);
+        mpTimeSlider->setVisibleVisualLimit(r);
     }
 }
 

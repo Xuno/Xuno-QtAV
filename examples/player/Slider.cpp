@@ -105,12 +105,25 @@ int Slider::pixelPosToRangeValue(int pos) const
 
 void Slider::addVisualLimits(int min, int max)
 {
-    visualLimitsMin = qMin(qMax(min, minimum()),maximum());
-    visualLimitsMax = qMax(qMin(max, maximum()),minimum());
+    setVisualMinLimit(min);
+    setVisualMaxLimit(max);
     qDebug()<<"Slider::addVisualLimits"<<visualLimitsMin<<visualLimitsMax;
     if (!line) addLimitBar();
 }
 
+void Slider::setVisualMinLimit(int min)
+{
+    visualLimitsMin = qMin(qMax(min, minimum()),maximum());
+    if (line) updateLimitBar();
+    //qDebug()<<"Slider::setVisualMinLimit"<<visualLimitsMin;
+}
+
+void Slider::setVisualMaxLimit(int max)
+{
+    visualLimitsMax = qMax(qMin(max, maximum()),minimum());
+    if (line) updateLimitBar();
+    //qDebug()<<"Slider::setVisualMaxLimit"<<visualLimitsMax;
+}
 
 void Slider::addLimitBar()
 {
@@ -122,37 +135,51 @@ void Slider::addLimitBar()
     line->setFrameShape(QFrame::HLine);
     line->setContentsMargins(0,0,0,4);
     line->setStyleSheet("#line {color: red}");
-    qDebug()<<"Slider::addVisualLimits"<<visualLimitsMin<<visualLimitsMax;
+    //qDebug()<<"Slider::addVisualLimits"<<visualLimitsMin<<visualLimitsMax;
+    setVisibleVisualLimit(false);
+}
+
+void Slider::updateLimitBar()
+{
+    QStyleOptionSlider opt;
+    initStyleOption(&opt);
+    QRect gr = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderGroove, this);
+    QRect sr = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, this);
+//       qDebug()<<"Slider::resizeEvent SC_SliderGroove"<<gr;
+//       qDebug()<<"Slider::resizeEvent SC_SliderHandle"<<sr;
+   int sliderLength;
+    if (orientation() == Qt::Horizontal) {
+        sliderLength = sr.width();
+    }else{
+        sliderLength = sr.height();
+    }
+
+   // int offset=sliderLength/2;
+    int minmax=maximum()-minimum();
+    int w=gr.width();
+    int h=gr.height();
+
+    if (minmax){
+        int xmin=(((qreal)visualLimitsMin/(qreal)minmax)*w);
+        int xmax=(((qreal)visualLimitsMax/(qreal)minmax)*w);
+        if (line) line->setGeometry(QRect(xmin+1, 0, xmax-xmin-1, h));
+        //qDebug()<<"Slider::resizeEvent size,xmin,xmax"<<w<<xmin<<xmax<<sliderLength;
+    }
+
+}
+
+void Slider::setVisibleVisualLimit(bool s)
+{
+     if (line) {
+         line->setVisible(s);
+     }
 }
 
 void Slider::resizeEvent(QResizeEvent *event)
 {
     if (line) {
-        QSize size = event->size();
-
-        QStyleOptionSlider opt;
-        initStyleOption(&opt);
-        QRect gr = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderGroove, this);
-        QRect sr = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, this);
-       qDebug()<<"Slider::resizeEvent SC_SliderGroove"<<gr;
-       qDebug()<<"Slider::resizeEvent SC_SliderHandle"<<sr;
-       int sliderLength;
-        if (orientation() == Qt::Horizontal) {
-            sliderLength = sr.width();
-        }else{
-            sliderLength = sr.height();
-        }
-
-       // int offset=sliderLength/2;
-        int minmax=maximum()-minimum();
-        int w=gr.width();
-
-        if (minmax){
-            int xmin=(((qreal)visualLimitsMin/minmax)*w);
-            int xmax=(((qreal)visualLimitsMax/minmax)*w);
-            line->setGeometry(QRect(xmin+2, 0, xmax-xmin-3, size.height()));
-            qDebug()<<"Slider::resizeEvent size,xmin,xmax"<<w<<xmin<<xmax<<sliderLength;
-        }
+        //QSize size = event->size();
+        updateLimitBar();
     }
     QSlider::resizeEvent(event);
 }

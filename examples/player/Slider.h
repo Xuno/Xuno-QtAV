@@ -36,7 +36,11 @@ class Slider : public QSlider
 public:
     Slider(QWidget *parent = 0);
     ~Slider();
-    void addVisualLimits(int min, int max);
+    void addVisualLimits(int min=0, int max=0);
+    void setVisualMinLimit(int min);
+    void setVisualMaxLimit(int max);
+    void updateLimitBar();
+    void setVisibleVisualLimit(bool s);
 
 signals:
     void onEnter();
