@@ -120,7 +120,7 @@ void Slider::addLimitBar()
     line->setFrameShadow(QFrame::Plain);
     line->setLineWidth(1);
     line->setFrameShape(QFrame::HLine);
-    line->setContentsMargins(0,0,0,7);
+    line->setContentsMargins(0,0,0,4);
     line->setStyleSheet("#line {color: red}");
     qDebug()<<"Slider::addVisualLimits"<<visualLimitsMin<<visualLimitsMax;
 }
@@ -143,7 +143,7 @@ void Slider::resizeEvent(QResizeEvent *event)
             sliderLength = sr.height();
         }
 
-        int offset=sliderLength/2;
+       // int offset=sliderLength/2;
         int minmax=maximum()-minimum();
         int w=gr.width();
 
