@@ -36,10 +36,22 @@ uniform sampler2D u_Texture2;
 #ifdef PLANE_4
 uniform sampler2D u_Texture3;
 #endif //PLANE_4
-varying lowp vec2 v_TexCoords;
+varying lowp vec2 v_TexCoords0;
+#ifdef MULTI_COORD
+varying lowp vec2 v_TexCoords1;
+varying lowp vec2 v_TexCoords2;
+#ifdef PLANE_4
+varying lowp vec2 v_TexCoords3;
+#endif
+#else
+#define v_TexCoords1 v_TexCoords0
+#define v_TexCoords2 v_TexCoords0
+#define v_TexCoords3 v_TexCoords0
+#endif //MULTI_COORD
 uniform float u_opacity;
 uniform float u_bpp;
 uniform mat4 u_colorMatrix;
+//added by xuno
 uniform float u_gammaRGB;
 uniform vec2  u_pix;
 uniform float u_filterkernel[9];
@@ -52,6 +64,8 @@ vec3 color;
 #endif
 #define USED_FILTERS
 #define USED_GAMMA
+//added by xuno
+
 #if defined(LA_16BITS_BE) || defined(LA_16BITS_LE)
 #define LA_16BITS 1
 #else
@@ -81,6 +95,7 @@ const mat4 yuv2rgbMatrix = mat4(1, 1, 1, 0,
                                0, -0.5, -0.5, 1);
 #endif
 
+//added by xuno
 #ifdef BICUBIC_TRI
 float Triangular(float f) {
     f = f / 2.0;
@@ -171,11 +186,12 @@ vec4 BiCubic( sampler2D textureSampler, vec2 TexCoord )
     return nSum / nDenom;
 }
 #endif //USED_BiCubic
-
+//added by xuno
 
 // 10, 16bit: http://msdn.microsoft.com/en-us/library/windows/desktop/bb970578%28v=vs.85%29.aspx
 void main()
 {
+//added by xuno
     vec2 pixeloffset[9] = vec2[9](
           vec2(  -u_pix.x   , -u_pix.y  ),
           vec2(   0.0	  , -u_pix.y  ),
@@ -186,7 +202,8 @@ void main()
           vec2(  -u_pix.x   ,  u_pix.y  ),
           vec2(   0.0	  ,  u_pix.y  ),
           vec2(   u_pix.x   ,  u_pix.y  )
-  );
+    );
+//added by xuno
 
     // FFmpeg supports 9, 10, 12, 14, 16 bits
 #if LA_16BITS
@@ -199,46 +216,58 @@ void main()
 #endif
 #endif //LA_16BITS
 
+//added by xuno
 #if defined(USED_FILTERS)
   vec3 sum = vec3(0.0);
   for (int i=0;i<9;i++) {
 #else
   int i=4;
 #endif //USED_FILTERS
-
+//added by xuno
 
     // 10p in little endian: yyyyyyyy yy000000 => (L, L, L, A)
     gl_FragColor = clamp(u_colorMatrix
                          * vec4(
 #if LA_16BITS
+//added by xuno
 #if defined(USED_BiCubic)
-                             dot(BiCubic(u_Texture0, v_TexCoords+pixeloffset[i]).ra, t),
-                             dot(BiCubic(u_Texture1, v_TexCoords+pixeloffset[i]).ra, t),
-                             dot(BiCubic(u_Texture2, v_TexCoords+pixeloffset[i]).ra, t),
+                             dot(BiCubic(u_Texture0, v_TexCoords0+pixeloffset[i]).ra, t),
+                             dot(BiCubic(u_Texture1, v_TexCoords1+pixeloffset[i]).ra, t),
+                             dot(BiCubic(u_Texture2, v_TexCoords2+pixeloffset[i]).ra, t),
 #else  //USED_BiCubic
-                             dot(texture2D(u_Texture0, v_TexCoords+pixeloffset[i]).ra, t),
-                             dot(texture2D(u_Texture1, v_TexCoords+pixeloffset[i]).ra, t),
-                             dot(texture2D(u_Texture2, v_TexCoords+pixeloffset[i]).ra, t),
+                             dot(texture2D(u_Texture0, v_TexCoords0+pixeloffset[i]).ra, t),
+                             dot(texture2D(u_Texture1, v_TexCoords1+pixeloffset[i]).ra, t),
+                             dot(texture2D(u_Texture2, v_TexCoords2+pixeloffset[i]).ra, t),
 #endif //USED_BiCubic
+//added by xuno
 #else  //LA_16BITS
 // use r, g, a to work for both yv12 and nv12. idea from xbmc
+//added by xuno
 #if defined(USED_BiCubic)
-                             BiCubic(u_Texture0, v_TexCoords + pixeloffset[i]).r,
-                             BiCubic(u_Texture1, v_TexCoords + pixeloffset[i]).g,
-                             BiCubic(u_Texture2, v_TexCoords + pixeloffset[i]).a,
+                             BiCubic(u_Texture0, v_TexCoords0 + pixeloffset[i]).r,
+                             BiCubic(u_Texture1, v_TexCoords1 + pixeloffset[i]).g,
+                             BiCubic(u_Texture2, v_TexCoords2 + pixeloffset[i]).a,
 #else  //USED_BiCubic
-                             texture2D(u_Texture0, v_TexCoords + pixeloffset[i]).r,
-                             texture2D(u_Texture1, v_TexCoords + pixeloffset[i]).g,
-                             texture2D(u_Texture2, v_TexCoords + pixeloffset[i]).a,
+                             texture2D(u_Texture0, v_TexCoords0 + pixeloffset[i]).r,
+                             texture2D(u_Texture1, v_TexCoords1 + pixeloffset[i]).g,
+                             texture2D(u_Texture2, v_TexCoords2 + pixeloffset[i]).a,
 #endif //USED_BiCubic
+//added by xuno
 #endif //LA_16BITS
                              1)
                          , 0.0, 1.0) * u_opacity ;
 
+#ifdef PLANE_4
+#if LA_16BITS
+    gl_FragColor.a *= dot(texture2D(u_Texture3, v_TexCoords3).ra, t); //GL_LUMINANCE_ALPHA
+#else //8bit
+    gl_FragColor.a *= texture2D(u_Texture3, v_TexCoords3).a; //GL_ALPHA
+#endif //LA_16BITS
+#endif //PLANE_4
 
+
+//added by xuno
 #if defined(USED_FILTERS)
-
-//added filters
   color = gl_FragColor.rgb;
   sum += color * u_filterkernel[i];
  }
@@ -250,19 +279,11 @@ void main()
   gl_FragColor.rgb = pow(color, 1.0 / vec3(u_gammaRGB));
 #endif //USED_GAMMA
 
-#ifdef PLANE_4
-#if LA_16BITS
-    gl_FragColor.a *= dot(texture2D(u_Texture3, v_TexCoords).ra, t); //GL_LUMINANCE_ALPHA
-#else //8bit
-    gl_FragColor.a *= texture2D(u_Texture3, v_TexCoords).a; //GL_ALPHA
-#endif //LA_16BITS
-#endif //PLANE_4
-
-
 #if defined(USED_DEBUG)
-if (u_pix.x == 0.00078125) {
+if (t == 1.0) {
  gl_FragColor.r = 255;
 }
 #endif //USED_DEBUG
+//added by xuno
 
 }

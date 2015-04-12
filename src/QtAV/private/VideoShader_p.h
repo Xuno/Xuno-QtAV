@@ -85,6 +85,7 @@ public:
     GLenum texture_target;
     VideoFormat video_format;
     mutable QByteArray planar_frag, packed_frag;
+    mutable QByteArray vert;
 };
 
 class VideoMaterial;
