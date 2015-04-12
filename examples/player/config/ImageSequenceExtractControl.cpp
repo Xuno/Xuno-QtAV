@@ -370,29 +370,35 @@ void ImgSeqExtractControl::on_buttonSetStartFrame_clicked(bool state)
     Q_UNUSED(state);
     qDebug()<<"on_buttonSetStartFrame_clicked"<<state;
     calcStartFrame(isStartTime);
+    emit setTimeSliderVisualMinLimit(frameToTime(ImageSequenceStartFrame->value()));
+    //emit pause();
 }
 
 void ImgSeqExtractControl::on_buttonSetEndFrame_clicked(bool state)
 {
     Q_UNUSED(state);
-    qDebug()<<"on_buttonSetEndFrame_clicked"<<state;
     calcEndFrame(isStartTime);
+    qDebug()<<"on_buttonSetEndFrame_clicked"<<state<<isEndTime;
+    emit setTimeSliderVisualMaxLimit(frameToTime(ImageSequenceEndFrame->value()));
+    //emit pause();
 }
 
 void ImgSeqExtractControl::on_ImageSequenceStartFrame_valueChanged(int i)
 {
     QSpinBox *sb = qobject_cast<QSpinBox *>(sender());
-    sb->setToolTip(frameToTime(i).toString("hh:mm:ss.zzz"));
+    QTime t=frameToTime(i);
+    sb->setToolTip(t.toString(timeFormat));
     calcTotalFrames();
-    emit seek(frameToTime(i));
+    emit seek(t);
 }
 
 void ImgSeqExtractControl::on_ImageSequenceEndFrame_valueChanged(int i)
 {
     QSpinBox *sb = qobject_cast<QSpinBox *>(sender());
-    sb->setToolTip(frameToTime(i).toString("hh:mm:ss.zzz"));
+    QTime t=frameToTime(i);
+    sb->setToolTip(t.toString(timeFormat));
     calcTotalFrames();
-    emit seek(frameToTime(i));
+    emit seek(t);
 }
 
 
@@ -406,8 +412,16 @@ void ImgSeqExtractControl::on_ImageSequenceTotalFrame_valueChanged(int i)
 void ImgSeqExtractControl::on_mpPlayPauseBtn_clicked()
 {
     qDebug()<<"on_mpPlayPauseBtn_clicked";
-    playing=!playing;
-    mpPlayPauseBtn->setIconWithSates(playing?mPausePixmap:mPlayPixmap);
+    //playing=!playing;
+    //mpPlayPauseBtn->setIconWithSates(playing?mPausePixmap:mPlayPixmap);
+    QTime start=frameToTime(ImageSequenceStartFrame->value());
+    QTime end=frameToTime(ImageSequenceEndFrame->value());
+    emit toggleRepeat(true);
+    emit repeatAChanged(start);
+    emit repeatBChanged(end);
+    emit pause();
+    emit seek(start);
+    emit togglePlayPause();
 }
 
 void ImgSeqExtractControl::on_btSelectOutputPath_clicked()

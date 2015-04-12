@@ -83,8 +83,16 @@ public:
 
 signals:
     void seek(QTime time);
-
+    void pause();
+    void onStartPlay();
+    void togglePlayPause();
+    void toggleRepeat(bool);
+    void repeatAChanged(const QTime &time);
+    void repeatBChanged(const QTime &time);
+    void setTimeSliderVisualMinLimit(const QTime &time);
+    void setTimeSliderVisualMaxLimit(const QTime &time);
 private:
+    const QString timeFormat ="hh:mm:ss.zzz";
     QTime isStartTime,isEndTime;
     float isFPS;
     void retranslateUi();
@@ -92,6 +100,7 @@ private:
     void RecalculateParentHeight(bool visible);
     QTime frameToTime(int f);
     int timeToFrame(QTime t);
+
 
 private slots:
     void on_buttonSetStartFrame_clicked(bool state);

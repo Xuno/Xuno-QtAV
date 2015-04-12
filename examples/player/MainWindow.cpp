@@ -658,6 +658,14 @@ QSlider::handle:horizontal { \
     controlVLayout->setSizeConstraint(QLayout::SetMinimumSize);
     mpImgSeqExtract = new ImgSeqExtractControl(mpControl);
     connect(mpImgSeqExtract,SIGNAL(seek(QTime)),SLOT(seek(QTime)));
+    connect(mpImgSeqExtract,SIGNAL(pause()),SLOT(pause()));
+    connect(mpImgSeqExtract,SIGNAL(onStartPlay()),SLOT(onStartPlay()));
+    connect(mpImgSeqExtract,SIGNAL(toggleRepeat(bool)),SLOT(toggleRepeat(bool)));
+    connect(mpImgSeqExtract,SIGNAL(togglePlayPause()),SLOT(togglePlayPause()));
+    connect(mpImgSeqExtract,SIGNAL(repeatAChanged(QTime)),SLOT(repeatAChanged(QTime)));
+    connect(mpImgSeqExtract,SIGNAL(repeatBChanged(QTime)),SLOT(repeatBChanged(QTime)));
+    connect(mpImgSeqExtract,SIGNAL(setTimeSliderVisualMinLimit(QTime)),SLOT(setTimeSliderVisualMinLimit(QTime)));
+    connect(mpImgSeqExtract,SIGNAL(setTimeSliderVisualMaxLimit(QTime)),SLOT(setTimeSliderVisualMaxLimit(QTime)));
     controlVLayout->addWidget(mpImgSeqExtract);
     controlVLayout->addLayout(controlLayout);
     mpImgSeqExtract->setVisible(false);
@@ -959,6 +967,14 @@ void MainWindow::togglePlayPause()
     }
 }
 
+void MainWindow::pause()
+{
+    if (mpPlayer->isPlaying()) {
+        qDebug("isPaused = %d", mpPlayer->isPaused());
+        mpPlayer->pause(true);
+    }
+}
+
 void MainWindow::showNextOSD()
 {
     if (!mpOSD)
@@ -1177,6 +1193,18 @@ void MainWindow::repeatBChanged(const QTime& t)
     mpPlayer->setStopPosition(QTime(0, 0, 0).msecsTo(t));
     mpTimeSlider->setVisualMaxLimit(QTime(0, 0, 0).msecsTo(t));
 }
+
+void MainWindow::setTimeSliderVisualMinLimit(const QTime& t)
+{
+    mpTimeSlider->setVisualMinLimit(QTime(0, 0, 0).msecsTo(t));
+    mpTimeSlider->setVisibleVisualLimit(true);
+}
+void MainWindow::setTimeSliderVisualMaxLimit(const QTime& t)
+{
+    mpTimeSlider->setVisualMaxLimit(QTime(0, 0, 0).msecsTo(t));
+    mpTimeSlider->setVisibleVisualLimit(true);
+}
+
 
 void MainWindow::keyPressEvent(QKeyEvent *e)
 {
@@ -1889,9 +1917,7 @@ bool MainWindow::applyCustomFPS(){
  void MainWindow::onImageSequenceToogledFrameExtractor(bool state)
  {
      qDebug()<<"onImageSequenceToogledFrameExtractor "<<state;
-
      mpImgSeqExtract->setVisible(state);
-
      mpCurrent->setVisible(!state);
      mpEnd->setVisible(!state);
 

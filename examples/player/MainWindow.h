@@ -80,6 +80,7 @@ public:
 public slots:
     void play(const QString& name);
     void play(const QUrl& url);
+    void pause();
     void openFile();
     void togglePlayPause();
     void showNextOSD();
@@ -123,6 +124,8 @@ private slots:
     void onPositionChange(qint64 pos);
     void repeatAChanged(const QTime& t);
     void repeatBChanged(const QTime& t);
+    void setTimeSliderVisualMinLimit(const QTime &t);
+    void setTimeSliderVisualMaxLimit(const QTime &t);
 
     void onTimeSliderHover(int pos, int value);
     void onTimeSliderLeave();
