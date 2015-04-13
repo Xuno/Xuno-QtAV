@@ -661,6 +661,7 @@ QSlider::handle:horizontal { \
     connect(mpImgSeqExtract,SIGNAL(pause()),SLOT(pause()));
     connect(mpImgSeqExtract,SIGNAL(onStartPlay()),SLOT(onStartPlay()));
     connect(mpImgSeqExtract,SIGNAL(toggleRepeat(bool)),SLOT(toggleRepeat(bool)));
+    connect(mpImgSeqExtract,SIGNAL(RepeatLoopChanged(int)),SLOT(RepeatLoopChanged(int)));
     connect(mpImgSeqExtract,SIGNAL(togglePlayPause()),SLOT(togglePlayPause()));
     connect(mpImgSeqExtract,SIGNAL(repeatAChanged(QTime)),SLOT(repeatAChanged(QTime)));
     connect(mpImgSeqExtract,SIGNAL(repeatBChanged(QTime)),SLOT(repeatBChanged(QTime)));
@@ -1462,19 +1463,24 @@ void MainWindow::tryHideControlBar()
     if (mShowControl > 0) {
         return;
     }
-    if (mpControl->isHidden() && mpTimeSlider->isHidden())
+    if ( (mpTimeSlider && mpTimeSlider->isHidden()) &&
+           (mpControl && mpControl->isHidden())
+       )
         return;
+
+    qDebug()<<"tryHideControlBar";
     mpControl->hide();
-    mpTimeSlider->hide();
+    if (mpControl->isHidden()) mpTimeSlider->hide();
     workaroundRendererSize();
 }
 
 void MainWindow::tryShowControlBar()
 {
     unsetCursor();
-    if (mpTimeSlider && mpTimeSlider->isHidden())
+    if ((mpTimeSlider && mpTimeSlider->isHidden()) &&
+        (mpControl && mpControl->isHidden())
+       )
         mpTimeSlider->show();
-    if (mpControl && mpControl->isHidden())
         mpControl->show();
 }
 
@@ -1872,6 +1878,7 @@ bool MainWindow::applyCustomFPS(){
 
  void MainWindow::RepeatLoopChanged(int i){
      bool checked=(i==Qt::Checked);
+     mpRepeatLoop->setChecked(i);
      qDebug()<<"RepeatLoopChanged:"<<i;
      mpRepeatBox->setValue(checked?-1:1);
      mpRepeatBox->setVisible(!checked);

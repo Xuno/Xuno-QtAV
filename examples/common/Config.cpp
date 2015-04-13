@@ -91,8 +91,8 @@ public:
         settings.endGroup();
         settings.beginGroup("avformat");
         direct = settings.value("avioflags", 0).toString() == "direct";
-        probe_size = settings.value("probesize", 5000000).toUInt();
-        analyze_duration = settings.value("analyzeduration", 5000000).toInt();
+        probe_size = settings.value("probesize", 10000000).toUInt();
+        analyze_duration = settings.value("analyzeduration", 10000000).toInt();
         avformat_extra = settings.value("extra", "").toString();
         settings.endGroup();
         settings.beginGroup("avfilterVideo");

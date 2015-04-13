@@ -42,6 +42,11 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
 
     hlStart_6->addWidget(ImageSequenceStartFrame);
 
+    buttonSetStartSeekFrame = new QToolButton(verticalLayoutWidget);
+    buttonSetStartSeekFrame->setObjectName(QStringLiteral("buttonSetStartSeekFrame"));
+
+    hlStart_6->addWidget(buttonSetStartSeekFrame);
+
     buttonSetStartFrame = new QToolButton(verticalLayoutWidget);
     buttonSetStartFrame->setObjectName(QStringLiteral("buttonSetStartFrame"));
 
@@ -98,6 +103,11 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
     ImageSequenceEndFrame->setMaximum(999999999);
 
     hlStart_6->addWidget(ImageSequenceEndFrame);
+
+    buttonSetEndSeekFrame = new QToolButton(verticalLayoutWidget);
+    buttonSetEndSeekFrame->setObjectName(QStringLiteral("buttonSetEndSeekFrame"));
+
+    hlStart_6->addWidget(buttonSetEndSeekFrame);
 
     buttonSetEndFrame = new QToolButton(verticalLayoutWidget);
     buttonSetEndFrame->setObjectName(QStringLiteral("buttonSetEndFrame"));
@@ -203,9 +213,11 @@ void ImgSeqExtractControl::retranslateUi()
     startTime->setText(QApplication::translate("ImageSequenceExtract", "00:00:00.000", 0));
     labelSF->setText(QApplication::translate("ImageSequenceExtract", " Start Frames:", 0));
     buttonSetStartFrame->setText(QApplication::translate("ImageSequenceExtract", "Set", 0));
+    buttonSetStartSeekFrame->setText(QApplication::translate("ImageSequenceExtract", "Seek", 0));
     labelTF->setText(QApplication::translate("ImageSequenceExtract", " Total Frames:", 0));
     labelEF->setText(QApplication::translate("ImageSequenceExtract", " End Frame:", 0));
     buttonSetEndFrame->setText(QApplication::translate("ImageSequenceExtract", "Set", 0));
+    buttonSetEndSeekFrame->setText(QApplication::translate("ImageSequenceExtract", "Seek", 0));
     endTime->setText(QApplication::translate("ImageSequenceExtract", "00:00:00.000", 0));
     btSelectOutputPath->setText(QApplication::translate("ImageSequenceExtract", "Select Output Path", 0));
     cb_OutputType->clear();
@@ -370,7 +382,9 @@ void ImgSeqExtractControl::on_buttonSetStartFrame_clicked(bool state)
     Q_UNUSED(state);
     qDebug()<<"on_buttonSetStartFrame_clicked"<<state;
     calcStartFrame(isStartTime);
-    emit setTimeSliderVisualMinLimit(frameToTime(ImageSequenceStartFrame->value()));
+    QTime t=frameToTime(ImageSequenceStartFrame->value());
+    emit setTimeSliderVisualMinLimit(t);
+    //emit seek(t);
     //emit pause();
 }
 
@@ -379,7 +393,9 @@ void ImgSeqExtractControl::on_buttonSetEndFrame_clicked(bool state)
     Q_UNUSED(state);
     calcEndFrame(isStartTime);
     qDebug()<<"on_buttonSetEndFrame_clicked"<<state<<isEndTime;
-    emit setTimeSliderVisualMaxLimit(frameToTime(ImageSequenceEndFrame->value()));
+    QTime t=frameToTime(ImageSequenceEndFrame->value());
+    emit setTimeSliderVisualMaxLimit(t);
+    //emit seek(t);
     //emit pause();
 }
 
@@ -389,7 +405,7 @@ void ImgSeqExtractControl::on_ImageSequenceStartFrame_valueChanged(int i)
     QTime t=frameToTime(i);
     sb->setToolTip(t.toString(timeFormat));
     calcTotalFrames();
-    emit seek(t);
+    //emit seek(t);
 }
 
 void ImgSeqExtractControl::on_ImageSequenceEndFrame_valueChanged(int i)
@@ -398,7 +414,7 @@ void ImgSeqExtractControl::on_ImageSequenceEndFrame_valueChanged(int i)
     QTime t=frameToTime(i);
     sb->setToolTip(t.toString(timeFormat));
     calcTotalFrames();
-    emit seek(t);
+    //emit seek(t);
 }
 
 
@@ -416,10 +432,11 @@ void ImgSeqExtractControl::on_mpPlayPauseBtn_clicked()
     //mpPlayPauseBtn->setIconWithSates(playing?mPausePixmap:mPlayPixmap);
     QTime start=frameToTime(ImageSequenceStartFrame->value());
     QTime end=frameToTime(ImageSequenceEndFrame->value());
+    emit pause();
     emit toggleRepeat(true);
     emit repeatAChanged(start);
     emit repeatBChanged(end);
-    emit pause();
+    emit RepeatLoopChanged(Qt::Checked);
     emit seek(start);
     emit togglePlayPause();
 }
@@ -434,4 +451,15 @@ void ImgSeqExtractControl::on_btSelectOutputPath_clicked()
          qDebug()<<"on_btSelectOutputPath_clicked"<<directory;
          OutputPath->setText(directory);
     }
+}
+
+void ImgSeqExtractControl::on_buttonSetStartSeekFrame_clicked()
+{
+    QTime t=frameToTime(ImageSequenceStartFrame->value());
+    emit seek(t);
+}
+void ImgSeqExtractControl::on_buttonSetEndSeekFrame_clicked()
+{
+    QTime t=frameToTime(ImageSequenceEndFrame->value());
+    emit seek(t);
 }

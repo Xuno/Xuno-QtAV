@@ -41,6 +41,7 @@ public:
     QLabel *labelSF;
     QSpinBox *ImageSequenceStartFrame;
     QToolButton *buttonSetStartFrame;
+    QToolButton *buttonSetStartSeekFrame;
     QSpacerItem *hs_total;
     QLabel *labelTF;
     QSpinBox *ImageSequenceTotalFrame;
@@ -48,6 +49,7 @@ public:
     QLabel *labelEF;
     QSpinBox *ImageSequenceEndFrame;
     QToolButton *buttonSetEndFrame;
+    QToolButton *buttonSetEndSeekFrame;
     QSpacerItem *horizontalSpacer_10;
     QLabel *endTime;
     QHBoxLayout *horizontalLayout_6;
@@ -87,6 +89,7 @@ signals:
     void onStartPlay();
     void togglePlayPause();
     void toggleRepeat(bool);
+    void RepeatLoopChanged(int);
     void repeatAChanged(const QTime &time);
     void repeatBChanged(const QTime &time);
     void setTimeSliderVisualMinLimit(const QTime &time);
@@ -105,6 +108,8 @@ private:
 private slots:
     void on_buttonSetStartFrame_clicked(bool state);
     void on_buttonSetEndFrame_clicked(bool state);
+    void on_buttonSetStartSeekFrame_clicked();
+    void on_buttonSetEndSeekFrame_clicked();
     void on_ImageSequenceEndFrame_valueChanged(int i);
     void on_ImageSequenceStartFrame_valueChanged(int i);
     void on_ImageSequenceTotalFrame_valueChanged(int i);
