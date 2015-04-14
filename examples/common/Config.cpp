@@ -88,8 +88,11 @@ public:
         settings.endGroup();
         settings.beginGroup("preview");
         preview_enabled = settings.value("enabled", true).toBool();
+        preview_w = settings.value("width", 160).toInt();
+        preview_h = settings.value("height", 90).toInt();
         settings.endGroup();
         settings.beginGroup("avformat");
+        avformat_on = settings.value("enable", false).toBool();
         direct = settings.value("avioflags", 0).toString() == "direct";
         probe_size = settings.value("probesize", 10000000).toUInt();
         analyze_duration = settings.value("analyzeduration", 10000000).toInt();
@@ -108,6 +111,12 @@ public:
         tmpweb.insert("Xuno","http://www.xuno.com/playlist_8bit.php");
         tmpweb.insert("Google","https://www.google.com");
         weblinks = settings.value("links",tmpweb).toMap();
+        settings.endGroup();
+        settings.beginGroup("opengl");
+        angle = settings.value("angle", false).toBool();
+        settings.endGroup();
+        settings.beginGroup("buffer");
+        buffer_value = settings.value("value", -1).toInt();
         settings.endGroup();
     }
     void save() {
@@ -136,8 +145,11 @@ public:
         settings.endGroup();
         settings.beginGroup("preview");
         settings.setValue("enabled", preview_enabled);
+        settings.setValue("width", preview_w);
+        settings.setValue("height", preview_h);
         settings.endGroup();
         settings.beginGroup("avformat");
+        settings.setValue("enable", avformat_on);
         settings.setValue("avioflags", direct ? "direct" : 0);
         settings.setValue("probesize", probe_size);
         settings.setValue("analyzeduration", analyze_duration);
@@ -154,6 +166,12 @@ public:
         settings.beginGroup("weblinks");
         settings.setValue("links", weblinks);
         settings.endGroup();
+        settings.beginGroup("opengl");
+        settings.setValue("angle", angle);
+        settings.endGroup();
+        settings.beginGroup("buffer");
+        settings.setValue("value", buffer_value);
+        settings.endGroup();
         qDebug() << "sync end";
     }
 
@@ -167,6 +185,7 @@ public:
     QString capture_fmt;
     int capture_quality;
 
+    bool avformat_on;
     bool direct;
     unsigned int probe_size;
     int analyze_duration;
@@ -186,6 +205,11 @@ public:
 
     bool preview_enabled;
     QMap<QString, QVariant> weblinks;
+    int preview_w, preview_h;
+
+    bool angle;
+
+    int buffer_value;
 };
 
 Config& Config::instance()
@@ -432,6 +456,33 @@ Config& Config::setPreviewEnabled(bool value)
     return *this;
 }
 
+int Config::previewWidth() const
+{
+    return mpData->preview_w;
+}
+
+Config& Config::setPreviewWidth(int value)
+{
+    if (mpData->preview_w == value)
+        return *this;
+    mpData->preview_w = value;
+    emit previewWidthChanged();
+    return *this;
+}
+
+int Config::previewHeight() const
+{
+    return mpData->preview_h;
+}
+
+Config& Config::setPreviewHeight(int value)
+{
+    if (mpData->preview_h == value)
+        return *this;
+    mpData->preview_h = value;
+    emit previewHeightChanged();
+    return *this;
+}
 QVariantHash Config::avformatOptions() const
 {
     QVariantHash vh;
@@ -456,6 +507,20 @@ QVariantHash Config::avformatOptions() const
         vh["avioflags"] = "direct";
     };
     return vh;
+}
+
+bool Config::avformatOptionsEnabled() const
+{
+    return mpData->avformat_on;
+}
+
+Config& Config::setAvformatOptionsEnabled(bool value)
+{
+    if (mpData->avformat_on == value)
+        return *this;
+    mpData->avformat_on = value;
+    emit avformatOptionsEnabledChanged();
+    return *this;
 }
 
 unsigned int Config::probeSize() const
@@ -576,6 +641,33 @@ Config& Config::setWebLinks(const QMap<QString, QVariant> &value)
     return *this;
 }
 
+bool Config::isANGLE() const
+{
+    return mpData->angle;
+}
+
+Config& Config::setANGLE(bool value)
+{
+    if (mpData->angle == value)
+        return *this;
+    mpData->angle = value;
+    emit ANGLEChanged();
+    return *this;
+}
+
+int Config::bufferValue() const
+{
+    return mpData->buffer_value;
+}
+
+Config& Config::setBufferValue(int value)
+{
+    if (mpData->buffer_value == value)
+        return *this;
+    mpData->buffer_value = value;
+    emit bufferValueChanged();
+    return *this;
+}
 
 void Config::save()
 {

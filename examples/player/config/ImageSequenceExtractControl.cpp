@@ -4,7 +4,7 @@
 ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
     QWidget (parent),
     isFPS(0.),
-    playing(false)
+    isRegionPlaying(false)
 {
 
     baseParentMaxHeight=parentWidget()->maximumHeight();
@@ -245,6 +245,7 @@ void ImgSeqExtractControl::retranslateUi()
     labelFilePrefix->setText(QApplication::translate("ImageSequenceExtract", "Prefix:", 0));
     labelFileSeparator->setText(QApplication::translate("ImageSequenceExtract", "Separator:", 0));
     buttonExtractFrames->setText(QApplication::translate("ImageSequenceExtract", "Extract Frames", 0));
+    mpPlayPauseBtn->setToolTip(QApplication::translate("ImageSequenceExtract", "play selected region form start to end frames", 0));
 } // retranslateUi
 
 
@@ -279,6 +280,7 @@ void ImgSeqExtractControl::setStartTime(QTime time)
 void ImgSeqExtractControl::setEndTime(QTime time)
 {
     //qDebug()<<"setEndTime"<<time.toString("hh:mm:ss.zzz");
+    if (time==QTime(0,0,0)) onPaused();
     if (isFPS==0. || isEndTime==time) return;
     isEndTime=time;
     int frame=timeToFrame(time);
@@ -374,47 +376,62 @@ void ImgSeqExtractControl::setFPS(float fps)
   isFPS=fps;
 }
 
+qint64 ImgSeqExtractControl::StartPosExtract()
+{
+    return  isStartPosExtract;
+}
+
+qint64 ImgSeqExtractControl::EndPosExtract()
+{
+    return  isEndPosExtract;
+}
+
+bool ImgSeqExtractControl::regionPlaying()
+{
+    return  isRegionPlaying;
+}
+
+
+
 
 // ---------------  SLOTS  ---------------------
+
+void ImgSeqExtractControl::onPaused(){
+    isRegionPlaying=false;
+    mpPlayPauseBtn->setDisabled(false);
+}
 
 void ImgSeqExtractControl::on_buttonSetStartFrame_clicked(bool state)
 {
     Q_UNUSED(state);
     qDebug()<<"on_buttonSetStartFrame_clicked"<<state;
     calcStartFrame(isStartTime);
-    QTime t=frameToTime(ImageSequenceStartFrame->value());
-    emit setTimeSliderVisualMinLimit(t);
-    //emit seek(t);
-    //emit pause();
 }
 
 void ImgSeqExtractControl::on_buttonSetEndFrame_clicked(bool state)
 {
     Q_UNUSED(state);
     calcEndFrame(isStartTime);
-    qDebug()<<"on_buttonSetEndFrame_clicked"<<state<<isEndTime;
-    QTime t=frameToTime(ImageSequenceEndFrame->value());
-    emit setTimeSliderVisualMaxLimit(t);
-    //emit seek(t);
-    //emit pause();
 }
 
 void ImgSeqExtractControl::on_ImageSequenceStartFrame_valueChanged(int i)
 {
     QSpinBox *sb = qobject_cast<QSpinBox *>(sender());
     QTime t=frameToTime(i);
+    isStartPosExtract = QTime(0,0,0).msecsTo(t);
     sb->setToolTip(t.toString(timeFormat));
     calcTotalFrames();
-    //emit seek(t);
+    emit setTimeSliderVisualMinLimit(t);
 }
 
 void ImgSeqExtractControl::on_ImageSequenceEndFrame_valueChanged(int i)
 {
     QSpinBox *sb = qobject_cast<QSpinBox *>(sender());
     QTime t=frameToTime(i);
+    isEndPosExtract = QTime(0,0,0).msecsTo(t);
     sb->setToolTip(t.toString(timeFormat));
     calcTotalFrames();
-    //emit seek(t);
+    emit setTimeSliderVisualMaxLimit(t);
 }
 
 
@@ -427,18 +444,14 @@ void ImgSeqExtractControl::on_ImageSequenceTotalFrame_valueChanged(int i)
 
 void ImgSeqExtractControl::on_mpPlayPauseBtn_clicked()
 {
-    qDebug()<<"on_mpPlayPauseBtn_clicked";
-    //playing=!playing;
-    //mpPlayPauseBtn->setIconWithSates(playing?mPausePixmap:mPlayPixmap);
-    QTime start=frameToTime(ImageSequenceStartFrame->value());
-    //QTime end=frameToTime(ImageSequenceEndFrame->value());
-    emit seek(start);
-    emit pause();
-//    emit toggleRepeat(true);
-//    emit repeatAChanged(start);
-//    emit repeatBChanged(end);
-//    emit RepeatLoopChanged(Qt::Checked);
-    emit togglePlayPause();
+    //qDebug()<<"on_mpPlayPauseBtn_clicked";
+    if (ImageSequenceStartFrame->isEnabled() && ImageSequenceEndFrame->isEnabled()){
+        QTime start=frameToTime(ImageSequenceStartFrame->value());
+        emit pause();
+        emit seek(start);
+        isRegionPlaying=true;
+        emit togglePlayPause();
+    }
 }
 
 void ImgSeqExtractControl::on_btSelectOutputPath_clicked()

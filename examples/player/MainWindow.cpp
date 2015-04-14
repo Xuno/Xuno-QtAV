@@ -865,6 +865,8 @@ void MainWindow::play(const QString &name)
     else
         mRepeateMax = (mpRepeatLoop->isChecked())?-1:mpRepeatBox->value()-1;
     qDebug()<<"mRepeateMax"<<mRepeateMax;
+    mpPlayer->setBufferMode(QtAV::BufferPackets);
+    mpPlayer->setBufferValue(Config::instance().bufferValue());
     mpPlayer->setRepeat(mRepeateMax);
     mpPlayer->setPriority(idsFromNames(Config::instance().decoderPriorityNames()));
     mpPlayer->setOptionsForAudioCodec(mpDecoderConfigPage->audioDecoderOptions());
@@ -872,6 +874,8 @@ void MainWindow::play(const QString &name)
     if (!applyCustomFPS()){
         mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
     }
+    if (Config::instance().avformatOptionsEnabled())
+        mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
     PlayListItem item;
     item.setUrl(mFile);
     item.setTitle(mTitle);
@@ -885,6 +889,12 @@ void MainWindow::play(const QString &name)
 void MainWindow::play(const QUrl &url)
 {
     play(QUrl::fromPercentEncoding(url.toEncoded()));
+}
+
+void MainWindow::play()
+{
+    mpPlayer->play();
+    mpPlayPauseBtn->setIconWithSates(mPausePixmap);
 }
 
 
@@ -995,6 +1005,7 @@ void MainWindow::onPaused(bool p)
     if (p) {
         qDebug("start pausing...");
         mpPlayPauseBtn->setIconWithSates(mPlayPixmap);
+        if (mpImgSeqExtract) mpImgSeqExtract->onPaused();
     } else {
         qDebug("stop pausing...");
         mpPlayPauseBtn->setIconWithSates(mPausePixmap);
@@ -1058,7 +1069,8 @@ void MainWindow::onStopPlay()
     mpPlayer->setFrameRate(Config::instance().forceFrameRate());
     mpPlayer->setOptionsForAudioCodec(mpDecoderConfigPage->audioDecoderOptions());
     mpPlayer->setOptionsForVideoCodec(mpDecoderConfigPage->videoDecoderOptions());
-    //mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
+    if (Config::instance().avformatOptionsEnabled())
+        mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
 
     mpPlayPauseBtn->setIconWithSates(mPlayPixmap);
     mpTimeSlider->setValue(0);
@@ -1099,10 +1111,8 @@ void MainWindow::seek()
         return;
     m_preview->setTimestamp(mpTimeSlider->value());
     m_preview->preview();
-    const int w = 160;
-    const int h = 90;
     m_preview->setWindowFlags(m_preview->windowFlags() |Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
-    m_preview->resize(w, h);
+    m_preview->resize(Config::instance().previewWidth(), Config::instance().previewHeight());
     m_preview->show();
     if (mpImgSeqExtract) mpImgSeqExtract->setStartTime(QTime(0,0,0).addMSecs((qint64)mpTimeSlider->value()));
 }
@@ -1171,7 +1181,10 @@ void MainWindow::onPositionChange(qint64 pos)
     if (mpPlayer->isSeekable())
         mpTimeSlider->setValue(pos);
     mpCurrent->setText(QTime(0, 0, 0).addMSecs(pos).toString("HH:mm:ss"));
-    if (mpImgSeqExtract) mpImgSeqExtract->setStartTime(QTime(0, 0, 0).addMSecs(pos));
+    if (mpImgSeqExtract) {
+        mpImgSeqExtract->setStartTime(QTime(0, 0, 0).addMSecs(pos));
+        if (mpImgSeqExtract->regionPlaying() && mpImgSeqExtract->EndPosExtract() && pos >= mpImgSeqExtract->EndPosExtract()) pause();
+    }
 }
 
 void MainWindow::repeatAChanged(const QTime& t)
@@ -1507,8 +1520,8 @@ void MainWindow::onTimeSliderHover(int pos, int value)
     m_preview->setFile(mpPlayer->file());
     m_preview->setTimestamp(value);
     m_preview->preview();
-    const int w = 160;
-    const int h = 90;
+    const int w = Config::instance().previewWidth();
+    const int h = Config::instance().previewHeight();
     m_preview->setWindowFlags(m_preview->windowFlags() |Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
     m_preview->resize(w, h);
     m_preview->move(gpos - QPoint(w/2, h));

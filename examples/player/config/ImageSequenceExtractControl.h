@@ -33,6 +33,43 @@ public:
     explicit ImgSeqExtractControl(QWidget *parent=0);
     ~ImgSeqExtractControl();
 
+    void setVisible(bool visible) Q_DECL_OVERRIDE;
+    void setStartTime(QTime time);
+    void setEndTime(QTime time);
+    void setTotalFrames(int frames);
+    void setStartFrame(int frame);
+    void setEndFrame(int frame);
+    int getTotalFrames() const;
+    int getStartFrame() const;
+    int getEndFrame() const;
+    void calcStartFrame();
+    void calcStartFrame(QTime t);
+    void calcEndFrame();
+    void calcEndFrame(QTime t);
+    void calcTotalFrames();
+    void setFPS(float fps);
+    qint64 StartPosExtract();
+    qint64 EndPosExtract();
+    bool regionPlaying();
+
+public slots:
+    void onPaused();
+
+signals:
+    void seek(QTime time);
+    void pause();
+    void onStartPlay();
+    void togglePlayPause();
+    void toggleRepeat(bool);
+    void RepeatLoopChanged(int);
+    void repeatAChanged(const QTime &time);
+    void repeatBChanged(const QTime &time);
+    void setTimeSliderVisualMinLimit(const QTime &time);
+    void setTimeSliderVisualMaxLimit(const QTime &time);
+
+
+
+private:
     QWidget *verticalLayoutWidget;
     QVBoxLayout *verticalLayout;
     QHBoxLayout *hlStart_6;
@@ -66,44 +103,17 @@ public:
     QPixmap mPlayPixmap;
     QPixmap mPausePixmap;
     Button *mpPlayPauseBtn;
-    bool playing;
-    void setVisible(bool visible) Q_DECL_OVERRIDE;
-    void setStartTime(QTime time);
-    void setEndTime(QTime time);
-    void setTotalFrames(int frames);
-    void setStartFrame(int frame);
-    void setEndFrame(int frame);
-    int getTotalFrames() const;
-    int getStartFrame() const;
-    int getEndFrame() const;
-    void calcStartFrame();
-    void calcStartFrame(QTime t);
-    void calcEndFrame();
-    void calcEndFrame(QTime t);
-    void calcTotalFrames();
-    void setFPS(float fps);
 
-signals:
-    void seek(QTime time);
-    void pause();
-    void onStartPlay();
-    void togglePlayPause();
-    void toggleRepeat(bool);
-    void RepeatLoopChanged(int);
-    void repeatAChanged(const QTime &time);
-    void repeatBChanged(const QTime &time);
-    void setTimeSliderVisualMinLimit(const QTime &time);
-    void setTimeSliderVisualMaxLimit(const QTime &time);
-private:
     const QString timeFormat ="hh:mm:ss.zzz";
     QTime isStartTime,isEndTime;
+    qint64 isStartPosExtract, isEndPosExtract;
+    bool isRegionPlaying;
     float isFPS;
     void retranslateUi();
     int baseParentMaxHeight;
     void RecalculateParentHeight(bool visible);
     QTime frameToTime(int f);
     int timeToFrame(QTime t);
-
 
 private slots:
     void on_buttonSetStartFrame_clicked(bool state);

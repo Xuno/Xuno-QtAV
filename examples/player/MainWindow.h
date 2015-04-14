@@ -80,6 +80,7 @@ public:
 public slots:
     void play(const QString& name);
     void play(const QUrl& url);
+    void play();
     void pause();
     void openFile();
     void togglePlayPause();
