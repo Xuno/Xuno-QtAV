@@ -1215,8 +1215,9 @@ void MainWindow::setTimeSliderVisualMinLimit(const QTime& t)
 }
 void MainWindow::setTimeSliderVisualMaxLimit(const QTime& t)
 {
-    mpTimeSlider->setVisualMaxLimit(QTime(0, 0, 0).msecsTo(t));
-    mpTimeSlider->setVisibleVisualLimit(true);
+    qint64 p=QTime(0, 0, 0).msecsTo(t);
+    mpTimeSlider->setVisualMaxLimit(p);
+    mpTimeSlider->setVisibleVisualLimit(p!=0);
 }
 
 

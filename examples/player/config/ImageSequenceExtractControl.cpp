@@ -266,6 +266,8 @@ void ImgSeqExtractControl::setVisible(bool visible)
 {
     RecalculateParentHeight(visible);
     QWidget::setVisible(visible);
+    if (!visible) emit setTimeSliderVisualMaxLimit(QTime(0,0,0));
+    //qDebug()<<"ImgSeqExtractControl::setVisible"<<visible;
 }
 
 void ImgSeqExtractControl::setStartTime(QTime time)
@@ -421,7 +423,8 @@ void ImgSeqExtractControl::on_ImageSequenceStartFrame_valueChanged(int i)
     isStartPosExtract = QTime(0,0,0).msecsTo(t);
     sb->setToolTip(t.toString(timeFormat));
     calcTotalFrames();
-    emit setTimeSliderVisualMinLimit(t);
+    if (this->isVisible())
+        emit setTimeSliderVisualMinLimit(t);
 }
 
 void ImgSeqExtractControl::on_ImageSequenceEndFrame_valueChanged(int i)
@@ -431,7 +434,8 @@ void ImgSeqExtractControl::on_ImageSequenceEndFrame_valueChanged(int i)
     isEndPosExtract = QTime(0,0,0).msecsTo(t);
     sb->setToolTip(t.toString(timeFormat));
     calcTotalFrames();
-    emit setTimeSliderVisualMaxLimit(t);
+    if (this->isVisible())
+        emit setTimeSliderVisualMaxLimit(t);
 }
 
 
