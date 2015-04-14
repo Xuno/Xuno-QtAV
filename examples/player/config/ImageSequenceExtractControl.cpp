@@ -431,13 +431,13 @@ void ImgSeqExtractControl::on_mpPlayPauseBtn_clicked()
     //playing=!playing;
     //mpPlayPauseBtn->setIconWithSates(playing?mPausePixmap:mPlayPixmap);
     QTime start=frameToTime(ImageSequenceStartFrame->value());
-    QTime end=frameToTime(ImageSequenceEndFrame->value());
-    emit pause();
-    emit toggleRepeat(true);
-    emit repeatAChanged(start);
-    emit repeatBChanged(end);
-    emit RepeatLoopChanged(Qt::Checked);
+    //QTime end=frameToTime(ImageSequenceEndFrame->value());
     emit seek(start);
+    emit pause();
+//    emit toggleRepeat(true);
+//    emit repeatAChanged(start);
+//    emit repeatBChanged(end);
+//    emit RepeatLoopChanged(Qt::Checked);
     emit togglePlayPause();
 }
 
