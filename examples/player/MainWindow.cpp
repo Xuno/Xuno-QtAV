@@ -883,6 +883,7 @@ void MainWindow::play(const QString &name)
     mpHistory->remove(mFile);
     mpHistory->insertItemAt(item, 0);
     loadRemoteUrlPresset(mFile);
+    mpImgSeqExtract->setMovieName(name);
     mpPlayer->play(name);
 }
 

@@ -4,6 +4,7 @@
 #include <QtCore/QVariant>
 #include <QDebug>
 #include <QTime>
+#include <QDir>
 #include <QtCore/QVariant>
 #include <QAction>
 #include <QApplication>
@@ -22,6 +23,9 @@
 #include <QVBoxLayout>
 #include <QWidget>
 #include <QTime>
+#include <QProcessEnvironment>
+#include <QDesktopServices>
+#include <QMessageBox>
 #include "Button.h"
 
 class Button;
@@ -51,6 +55,7 @@ public:
     qint64 StartPosExtract();
     qint64 EndPosExtract();
     bool regionPlaying();
+    void setMovieName(QString name);
 
 public slots:
     void onPaused();
@@ -114,6 +119,23 @@ private:
     void RecalculateParentHeight(bool visible);
     QTime frameToTime(int f);
     int timeToFrame(QTime t);
+    QString movieName;
+
+    const QStringList ImageTypes = QStringList()
+    <<  "bmp"
+    <<  "cr2"
+    <<  "dng"
+    <<  "dxp"
+    <<  "exr"
+    <<  "jp2"
+    <<  "png"
+    <<  "jpg"
+    <<  "tga"
+    <<  "tif"
+    <<  "tiff";
+
+    void ExecuteExtApp(QString file,bool searchEnv, QString param);
+
 
 private slots:
     void on_buttonSetStartFrame_clicked(bool state);
@@ -125,6 +147,7 @@ private slots:
     void on_ImageSequenceTotalFrame_valueChanged(int i);
     void on_mpPlayPauseBtn_clicked();
     void on_btSelectOutputPath_clicked();
+    void on_buttonExtractFrames_clicked();
 };
 
 #endif // IMGSEQEXTRACTCONTROL_H

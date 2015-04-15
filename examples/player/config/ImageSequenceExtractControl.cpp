@@ -235,6 +235,15 @@ void ImgSeqExtractControl::retranslateUi()
                                << QApplication::translate("ImageSequenceExtract", ".tiff", 0)
                                );
     cbColorTypeOutput->clear();
+
+//    const QStringList ColorTypes = QStringList()
+//    <<  "8-bit RGB"
+//    <<  "10-bit RGB"
+//    <<  "12-bit RGB"
+//    <<  "14-bit RGB"
+//    <<  "16-bit RGB";
+
+
     cbColorTypeOutput->insertItems(0, QStringList()
                                    << QApplication::translate("ImageSequenceExtract", "8-bit RGB", 0)
                                    << QApplication::translate("ImageSequenceExtract", "10-bit RGB", 0)
@@ -462,7 +471,7 @@ void ImgSeqExtractControl::on_btSelectOutputPath_clicked()
 {
     qDebug()<<"on_btSelectOutputPath_clicked";
     //get latest used path
-    QString prevPath="E:\\public\\Videos\\OWN\\work\\image-seq\\outbmp-bgr24";//= config.getLastUsedPath();
+    QString prevPath="E:\\public\\Videos\\OWN\\work\\image-seq\\testout";//= config.getLastUsedPath();
     QString directory = QDir::toNativeSeparators(QFileDialog::getExistingDirectory(this,tr("Directory path for exctract"), prevPath, QFileDialog::ShowDirsOnly));
     if (!directory.isEmpty()){
          qDebug()<<"on_btSelectOutputPath_clicked"<<directory;
@@ -475,8 +484,97 @@ void ImgSeqExtractControl::on_buttonSetStartSeekFrame_clicked()
     QTime t=frameToTime(ImageSequenceStartFrame->value());
     emit seek(t);
 }
+
 void ImgSeqExtractControl::on_buttonSetEndSeekFrame_clicked()
 {
     QTime t=frameToTime(ImageSequenceEndFrame->value());
     emit seek(t);
+}
+
+void ImgSeqExtractControl::on_buttonExtractFrames_clicked()
+{
+    qDebug()<<"on_buttonExtractFrames_clicked";
+    QString file_path=OutputPath->text();
+    if (file_path.isEmpty() || movieName.isEmpty()) return;
+    if (ImageSequenceStartFrame->isEnabled() && ImageSequenceEndFrame->isEnabled()){
+        QString file_prefix=OutputFileNumberingPrefix->text();
+        if (file_prefix.isEmpty()) file_prefix="img";
+        QString file_separator=OutputFileNumberingSeperator->text();
+        if (file_separator.isEmpty()) file_separator="-";
+        QString file_ext=cb_OutputType->currentText();
+        //QString file_colorspace=cbColorTypeOutput->currentText();
+        int sf=getStartFrame();
+        //int ef=getEndFrame();
+        int tf=getTotalFrames();
+        int idig=QString("%1").arg(tf).count();
+        QString digits=QString("%").append(QString("%1d").arg(idig,2,10,QLatin1Char('0')));
+        QString output=QString().append(file_path).append(QString(QDir::separator())).append(file_prefix).append(file_separator).append(digits).append(file_ext);
+        QString exefile="ffmpeg.exe";
+        QString exeparam=QString("-v|24|-i|%3|-start_number|%1|-vframes|%2|-f|image2|%4").arg(sf).arg(tf).arg(movieName).arg(output);
+        qDebug()<<exefile<<exeparam;
+        //ffmpeg -start_number 1 -vframes 222 -i foo.avi -r 1 -s WxH -f image2 foo-%03d.jpeg
+        ExecuteExtApp(exefile,false,exeparam);
+    }
+}
+
+void ImgSeqExtractControl::ExecuteExtApp(QString file,bool searchEnv, QString param){
+    QProcessEnvironment env;
+    QStringList envSearch;
+    if (searchEnv){
+        envSearch << "ProgramFiles(x86)" << "ProgramFiles" << "ProgramW6432";
+    }else{
+        envSearch << "";
+    }
+    bool foundEnv = false;
+    QFileInfo fi;
+    QString pathfile;
+    for (int i=0; i< envSearch.size();i++){
+        //qDebug()<<"ExecuteExtApp"<<i;
+        QString progPath = env.systemEnvironment().value(envSearch.at(i));
+        if (!progPath.isEmpty()) progPath.append("\\");
+        pathfile=QString(progPath.append(file));
+        fi=QFileInfo(pathfile);
+        if (fi.exists() && fi.isExecutable()){
+            foundEnv=true;
+            break;
+        }
+    }
+    if (foundEnv){
+//        QMessageBox::information(this, tr("Run external application"),
+//                                 tr("Try execute\n%1"
+//                                    ).arg(pathfile),
+//                                 QMessageBox::Ok);
+        if (param.isEmpty()){
+            // can run app with administarative rights request if need, but without params
+            QDesktopServices::openUrl(QUrl(QString("file:///%1").arg(fi.absoluteFilePath()), QUrl::TolerantMode));
+        }else{
+            //QProcess::startDetached(fi.absoluteFilePath(), param.split(" "));
+            QProcess builder;
+            builder.setProcessChannelMode(QProcess::MergedChannels);
+            qDebug()<<"builder.start"<<fi.absoluteFilePath()<< param.split("|");
+            builder.start(fi.absoluteFilePath(), param.split("|"));
+            if (!builder.waitForFinished()){
+                qDebug() << "Make failed:" << builder.errorString();
+                QMessageBox::information(this, tr("Extract"),
+                                     tr("Extraction finished, with error"),
+                                     QMessageBox::Ok);
+            }else{
+                qDebug() << "Make output:" << builder.readAll();
+                QMessageBox::information(this, tr("Extract"),
+                                     tr("Extraction done"),
+                                     QMessageBox::Ok);
+            }
+
+        }
+    }else{
+        QMessageBox::warning(this, tr("Run external application"),
+                             tr("File not found for execute\n%1"
+                                ).arg(pathfile),
+                             QMessageBox::Cancel);
+    }
+}
+
+void ImgSeqExtractControl::setMovieName(QString name)
+{
+    movieName=QDir::toNativeSeparators(name);
 }
