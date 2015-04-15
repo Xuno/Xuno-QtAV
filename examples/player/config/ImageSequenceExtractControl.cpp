@@ -560,9 +560,15 @@ void ImgSeqExtractControl::ExecuteExtApp(QString file,bool searchEnv, QString pa
                                      QMessageBox::Ok);
             }else{
                 qDebug() << "Make output:" << builder.readAll();
-                QMessageBox::information(this, tr("Extract"),
-                                     tr("Extraction done"),
-                                     QMessageBox::Ok);
+                if (builder.exitCode()){
+                    QMessageBox::warning(this, tr("Extract"),
+                                         tr("Extraction error"),
+                                         QMessageBox::Ok);
+                }else{
+                    QMessageBox::information(this, tr("Extract"),
+                                             tr("Extraction done"),
+                                             QMessageBox::Ok);
+                }
             }
 
         }
@@ -576,5 +582,5 @@ void ImgSeqExtractControl::ExecuteExtApp(QString file,bool searchEnv, QString pa
 
 void ImgSeqExtractControl::setMovieName(QString name)
 {
-    movieName=QDir::toNativeSeparators(name);
+    movieName=name;//QDir::toNativeSeparators
 }
