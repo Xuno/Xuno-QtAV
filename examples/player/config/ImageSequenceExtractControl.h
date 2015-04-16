@@ -27,6 +27,7 @@
 #include <QDesktopServices>
 #include <QMessageBox>
 #include "Button.h"
+#include <QProcess>
 
 class Button;
 
@@ -120,6 +121,8 @@ private:
     QTime frameToTime(int f);
     int timeToFrame(QTime t);
     QString movieName;
+    QProcess *builder;
+    QMessageBox *modalinfo=0;
 
     const QStringList ImageTypes = QStringList()
     <<  "bmp"
@@ -135,9 +138,12 @@ private:
     <<  "tiff";
 
     void ExecuteExtApp(QString file,bool searchEnv, QString param);
+    QString getColorDepth();
 
 
 private slots:
+    void on_EXE_finished(int exitCode, QProcess::ExitStatus exitStatus);
+    void on_EXE_started();
     void on_buttonSetStartFrame_clicked(bool state);
     void on_buttonSetEndFrame_clicked(bool state);
     void on_buttonSetStartSeekFrame_clicked();

@@ -227,7 +227,7 @@ void ImgSeqExtractControl::retranslateUi()
                                << QApplication::translate("ImageSequenceExtract", ".cr2", 0)
                                << QApplication::translate("ImageSequenceExtract", ".dng", 0)
                                << QApplication::translate("ImageSequenceExtract", ".exr", 0)
-                               << QApplication::translate("ImageSequenceExtract", ".dxp", 0)
+                               << QApplication::translate("ImageSequenceExtract", ".dpx", 0)
                                << QApplication::translate("ImageSequenceExtract", ".jp2", 0)
                                << QApplication::translate("ImageSequenceExtract", ".png", 0)
                                << QApplication::translate("ImageSequenceExtract", ".jpg", 0)
@@ -385,6 +385,7 @@ void ImgSeqExtractControl::calcTotalFrames()
 void ImgSeqExtractControl::setFPS(float fps)
 {
   isFPS=fps;
+  qDebug()<<"ImgSeqExtractControl::setFPS"<<isFPS;
 }
 
 qint64 ImgSeqExtractControl::StartPosExtract()
@@ -493,24 +494,33 @@ void ImgSeqExtractControl::on_buttonSetEndSeekFrame_clicked()
 
 void ImgSeqExtractControl::on_buttonExtractFrames_clicked()
 {
-    qDebug()<<"on_buttonExtractFrames_clicked";
+    //qDebug()<<"on_buttonExtractFrames_clicked";
     QString file_path=OutputPath->text();
     if (file_path.isEmpty() || movieName.isEmpty()) return;
     if (ImageSequenceStartFrame->isEnabled() && ImageSequenceEndFrame->isEnabled()){
+        emit pause();
         QString file_prefix=OutputFileNumberingPrefix->text();
         if (file_prefix.isEmpty()) file_prefix="img";
         QString file_separator=OutputFileNumberingSeperator->text();
         if (file_separator.isEmpty()) file_separator="-";
         QString file_ext=cb_OutputType->currentText();
-        //QString file_colorspace=cbColorTypeOutput->currentText();
         int sf=getStartFrame();
+        QString sft=frameToTime(sf).toString("hh:mm:ss.zzz");
         //int ef=getEndFrame();
         int tf=getTotalFrames();
-        int idig=QString("%1").arg(tf).count();
+        int idig=(QString("%1").arg(timeToFrame(isEndTime))).count();
+        //qDebug()<<"idig"<<idig;
         QString digits=QString("%").append(QString("%1d").arg(idig,2,10,QLatin1Char('0')));
+        //qDebug()<<"digits"<<digits;
         QString output=QString().append(file_path).append(QString(QDir::separator())).append(file_prefix).append(file_separator).append(digits).append(file_ext);
-        QString exefile="ffmpeg.exe";
-        QString exeparam=QString("-v|24|-i|%3|-start_number|%1|-vframes|%2|-f|image2|%4").arg(sf).arg(tf).arg(movieName).arg(output);
+        //qDebug()<<"output"<<output;
+        QString imgParams;
+        QString colordepth=getColorDepth();
+        if (!colordepth.isEmpty())
+            imgParams.append("-pix_fmt|").append(colordepth);
+        QString exefile=QDir::toNativeSeparators(qApp->applicationDirPath()).append(QDir::separator()).append("ffmpeg.exe");
+        QString exeparam=QString("-v|24|-ss|%1|-i|%4|-start_number|%2|-vframes|%3|%5|-f|image2").arg(sft).arg(sf).arg(tf).arg(movieName).arg(imgParams);
+        exeparam.append("|").append(output);
         qDebug()<<exefile<<exeparam;
         //ffmpeg -start_number 1 -vframes 222 -i foo.avi -r 1 -s WxH -f image2 foo-%03d.jpeg
         ExecuteExtApp(exefile,false,exeparam);
@@ -540,37 +550,17 @@ void ImgSeqExtractControl::ExecuteExtApp(QString file,bool searchEnv, QString pa
         }
     }
     if (foundEnv){
-//        QMessageBox::information(this, tr("Run external application"),
-//                                 tr("Try execute\n%1"
-//                                    ).arg(pathfile),
-//                                 QMessageBox::Ok);
         if (param.isEmpty()){
             // can run app with administarative rights request if need, but without params
             QDesktopServices::openUrl(QUrl(QString("file:///%1").arg(fi.absoluteFilePath()), QUrl::TolerantMode));
         }else{
             //QProcess::startDetached(fi.absoluteFilePath(), param.split(" "));
-            QProcess builder;
-            builder.setProcessChannelMode(QProcess::MergedChannels);
+            builder=new QProcess();
+            builder->setProcessChannelMode(QProcess::MergedChannels);
             qDebug()<<"builder.start"<<fi.absoluteFilePath()<< param.split("|");
-            builder.start(fi.absoluteFilePath(), param.split("|"));
-            if (!builder.waitForFinished()){
-                qDebug() << "Make failed:" << builder.errorString();
-                QMessageBox::information(this, tr("Extract"),
-                                     tr("Extraction finished, with error"),
-                                     QMessageBox::Ok);
-            }else{
-                qDebug() << "Make output:" << builder.readAll();
-                if (builder.exitCode()){
-                    QMessageBox::warning(this, tr("Extract"),
-                                         tr("Extraction error"),
-                                         QMessageBox::Ok);
-                }else{
-                    QMessageBox::information(this, tr("Extract"),
-                                             tr("Extraction done"),
-                                             QMessageBox::Ok);
-                }
-            }
-
+            QObject::connect(builder,SIGNAL( finished(int,QProcess::ExitStatus) ),SLOT( on_EXE_finished(int,QProcess::ExitStatus) ));
+            QObject::connect(builder,SIGNAL( started() ),SLOT( on_EXE_started() ));
+            builder->start(fi.absoluteFilePath(), param.split("|"));
         }
     }else{
         QMessageBox::warning(this, tr("Run external application"),
@@ -583,4 +573,56 @@ void ImgSeqExtractControl::ExecuteExtApp(QString file,bool searchEnv, QString pa
 void ImgSeqExtractControl::setMovieName(QString name)
 {
     movieName=name;//QDir::toNativeSeparators
+}
+
+QString ImgSeqExtractControl::getColorDepth()
+{
+    QString file_colorspace=cbColorTypeOutput->currentText();
+    int cd=file_colorspace.split("-")[0].toInt();
+    QString pixfmt;
+    switch (cd) {
+    case 8:
+        pixfmt="rgb24";
+        break;
+    case 16:
+        pixfmt="rgb48le";
+        break;
+    }
+    return pixfmt;
+}
+
+void ImgSeqExtractControl::on_EXE_finished(int exitCode, QProcess::ExitStatus exitStatus)
+{
+    qDebug()<<"ImgSeqExtractControl::on_EXE_finished"<<exitCode<<exitStatus;
+    if (modalinfo)
+        modalinfo->done(QMessageBox::NoButton);
+    if (exitStatus==QProcess::NormalExit) {
+        if (exitCode){
+            QString outtext = QString(builder->readAll());
+            QMessageBox::warning(this, tr("Extract"),
+                                 tr("Extraction ffmpeg error:\n%1").arg(outtext),
+                                 QMessageBox::Ok);
+        }else{
+            QMessageBox::information(this, tr("Extract"),
+                                     tr("Extraction done"),
+                                     QMessageBox::Ok);
+        }
+    }
+}
+
+void ImgSeqExtractControl::on_EXE_started()
+{
+    qDebug()<<"ImgSeqExtractControl::on_EXE_started()";
+    modalinfo=new QMessageBox();
+    modalinfo->setIcon(QMessageBox::Information);
+    modalinfo->setWindowTitle(tr("Extract"));
+    modalinfo->setText(tr("Extraction has been started"));
+    modalinfo->setStandardButtons(QMessageBox::Cancel);
+    int result=modalinfo->exec();
+    if (result==QMessageBox::Cancel){
+        builder->kill();
+        QMessageBox::warning(this, tr("Extract"),
+                             tr("Extraction was terminated by user"),
+                             QMessageBox::Ok);
+    }
 }
