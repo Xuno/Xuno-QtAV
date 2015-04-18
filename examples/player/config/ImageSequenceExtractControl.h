@@ -28,6 +28,8 @@
 #include <QMessageBox>
 #include "Button.h"
 #include <QProcess>
+#include <QProgressBar>
+#include <QTimer>
 
 class Button;
 
@@ -123,27 +125,40 @@ private:
     QString movieName;
     QProcess *builder;
     QMessageBox *modalinfo=0;
+    QProgressBar *EXEprogressProgressBar=0;
 
     const QStringList ImageTypes = QStringList()
-    <<  "bmp"
-    <<  "cr2"
-    <<  "dng"
-    <<  "dxp"
-    <<  "exr"
-    <<  "jp2"
-    <<  "png"
-    <<  "jpg"
-    <<  "tga"
     <<  "tif"
-    <<  "tiff";
+    <<  "bmp"
+    <<  "dpx"
+    <<  "jp2"
+    <<  "jpg"
+    <<  "jxr"
+    <<  "png"
+    <<  "tga";
+    const QStringList ImageTypes_8bit = QStringList(ImageTypes);
+    const QStringList ImageTypes_10bit = QStringList()
+    <<  "tif"
+    <<  "dpx"
+    <<  "jp2"
+    <<  "jxr"
+    <<  "png"
+    <<  "tga";
+    const QStringList ImageTypes_12bit = QStringList(ImageTypes_10bit);
+    const QStringList ImageTypes_14bit = QStringList(ImageTypes_10bit);
+    const QStringList ImageTypes_16bit = QStringList(ImageTypes_10bit);
+
+    void setupOutputType();
+
 
     void ExecuteExtApp(QString file,bool searchEnv, QString param);
     QString getColorDepth();
+    void customStyles();
 
 
 private slots:
-    void on_EXE_finished(int exitCode, QProcess::ExitStatus exitStatus);
-    void on_EXE_started();
+    void onEXE_finished(int exitCode, QProcess::ExitStatus exitStatus);
+    void onEXE_started();
     void on_buttonSetStartFrame_clicked(bool state);
     void on_buttonSetEndFrame_clicked(bool state);
     void on_buttonSetStartSeekFrame_clicked();
@@ -154,6 +169,8 @@ private slots:
     void on_mpPlayPauseBtn_clicked();
     void on_btSelectOutputPath_clicked();
     void on_buttonExtractFrames_clicked();
+    void setupColorTypeOutput(int id=-1);
+    void updateEXEprogress();
 };
 
 #endif // IMGSEQEXTRACTCONTROL_H

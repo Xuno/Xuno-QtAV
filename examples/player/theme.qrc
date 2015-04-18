@@ -15,5 +15,7 @@
         <file>theme/url.png</file>
         <file>theme/button-max-volume.png</file>
         <file>theme/fullscreen.png</file>
+        <file>theme/down_arrow-bw.png</file>
+        <file>theme/up_arrow-bw.png</file>
     </qresource>
 </RCC>

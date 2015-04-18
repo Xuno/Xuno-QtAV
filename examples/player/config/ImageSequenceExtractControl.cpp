@@ -7,6 +7,8 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
     isRegionPlaying(false)
 {
 
+    //customStyles();
+
     baseParentMaxHeight=parentWidget()->maximumHeight();
 
     verticalLayoutWidget=this;
@@ -210,49 +212,28 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
 }
 void ImgSeqExtractControl::retranslateUi()
 {
+    const QString buttTextPadding="padding: 3px 7px 4px 7px;";
     startTime->setText(QApplication::translate("ImageSequenceExtract", "00:00:00.000", 0));
     labelSF->setText(QApplication::translate("ImageSequenceExtract", " Start Frames:", 0));
+    //buttonSetStartFrame->setStyleSheet(buttTextPadding);
     buttonSetStartFrame->setText(QApplication::translate("ImageSequenceExtract", "Set", 0));
+    //buttonSetStartSeekFrame->setStyleSheet(buttTextPadding);
     buttonSetStartSeekFrame->setText(QApplication::translate("ImageSequenceExtract", "Seek", 0));
     labelTF->setText(QApplication::translate("ImageSequenceExtract", " Total Frames:", 0));
     labelEF->setText(QApplication::translate("ImageSequenceExtract", " End Frame:", 0));
+    //buttonSetEndFrame->setStyleSheet(buttTextPadding);
     buttonSetEndFrame->setText(QApplication::translate("ImageSequenceExtract", "Set", 0));
+    //buttonSetEndSeekFrame->setStyleSheet(buttTextPadding);
     buttonSetEndSeekFrame->setText(QApplication::translate("ImageSequenceExtract", "Seek", 0));
     endTime->setText(QApplication::translate("ImageSequenceExtract", "00:00:00.000", 0));
+    btSelectOutputPath->setStyleSheet(buttTextPadding);
     btSelectOutputPath->setText(QApplication::translate("ImageSequenceExtract", "Select Output Path", 0));
-    cb_OutputType->clear();
-    cb_OutputType->insertItems(0, QStringList()
-                               << QApplication::translate("ImageSequenceExtract", ".tif", 0)
-                               << QApplication::translate("ImageSequenceExtract", ".bmp", 0)
-                               << QApplication::translate("ImageSequenceExtract", ".cr2", 0)
-                               << QApplication::translate("ImageSequenceExtract", ".dng", 0)
-                               << QApplication::translate("ImageSequenceExtract", ".exr", 0)
-                               << QApplication::translate("ImageSequenceExtract", ".dpx", 0)
-                               << QApplication::translate("ImageSequenceExtract", ".jp2", 0)
-                               << QApplication::translate("ImageSequenceExtract", ".png", 0)
-                               << QApplication::translate("ImageSequenceExtract", ".jpg", 0)
-                               << QApplication::translate("ImageSequenceExtract", ".tga", 0)
-                               << QApplication::translate("ImageSequenceExtract", ".tiff", 0)
-                               );
-    cbColorTypeOutput->clear();
-
-//    const QStringList ColorTypes = QStringList()
-//    <<  "8-bit RGB"
-//    <<  "10-bit RGB"
-//    <<  "12-bit RGB"
-//    <<  "14-bit RGB"
-//    <<  "16-bit RGB";
-
-
-    cbColorTypeOutput->insertItems(0, QStringList()
-                                   << QApplication::translate("ImageSequenceExtract", "8-bit RGB", 0)
-                                   << QApplication::translate("ImageSequenceExtract", "10-bit RGB", 0)
-                                   << QApplication::translate("ImageSequenceExtract", "12-bit RGB", 0)
-                                   << QApplication::translate("ImageSequenceExtract", "14-bit RGB", 0)
-                                   << QApplication::translate("ImageSequenceExtract", "16-bit RGB", 0)
-                                   );
+    setupOutputType();
+    setupColorTypeOutput();
+    QObject::connect(cb_OutputType,SIGNAL(currentIndexChanged(int)),SLOT(setupColorTypeOutput(int)));
     labelFilePrefix->setText(QApplication::translate("ImageSequenceExtract", "Prefix:", 0));
     labelFileSeparator->setText(QApplication::translate("ImageSequenceExtract", "Separator:", 0));
+    buttonExtractFrames->setStyleSheet(buttTextPadding);
     buttonExtractFrames->setText(QApplication::translate("ImageSequenceExtract", "Extract Frames", 0));
     mpPlayPauseBtn->setToolTip(QApplication::translate("ImageSequenceExtract", "play selected region form start to end frames", 0));
 } // retranslateUi
@@ -558,8 +539,8 @@ void ImgSeqExtractControl::ExecuteExtApp(QString file,bool searchEnv, QString pa
             builder=new QProcess();
             builder->setProcessChannelMode(QProcess::MergedChannels);
             qDebug()<<"builder.start"<<fi.absoluteFilePath()<< param.split("|");
-            QObject::connect(builder,SIGNAL( finished(int,QProcess::ExitStatus) ),SLOT( on_EXE_finished(int,QProcess::ExitStatus) ));
-            QObject::connect(builder,SIGNAL( started() ),SLOT( on_EXE_started() ));
+            QObject::connect(builder,SIGNAL( finished(int,QProcess::ExitStatus) ),SLOT( onEXE_finished(int,QProcess::ExitStatus) ));
+            QObject::connect(builder,SIGNAL( started() ),SLOT( onEXE_started() ));
             builder->start(fi.absoluteFilePath(), param.split("|"));
         }
     }else{
@@ -573,6 +554,28 @@ void ImgSeqExtractControl::ExecuteExtApp(QString file,bool searchEnv, QString pa
 void ImgSeqExtractControl::setMovieName(QString name)
 {
     movieName=name;//QDir::toNativeSeparators
+}
+
+void ImgSeqExtractControl::setupOutputType()
+{
+    cb_OutputType->clear();
+    for (int i=0; i<ImageTypes.size(); i++)
+    {
+        cb_OutputType->addItem(QString(".").append(ImageTypes.at(i)));
+    }
+}
+
+void ImgSeqExtractControl::setupColorTypeOutput(int id)
+{
+    Q_UNUSED(id);
+    int currentTypeID=cb_OutputType->currentIndex();
+    QString cType=ImageTypes.at(currentTypeID);
+    cbColorTypeOutput->clear();
+    if (ImageTypes_8bit.contains(cType)) cbColorTypeOutput->addItem("8-bit");
+    if (ImageTypes_10bit.contains(cType)) cbColorTypeOutput->addItem("10-bit");
+    if (ImageTypes_12bit.contains(cType)) cbColorTypeOutput->addItem("12-bit");
+    if (ImageTypes_14bit.contains(cType)) cbColorTypeOutput->addItem("14-bit");
+    if (ImageTypes_16bit.contains(cType)) cbColorTypeOutput->addItem("16-bit");
 }
 
 QString ImgSeqExtractControl::getColorDepth()
@@ -591,9 +594,9 @@ QString ImgSeqExtractControl::getColorDepth()
     return pixfmt;
 }
 
-void ImgSeqExtractControl::on_EXE_finished(int exitCode, QProcess::ExitStatus exitStatus)
+void ImgSeqExtractControl::onEXE_finished(int exitCode, QProcess::ExitStatus exitStatus)
 {
-    qDebug()<<"ImgSeqExtractControl::on_EXE_finished"<<exitCode<<exitStatus;
+    qDebug()<<"ImgSeqExtractControl::onEXE_finished"<<exitCode<<exitStatus;
     if (modalinfo)
         modalinfo->done(QMessageBox::NoButton);
     if (exitStatus==QProcess::NormalExit) {
@@ -610,19 +613,60 @@ void ImgSeqExtractControl::on_EXE_finished(int exitCode, QProcess::ExitStatus ex
     }
 }
 
-void ImgSeqExtractControl::on_EXE_started()
+void ImgSeqExtractControl::onEXE_started()
 {
-    qDebug()<<"ImgSeqExtractControl::on_EXE_started()";
+    qDebug()<<"ImgSeqExtractControl::onEXE_started()";
     modalinfo=new QMessageBox();
     modalinfo->setIcon(QMessageBox::Information);
     modalinfo->setWindowTitle(tr("Extract"));
-    modalinfo->setText(tr("Extraction has been started"));
-    modalinfo->setStandardButtons(QMessageBox::Cancel);
+    modalinfo->setText(tr("Frame Extraction has started"));
+    modalinfo->setStandardButtons(QMessageBox::Abort);
+
+    //place inside QMessageBox();
+    QGridLayout *modalinfoLayout = (QGridLayout*) modalinfo->layout();
+    QHBoxLayout *hl = new QHBoxLayout();
+    EXEprogressProgressBar = new QProgressBar(modalinfo);
+    EXEprogressProgressBar->setObjectName(QStringLiteral("progressBar"));
+    EXEprogressProgressBar->setAlignment(Qt::AlignCenter);
+    EXEprogressProgressBar->setValue(0);
+    hl->addWidget(EXEprogressProgressBar);
+    modalinfoLayout->addLayout(hl,modalinfoLayout->rowCount()-2,1,1,modalinfoLayout->columnCount(),Qt::AlignCenter);
+
+    QTimer::singleShot(500, this, SLOT(updateEXEprogress()));
+
     int result=modalinfo->exec();
-    if (result==QMessageBox::Cancel){
+    if (result==QMessageBox::Abort){
         builder->kill();
         QMessageBox::warning(this, tr("Extract"),
                              tr("Extraction was terminated by user"),
                              QMessageBox::Ok);
     }
+}
+
+void ImgSeqExtractControl::updateEXEprogress()
+{
+    //qDebug()<<"ImgSeqExtractControl::updateEXEprogress()";
+    if (modalinfo) {
+        if (!modalinfo->isHidden() && EXEprogressProgressBar) {
+                EXEprogressProgressBar->setValue(EXEprogressProgressBar->value()+1);
+                QTimer::singleShot(500, this, SLOT(updateEXEprogress()));
+        }
+    }
+}
+
+void ImgSeqExtractControl::customStyles()
+{
+    setStyleSheet(" \
+    QSpinBox::up-arrow { \
+        image: url(:/theme/up_arrow-bw.png); \
+        width: 7px; \
+        height: 5px; \
+    } \
+    QSpinBox::down-arrow { \
+        image: url(:/theme/down_arrow-bw.png); \
+        width: 7px; \
+        height: 5px; \
+    } \
+    ");
+
 }

@@ -169,8 +169,10 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     groupBox2->setTitle(tr("Generate Image Sequence"));
 
     QVBoxLayout *vb2 = new QVBoxLayout(groupBox2);
+    const QString buttTextPadding="padding: 3px 7px 4px 7px;";
     checkBoxExtractor = new QPushButton(groupBox2);
     checkBoxExtractor->setObjectName(QStringLiteral("checkBoxExtractor"));
+    checkBoxExtractor->setStyleSheet(buttTextPadding);
     checkBoxExtractor->setText(tr("Enable Frame Extractor"));
     checkBoxExtractor->setCheckable(true);
     checkBoxExtractor->setChecked(false);

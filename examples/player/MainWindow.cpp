@@ -670,6 +670,18 @@ QSlider::handle:horizontal { \
     controlVLayout->addWidget(mpImgSeqExtract);
     controlVLayout->addLayout(controlLayout);
     mpImgSeqExtract->setVisible(false);
+//    mpImgSeqExtract->setStyleSheet(" \
+//    QSpinBox::up-arrow { \
+//        image: url(:/theme/up_arrow-bw.png); \
+//        width: 7px; \
+//        height: 7px; \
+//    } \
+//    QSpinBox::down-arrow { \
+//        image: url(:/theme/down_arrow-bw.png); \
+//        width: 7px; \
+//        height: 7px; \
+//    } \
+//    ");
 
     //connect(pSpeedBox, SIGNAL(valueChanged(double)), SLOT(onSpinBoxChanged(double)));
     connect(mpOpenBtn, SIGNAL(clicked()), SLOT(openFile()));
