@@ -492,8 +492,9 @@ void ImgSeqExtractControl::on_buttonExtractFrames_clicked()
 
         QString firstfilename=QString("%1").arg(sf,idig,10,QLatin1Char('0'));
         QString outputfirstframe=QString().append(file_path).append(QString(QDir::separator())).append(file_prefix).append(file_separator).append(firstfilename).append(file_ext);
-        if (checkDirectoryPermissions(outputfirstframe)) return;
-
+        qDebug()<<"do checkDirectoryPermissions";
+        if (!checkDirectoryPermissions(outputfirstframe)) return;
+        qDebug()<<"pass checkDirectoryPermissions";
         QString digits=QString("%").append(QString("%1d").arg(idig,2,10,QLatin1Char('0')));
         QString output=QString().append(file_path).append(QString(QDir::separator())).append(file_prefix).append(file_separator).append(digits).append(file_ext);
         QString imgParams;
@@ -501,7 +502,7 @@ void ImgSeqExtractControl::on_buttonExtractFrames_clicked()
         if (!colordepth.isEmpty())
             imgParams.append("-pix_fmt|").append(colordepth);
         QString exefile=QDir::toNativeSeparators(qApp->applicationDirPath()).append(QDir::separator()).append("ffmpeg.exe");
-        QString exeparam=QString("-v|24|-ss|%1|-i|%4|-start_number|%2|-vframes|%3|%5|-f|image2").arg(sft).arg(sf).arg(tf).arg(movieName).arg(imgParams);
+        QString exeparam=QString("-v|32|-ss|%1|-i|%4|-start_number|%2|-vframes|%3|%5|-f|image2").arg(sft).arg(sf).arg(tf).arg(movieName).arg(imgParams);
         exeparam.append("|").append(output);
         qDebug()<<exefile<<exeparam;
         //ffmpeg -start_number 1 -vframes 222 -i foo.avi -r 1 -s WxH -f image2 foo-%03d.jpeg
@@ -511,13 +512,13 @@ void ImgSeqExtractControl::on_buttonExtractFrames_clicked()
 
 bool ImgSeqExtractControl::checkDirectoryPermissions(QString pathfile)
 {
-    //qDebug()<<"checkDirectoryPermissions"<<pathfile;
     QFileInfo fi=QFileInfo(pathfile);
     if (fi.exists() && fi.isWritable()){
         int ret=QMessageBox::question(this,tr("Files present"),tr("The filename file already exists.\nDo you want to overwrite it?"));
         //qDebug()<<"checkDirectoryPermissions ret "<<ret;
-        if (ret==QMessageBox::Yes) return false;
+        if (ret!=QMessageBox::Yes) return false;
     }
+    //qDebug()<<"checkDirectoryPermissions"<<pathfile<<true;
     return true;
 }
 
@@ -659,13 +660,28 @@ void ImgSeqExtractControl::onEXE_started()
 
 void ImgSeqExtractControl::updateEXEprogress()
 {
-    //qDebug()<<"ImgSeqExtractControl::updateEXEprogress()";
     if (modalinfo) {
         if (!modalinfo->isHidden() && EXEprogressProgressBar) {
-                EXEprogressProgressBar->setValue(EXEprogressProgressBar->value()+1);
+                int frame=detectFFMpegOutputFrames();
+                if (frame) {
+                    int tf=getTotalFrames();
+                    int perc=((frame)/(qreal)tf)*100;
+                    if (perc) EXEprogressProgressBar->setValue(perc);
+                }
                 QTimer::singleShot(500, this, SLOT(updateEXEprogress()));
         }
     }
+}
+
+int ImgSeqExtractControl::detectFFMpegOutputFrames()
+{
+   QString outtext = QString(builder->readAll());
+   outtext.truncate(30);
+   if (outtext.startsWith("frame=")) {
+       int frame=outtext.replace(QRegExp("^frame=\\s*([\\d]+).*$"),"\\1").toInt();
+       if (frame) return frame;
+   }
+   return 0;
 }
 
 void ImgSeqExtractControl::customStyles()

@@ -30,6 +30,7 @@
 #include <QProcess>
 #include <QProgressBar>
 #include <QTimer>
+#include <QRegExp>
 
 class Button;
 
@@ -149,6 +150,7 @@ private:
     const QStringList ImageTypes_16bit = QStringList(ImageTypes_10bit);
 
     void setupOutputType();
+    int detectFFMpegOutputFrames();
 
 
     void ExecuteExtApp(QString file,bool searchEnv, QString param);
