@@ -214,6 +214,8 @@ qreal AVPlayer::speed() const
 
 void AVPlayer::setInterruptTimeout(qint64 ms)
 {
+    if (ms < 0LL)
+        ms = -1LL;
     if (d->interrupt_timeout == ms)
         return;
     d->interrupt_timeout = ms;
@@ -224,6 +226,19 @@ void AVPlayer::setInterruptTimeout(qint64 ms)
 qint64 AVPlayer::interruptTimeout() const
 {
     return d->interrupt_timeout;
+}
+
+void AVPlayer::setInterruptOnTimeout(bool value)
+{
+    if (isInterruptOnTimeout() == value)
+        return;
+    d->demuxer.setInterruptOnTimeout(value);
+    emit interruptOnTimeoutChanged();
+}
+
+bool AVPlayer::isInterruptOnTimeout() const
+{
+    return d->demuxer.isInterruptOnTimeout();
 }
 
 void AVPlayer::setFrameRate(qreal value)
@@ -1329,7 +1344,10 @@ BufferMode AVPlayer::bufferMode() const
 
 void AVPlayer::setBufferValue(int value)
 {
+    if (d->buffer_value == value)
+        return;
     d->buffer_value = value;
+    d->updateBufferValue();
 }
 
 int AVPlayer::bufferValue() const

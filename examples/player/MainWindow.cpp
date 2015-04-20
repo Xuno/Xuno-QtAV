@@ -174,6 +174,8 @@ void MainWindow::initPlayer()
     connect(&Config::instance(), SIGNAL(previewEnabledChanged()), SLOT(onPreviewEnabledChanged()));
     connect(&Config::instance(), SIGNAL(avfilterVideoChanged()), SLOT(onAVFilterVideoConfigChanged()));
     connect(&Config::instance(), SIGNAL(avfilterAudioChanged()), SLOT(onAVFilterAudioConfigChanged()));
+    connect(&Config::instance(), SIGNAL(bufferValueChanged()), SLOT(onBufferValueChanged()));
+    connect(&Config::instance(), SIGNAL(abortOnTimeoutChanged()), SLOT(onAbortOnTimeoutChanged()));
     connect(mpStopBtn, SIGNAL(clicked()), this, SLOT(stopUnload()));
     connect(mpForwardBtn, SIGNAL(clicked()), mpPlayer, SLOT(seekForward()));
     connect(mpBackwardBtn, SIGNAL(clicked()), mpPlayer, SLOT(seekBackward()));
@@ -877,6 +879,8 @@ void MainWindow::play(const QString &name)
     else
         mRepeateMax = (mpRepeatLoop->isChecked())?-1:mpRepeatBox->value()-1;
     qDebug()<<"mRepeateMax"<<mRepeateMax;
+    mpPlayer->setInterruptOnTimeout(Config::instance().abortOnTimeout());
+    mpPlayer->setInterruptTimeout(Config::instance().timeout()*1000.0);
     mpPlayer->setBufferMode(QtAV::BufferPackets);
     mpPlayer->setBufferValue(Config::instance().bufferValue());
     mpPlayer->setRepeat(mRepeateMax);
@@ -986,7 +990,10 @@ void MainWindow::togglePlayPause()
         if (mFile.isEmpty())
             return;
         applyCustomFPS();
-        mpPlayer->play();
+        if (!mpPlayer->isPlaying())
+            play(mFile);
+        else
+            mpPlayer->play();
         mpPlayPauseBtn->setIconWithSates(mPausePixmap);
     }
 }
@@ -1577,11 +1584,15 @@ void MainWindow::onMediaStatusChanged()
     case LoadedMedia:
         status = QObject::tr("Loaded");
         break;
+    case StalledMedia:
+        status = "Stalled";
+        break;
     default:
         status = "";
         onStopPlay();
         break;
     }
+    qDebug() << "status changed " << status;
     setWindowTitle(status + " " + mTitle);
 }
 
@@ -1735,6 +1746,20 @@ void MainWindow::donate()
 {
     //QDesktopServices::openUrl(QUrl("https://sourceforge.net/p/qtav/wiki/Donate%20%E6%8D%90%E8%B5%A0/"));
     QDesktopServices::openUrl(QUrl("http://www.qtav.org/#donate"));
+}
+
+void MainWindow::onBufferValueChanged()
+{
+    if (!mpPlayer)
+        return;
+    mpPlayer->setBufferValue(Config::instance().bufferValue());
+}
+
+void MainWindow::onAbortOnTimeoutChanged()
+{
+    if (!mpPlayer)
+        return;
+    mpPlayer->setInterruptOnTimeout(Config::instance().abortOnTimeout());
 }
 
 void MainWindow::setup()

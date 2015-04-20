@@ -43,6 +43,7 @@ public:
             return;
         if (mDemuxThread->isEnd())
             return;
+        mDemuxThread->updateBufferState(); // ensure detect buffering immediately
         AVThread *thread = mDemuxThread->videoThread();
         //qDebug("try wake up video queue");
         if (thread)
@@ -62,7 +63,6 @@ AVDemuxThread::AVDemuxThread(QObject *parent) :
   , user_paused(false)
   , end(false)
   , m_buffering(false)
-  , m_buffered(0)
   , m_buffer(0)
   , demuxer(0)
   , audio_thread(0)
@@ -79,7 +79,6 @@ AVDemuxThread::AVDemuxThread(AVDemuxer *dmx, QObject *parent) :
   , paused(false)
   , end(false)
   , m_buffering(false)
-  , m_buffered(0)
   , m_buffer(0)
   , audio_thread(0)
   , video_thread(0)
@@ -165,6 +164,7 @@ void AVDemuxThread::seekInternal(qint64 pos, SeekType type)
         AVThread *t = av[i];
         if (!t)
             continue;
+        t->packetQueue()->blockEmpty(false); // was buffering
         t->packetQueue()->clear();
     }
     qDebug("seek to %s %lld ms (%f%%)", QTime(0, 0, 0).addMSecs(pos).toString().toUtf8().constData(), pos, double(pos - demuxer->startTime())/double(demuxer->duration())*100.0);
@@ -176,6 +176,7 @@ void AVDemuxThread::seekInternal(qint64 pos, SeekType type)
         if (!t)
             continue;
         t->packetQueue()->clear();
+        t->packetQueue()->setBlocking(true); // blockEmpty was false when eof is read.
         // TODO: the first frame (key frame) will not be decoded correctly if flush() is called.
         if (type == AccurateSeek)
             t->packetQueue()->put(Packet());
@@ -230,6 +231,23 @@ bool AVDemuxThread::isEnd() const
 PacketBuffer* AVDemuxThread::buffer()
 {
     return m_buffer;
+}
+
+void AVDemuxThread::updateBufferState()
+{
+    if (!m_buffer)
+        return;
+    if (m_buffering) { // always report progress when buffering
+        Q_EMIT bufferProgressChanged(m_buffer->bufferProgress());
+    }
+    if (m_buffering == m_buffer->isBuffering())
+        return;
+    m_buffering = m_buffer->isBuffering();
+    Q_EMIT mediaStatusChanged(m_buffering ? QtAV::BufferingMedia : QtAV::BufferedMedia);
+    // state change to buffering, report progress immediately. otherwise we have to wait to read 1 packet.
+    if (m_buffering) {
+        Q_EMIT bufferProgressChanged(m_buffer->bufferProgress());
+    }
 }
 
 //No more data to put. So stop blocking the queue to take the reset elements
@@ -363,7 +381,6 @@ void AVDemuxThread::onAVThreadQuit()
 void AVDemuxThread::run()
 {
     m_buffering = false;
-    m_buffered = false;
     end = false;
     if (audio_thread && !audio_thread->isRunning())
         audio_thread->start(QThread::HighPriority);
@@ -393,11 +410,17 @@ void AVDemuxThread::run()
         processNextSeekTask();
         if (demuxer->atEnd()) {
             if (!was_end) {
-                if (aqueue)
+                if (aqueue) {
                     aqueue->put(Packet::createEOF());
-                if (vqueue)
+                    aqueue->blockEmpty(false); // do not block if buffer is not enough. block again on seek
+                }
+                if (vqueue) {
                     vqueue->put(Packet::createEOF());
+                    vqueue->blockEmpty(false);
+                }
             }
+            m_buffering = false;
+            Q_EMIT mediaStatusChanged(QtAV::BufferedMedia);
             was_end = true;
             // wait for a/v thread finished
             msleep(100);
@@ -407,13 +430,7 @@ void AVDemuxThread::run()
         if (tryPause()) {
             continue; //the queue is empty and will block
         }
-        if (m_buffering != m_buffer->isBuffering()) {
-            m_buffering = m_buffer->isBuffering();
-            Q_EMIT mediaStatusChanged(m_buffering ? QtAV::BufferingMedia : QtAV::BufferedMedia);
-            // state change to buffering, report progress immediatly. otherwise we have to wait to read 1 packet.
-            if (m_buffering)
-                Q_EMIT bufferProgressChanged(m_buffer->bufferProgress());
-        }
+        updateBufferState();
         QMutexLocker locker(&buffer_mutex);
         Q_UNUSED(locker);
         if (!demuxer->readFrame()) {
@@ -466,15 +483,8 @@ void AVDemuxThread::run()
         } else { //subtitle
             continue;
         }
-        if (m_buffering) {
-            if (m_buffered != m_buffer->buffered()) {
-                m_buffered = m_buffer->buffered();
-                Q_EMIT bufferProgressChanged(m_buffer->bufferProgress());
-            }
-        }
     }
     m_buffering = false;
-    m_buffered = false;
     m_buffer = 0;
     while (audio_thread && audio_thread->isRunning()) {
         qDebug("waiting audio thread.......");

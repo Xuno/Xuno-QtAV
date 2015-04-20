@@ -58,6 +58,7 @@ class COMMON_EXPORT Config : public QObject
     Q_PROPERTY(int previewHeight READ previewHeight WRITE setPreviewHeight NOTIFY previewHeightChanged)
     Q_PROPERTY(bool ANGLE READ isANGLE WRITE setANGLE NOTIFY ANGLEChanged)
     Q_PROPERTY(bool avformatOptionsEnabled READ avformatOptionsEnabled WRITE setAvformatOptionsEnabled NOTIFY avformatOptionsEnabledChanged)
+    Q_PROPERTY(qreal timeout READ timeout WRITE setTimeout NOTIFY timeoutChanged)
     Q_PROPERTY(int bufferValue READ bufferValue WRITE setBufferValue NOTIFY bufferValueChanged)
 public:
     static Config& instance();
@@ -145,6 +146,13 @@ public:
     bool isANGLE() const; // false: auto
     Config& setANGLE(bool value);
 
+    // ms >0. default 30000ms
+    qreal timeout() const;
+    Config& setTimeout(qreal value);
+
+    bool abortOnTimeout() const;
+    Config& setAbortOnTimeout(bool value);
+
     // <0: auto
     int bufferValue() const;
     Config& setBufferValue(int value);
@@ -177,11 +185,13 @@ public:
     Q_SIGNAL void ANGLEChanged();
     Q_SIGNAL void avformatOptionsEnabledChanged();
     Q_SIGNAL void bufferValueChanged();
+    Q_SIGNAL void timeoutChanged();
+    Q_SIGNAL void abortOnTimeoutChanged();
 protected:
     explicit Config(QObject *parent = 0);
     ~Config();
 
-private Q_SLOTS:
+public Q_SLOTS:
     void save();
 
 private:

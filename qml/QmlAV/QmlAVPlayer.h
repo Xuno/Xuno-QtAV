@@ -64,6 +64,7 @@ class QmlAVPlayer : public QObject, public QQmlParserStatus
     // not supported by QtMultimedia
     Q_PROPERTY(bool fastSeek READ isFastSeek WRITE setFastSeek NOTIFY fastSeekChanged)
     Q_PROPERTY(int timeout READ timeout WRITE setTimeout NOTIFY timeoutChanged)
+    Q_PROPERTY(bool abortOnTimeout READ abortOnTimeout WRITE setAbortOnTimeout NOTIFY abortOnTimeoutChanged)
     Q_PROPERTY(ChannelLayout channelLayout READ channelLayout WRITE setChannelLayout NOTIFY channelLayoutChanged)
     Q_PROPERTY(QStringList videoCodecs READ videoCodecs)
     Q_PROPERTY(QStringList videoCodecPriority READ videoCodecPriority WRITE setVideoCodecPriority NOTIFY videoCodecPriorityChanged)
@@ -76,13 +77,13 @@ public:
         PausedState
     };
     enum Status {
-        UnknownMediaStatus = QtAV::UnknownMediaStatus, // e.g. user status after interrupt
+        UnknownStatus = QtAV::UnknownMediaStatus, // e.g. user status after interrupt
         NoMedia = QtAV::NoMedia,
-        LoadingMedia = QtAV::LoadingMedia, // when source is set
-        LoadedMedia = QtAV::LoadedMedia, // if auto load and source is set. player is stopped state
-        StalledMedia = QtAV::StalledMedia,
-        BufferingMedia = QtAV::BufferingMedia,
-        BufferedMedia = QtAV::BufferedMedia, // when playing
+        Loading = QtAV::LoadingMedia, // when source is set
+        Loaded = QtAV::LoadedMedia, // if auto load and source is set. player is stopped state
+        Stalled = QtAV::StalledMedia,
+        Buffering = QtAV::BufferingMedia,
+        Buffered = QtAV::BufferedMedia, // when playing
         EndOfMedia = QtAV::EndOfMedia,
         InvalidMedia = QtAV::InvalidMedia
     };
@@ -167,6 +168,8 @@ public:
 
     void setTimeout(int value); // ms
     int timeout() const;
+    void setAbortOnTimeout(bool value);
+    bool abortOnTimeout() const;
 public Q_SLOTS:
     void play();
     void pause();
@@ -201,6 +204,7 @@ Q_SIGNALS:
     void videoCodecOptionsChanged();
     void channelLayoutChanged();
     void timeoutChanged();
+    void abortOnTimeoutChanged();
 
     void errorChanged();
     void error(Error error, const QString &errorString);
@@ -239,6 +243,7 @@ private:
     QStringList mVideoCodecs;
     ChannelLayout mChannelLayout;
     int m_timeout;
+    bool m_abort_timeout;
 
     QScopedPointer<MediaMetaData> m_metaData;
     QVariantMap vcodec_opt;
