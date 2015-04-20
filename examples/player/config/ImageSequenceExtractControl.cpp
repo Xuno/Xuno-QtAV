@@ -487,14 +487,15 @@ void ImgSeqExtractControl::on_buttonExtractFrames_clicked()
         QString file_ext=cb_OutputType->currentText();
         int sf=getStartFrame();
         QString sft=frameToTime(sf).toString("hh:mm:ss.zzz");
-        //int ef=getEndFrame();
         int tf=getTotalFrames();
         int idig=(QString("%1").arg(timeToFrame(isEndTime))).count();
-        //qDebug()<<"idig"<<idig;
+
+        QString firstfilename=QString("%1").arg(sf,idig,10,QLatin1Char('0'));
+        QString outputfirstframe=QString().append(file_path).append(QString(QDir::separator())).append(file_prefix).append(file_separator).append(firstfilename).append(file_ext);
+        if (checkDirectoryPermissions(outputfirstframe)) return;
+
         QString digits=QString("%").append(QString("%1d").arg(idig,2,10,QLatin1Char('0')));
-        //qDebug()<<"digits"<<digits;
         QString output=QString().append(file_path).append(QString(QDir::separator())).append(file_prefix).append(file_separator).append(digits).append(file_ext);
-        //qDebug()<<"output"<<output;
         QString imgParams;
         QString colordepth=getColorDepth();
         if (!colordepth.isEmpty())
@@ -507,6 +508,19 @@ void ImgSeqExtractControl::on_buttonExtractFrames_clicked()
         ExecuteExtApp(exefile,false,exeparam);
     }
 }
+
+bool ImgSeqExtractControl::checkDirectoryPermissions(QString pathfile)
+{
+    //qDebug()<<"checkDirectoryPermissions"<<pathfile;
+    QFileInfo fi=QFileInfo(pathfile);
+    if (fi.exists() && fi.isWritable()){
+        int ret=QMessageBox::question(this,tr("Files present"),tr("The filename file already exists.\nDo you want to overwrite it?"));
+        //qDebug()<<"checkDirectoryPermissions ret "<<ret;
+        if (ret==QMessageBox::Yes) return false;
+    }
+    return true;
+}
+
 
 void ImgSeqExtractControl::ExecuteExtApp(QString file,bool searchEnv, QString param){
     QProcessEnvironment env;

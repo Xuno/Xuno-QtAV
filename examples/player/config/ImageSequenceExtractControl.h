@@ -154,6 +154,7 @@ private:
     void ExecuteExtApp(QString file,bool searchEnv, QString param);
     QString getColorDepth();
     void customStyles();
+    bool checkDirectoryPermissions(QString pathfile);
 
 
 private slots:
