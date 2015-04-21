@@ -639,14 +639,28 @@ void ImgSeqExtractControl::onEXE_started()
 
     //place inside QMessageBox();
     QGridLayout *modalinfoLayout = (QGridLayout*) modalinfo->layout();
-    QHBoxLayout *hl = new QHBoxLayout();
+    QVBoxLayout *vl = new QVBoxLayout();
+    QHBoxLayout *hlprocess = new QHBoxLayout();
     EXEprogressProgressBar = new QProgressBar(modalinfo);
     EXEprogressProgressBar->setObjectName(QStringLiteral("progressBar"));
     EXEprogressProgressBar->setAlignment(Qt::AlignCenter);
     EXEprogressProgressBar->setValue(0);
-    hl->addWidget(EXEprogressProgressBar);
-    modalinfoLayout->addLayout(hl,modalinfoLayout->rowCount()-2,1,1,modalinfoLayout->columnCount(),Qt::AlignCenter);
-
+    EXEprogressProgressBar->setToolTip("% OF EXTRACTED FRAMES");
+    hlprocess->addWidget(EXEprogressProgressBar);
+    vl->addLayout(hlprocess);
+    QHBoxLayout *hlfps = new QHBoxLayout();
+    EXEprogressFpsBar = new QProgressBar(modalinfo);
+    EXEprogressFpsBar->setObjectName(QStringLiteral("fpsBar"));
+    EXEprogressFpsBar->setAlignment(Qt::AlignCenter);
+    EXEprogressFpsBar->setFormat(QString("%v ").append(tr("fps")).append(" (").append(tr("max").append(" %m)") ));
+    EXEprogressFpsBar->setValue(0);
+    EXEprogressFpsBar->setMaximum(1);
+    EXEprogressFpsBar->setToolTip(tr("Frames per second, speed of exctraction"));
+    hlfps->addWidget(EXEprogressFpsBar);
+    vl->addLayout(hlfps);
+    modalinfoLayout->addLayout(vl,modalinfoLayout->rowCount()-2,1,1,modalinfoLayout->columnCount(),Qt::AlignCenter);
+    QSpacerItem* horizontalSpacer = new QSpacerItem(300, 0, QSizePolicy::Minimum, QSizePolicy::Expanding);
+    modalinfoLayout->addItem(horizontalSpacer,modalinfoLayout->rowCount(),0,1,modalinfoLayout->columnCount());
     QTimer::singleShot(500, this, SLOT(updateEXEprogress()));
 
     int result=modalinfo->exec();
@@ -661,27 +675,40 @@ void ImgSeqExtractControl::onEXE_started()
 void ImgSeqExtractControl::updateEXEprogress()
 {
     if (modalinfo) {
-        if (!modalinfo->isHidden() && EXEprogressProgressBar) {
-                int frame=detectFFMpegOutputFrames();
-                if (frame) {
-                    int tf=getTotalFrames();
-                    int perc=((frame)/(qreal)tf)*100;
-                    if (perc) EXEprogressProgressBar->setValue(perc);
-                }
+        if (!modalinfo->isHidden() && EXEprogressProgressBar && EXEprogressFpsBar) {
+                detectFFMpegOutputFrames();
                 QTimer::singleShot(500, this, SLOT(updateEXEprogress()));
         }
     }
 }
 
-int ImgSeqExtractControl::detectFFMpegOutputFrames()
+void ImgSeqExtractControl::detectFFMpegOutputFrames()
 {
    QString outtext = QString(builder->readAll());
-   outtext.truncate(30);
+   outtext.truncate(40);
+   QString outtextfps=QString(outtext);
    if (outtext.startsWith("frame=")) {
-       int frame=outtext.replace(QRegExp("^frame=\\s*([\\d]+).*$"),"\\1").toInt();
-       if (frame) return frame;
+       int frame=outtext.replace(QRegExp("^frame=\\s*(\\d+).*$"),"\\1").toInt();
+       if (frame) updateProgressBar(frame);
+       int fps=outtextfps.replace(QRegExp("^frame=.*\\sfps=\\s*(\\d+).*$"),"\\1").toInt();
+       if (fps) updateFpsBar(fps);
    }
-   return 0;
+}
+
+void ImgSeqExtractControl::updateProgressBar(int frame)
+{
+    if (frame) {
+        int tf=getTotalFrames();
+        int perc=((frame)/(qreal)tf)*100;
+        if (perc) EXEprogressProgressBar->setValue(perc);
+    }
+}
+void ImgSeqExtractControl::updateFpsBar(int val)
+{
+    if (val) {
+        if (val>EXEprogressFpsBar->maximum()) EXEprogressFpsBar->setMaximum(val);
+        EXEprogressFpsBar->setValue(val);
+    }
 }
 
 void ImgSeqExtractControl::customStyles()

@@ -127,6 +127,7 @@ private:
     QProcess *builder;
     QMessageBox *modalinfo=0;
     QProgressBar *EXEprogressProgressBar=0;
+    QProgressBar *EXEprogressFpsBar=0;
 
     const QStringList ImageTypes = QStringList()
     <<  "tif"
@@ -150,7 +151,9 @@ private:
     const QStringList ImageTypes_16bit = QStringList(ImageTypes_10bit);
 
     void setupOutputType();
-    int detectFFMpegOutputFrames();
+    void detectFFMpegOutputFrames();
+    void updateProgressBar(int frame);
+    void updateFpsBar(int val);
 
 
     void ExecuteExtApp(QString file,bool searchEnv, QString param);

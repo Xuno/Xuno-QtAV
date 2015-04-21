@@ -28,7 +28,7 @@
 
 #define XUNO_QTAV_MAJOR 0    //((XUNO_QTAV_VERSION&0xff0000)>>16)
 #define XUNO_QTAV_MINOR 1    //((XUNO_QTAV_VERSION&0xff00)>>8)
-#define XUNO_QTAV_PATCH 3    //(XUNO_QTAV_VERSION&0xff)
+#define XUNO_QTAV_PATCH 4    //(XUNO_QTAV_VERSION&0xff)
 
 #define QTAV_VERSION_MAJOR(V) ((V & 0xff0000) >> 16)
 #define QTAV_VERSION_MINOR(V) ((V & 0xff00) >> 8)
