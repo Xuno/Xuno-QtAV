@@ -155,6 +155,11 @@ private:
     void updateProgressBar(int frame);
     void updateFpsBar(int val);
 
+#ifdef Q_OS_WIN32
+    const QString ffmpegexecute="ffmpeg.exe";
+#else
+    const QString ffmpegexecute="ffmpeg";
+#endif
 
     void ExecuteExtApp(QString file,bool searchEnv, QString param);
     QString getColorDepth();

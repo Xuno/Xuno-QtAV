@@ -501,7 +501,7 @@ void ImgSeqExtractControl::on_buttonExtractFrames_clicked()
         QString colordepth=getColorDepth();
         if (!colordepth.isEmpty())
             imgParams.append("-pix_fmt|").append(colordepth);
-        QString exefile=QDir::toNativeSeparators(qApp->applicationDirPath()).append(QDir::separator()).append("ffmpeg.exe");
+        QString exefile=QDir::toNativeSeparators(qApp->applicationDirPath()).append(QDir::separator()).append(ffmpegexecute);
         QString exeparam=QString("-v|32|-ss|%1|-i|%4|-start_number|%2|-vframes|%3|%5|-f|image2").arg(sft).arg(sf).arg(tf).arg(movieName).arg(imgParams);
         exeparam.append("|").append(output);
         qDebug()<<exefile<<exeparam;
