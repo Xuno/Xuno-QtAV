@@ -242,13 +242,17 @@ void ImageSequenceConfigPage::onSelectImgages()
                 setStartFrame(startframe);
                 InputAllTotalFrame->setText(tr(" of: %1").arg(totalAllInputFrames));
             }
-            if (lastframe>0) {
+            if (lastframe>0 && totalframes>1) {
                 InputEndFrame->setEnabled(true);
                 InputEndFrame->setValue(lastframe);
             }
-            if (totalframes>0) {
+            if (totalframes>1) {
                 setTotalFrames(totalframes);
                 InputTotalFrame->setEnabled(true);
+            }else if(totalframes==1){
+                setTotalFrames(totalAllInputFrames);
+                InputTotalFrame->setEnabled(true);
+                InputTotalFrame->setValue(totalAllInputFrames);
             }
         }
     }
