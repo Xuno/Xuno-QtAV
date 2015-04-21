@@ -659,8 +659,10 @@ void ImgSeqExtractControl::onEXE_started()
     hlfps->addWidget(EXEprogressFpsBar);
     vl->addLayout(hlfps);
     modalinfoLayout->addLayout(vl,modalinfoLayout->rowCount()-2,1,1,modalinfoLayout->columnCount(),Qt::AlignCenter);
+    //add custom width of QMessageBox
     QSpacerItem* horizontalSpacer = new QSpacerItem(300, 0, QSizePolicy::Minimum, QSizePolicy::Expanding);
     modalinfoLayout->addItem(horizontalSpacer,modalinfoLayout->rowCount(),0,1,modalinfoLayout->columnCount());
+
     QTimer::singleShot(500, this, SLOT(updateEXEprogress()));
 
     int result=modalinfo->exec();

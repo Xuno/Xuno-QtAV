@@ -1,4 +1,4 @@
-/******************************************************************************
+/*** packed.f.glsl *******************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
     Copyright (C) 2012-2014 Wang Bin <wbsecg1@gmail.com>
 
@@ -44,6 +44,9 @@ uniform float u_gammaRGB;
 uniform vec2  u_pix;
 uniform float u_filterkernel[9];
 vec3 color;
+#ifdef PACKED_YUV
+uniform mat4 u_c;
+#endif //PACKED_YUV
 
 #ifdef BICUBIC_TRI
 float Triangular(float f) {
@@ -158,10 +161,17 @@ void main() {
 #endif //USED_FILTERS
 
 #if defined(USED_BiCubic)
-  gl_FragColor = u_colorMatrix*BiCubic(u_Texture0, v_TexCoords + + pixeloffset[i]) * u_opacity;
+  vec4 c = BiCubic(u_Texture0, v_TexCoords0 + pixeloffset[i]);
 #else  //USED_BiCubic
-  gl_FragColor = u_colorMatrix*texture2D(u_Texture0, v_TexCoords + + pixeloffset[i]) * u_opacity;
+  vec4 c = texture2D(u_Texture0, v_TexCoords0 + pixeloffset[i]);
 #endif //USED_BiCubic
+
+#ifdef PACKED_YUV
+  c = u_c * c;
+  c.a = 1.0;
+#endif //PACKED_YUV
+
+  gl_FragColor = clamp(u_colorMatrix * c, 0.0, 1.0) * u_opacity;
 
 #if defined(USED_FILTERS)
 //added filters
@@ -175,17 +185,4 @@ void main() {
   color = gl_FragColor.rgb;
   gl_FragColor.rgb = pow(color, 1.0 / vec3(u_gammaRGB));
 #endif //USED_GAMMA
-
-  //gl_FragColor = u_colorMatrix*texture2D(u_Texture0, v_TexCoords) * u_opacity;
-#ifdef PACKED_YUV
-uniform mat4 u_c;
-#endif //PACKED_YUV
-
-void main() {
-    vec4 c = texture2D(u_Texture0, v_TexCoords0);
-#ifdef PACKED_YUV
-    c = u_c * c;
-    c.a = 1.0;
-#endif //PACKED_YUV
-    gl_FragColor = clamp(u_colorMatrix * c, 0.0, 1.0) * u_opacity;
 }
