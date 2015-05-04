@@ -74,7 +74,6 @@ public:
     void setEndSequenceFrame(const quint32 ef);
     void setFpsSequenceFrame(const double fps);
     void setRepeatLoop(const bool loop);
-    void setPlayerScale(const double scale);
     void setFileName(const QString fname);
 
 public slots:
@@ -85,6 +84,7 @@ public slots:
     void openFile();
     void togglePlayPause();
     void showNextOSD();
+    void setPlayerScale(const double scale);
 
 signals:
     void ready();

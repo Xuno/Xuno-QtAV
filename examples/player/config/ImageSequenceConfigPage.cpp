@@ -18,7 +18,7 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
 
     QGroupBox *groupBox1 = new QGroupBox(this);
     groupBox1->setObjectName(QStringLiteral("groupBox1"));
-    groupBox1->setTitle(tr("Play Image Sequence"));
+    groupBox1->setTitle(tr("Play Image Sequence    i.e.").append(" c:\\raw\\%06d.tif"));
 
     QVBoxLayout *vb = new QVBoxLayout(groupBox1);
 
@@ -34,7 +34,7 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     horizontalLayout_2->setObjectName(QStringLiteral("horizontalLayout_2"));
     QPushButton *btSelectInputPath = new QPushButton();
     btSelectInputPath->setObjectName(QStringLiteral("btSelectInputPath"));
-    btSelectInputPath->setText(tr("Select Path", 0));
+    btSelectInputPath->setText(tr("Select File Range", 0));
     horizontalLayout_2->addWidget(btSelectInputPath);
     connect(btSelectInputPath, SIGNAL(clicked()), SLOT(onSelectImgages()));
 
@@ -68,10 +68,10 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     cbColorTypeInput->clear();
     cbColorTypeInput->insertItems(0, QStringList()
      << tr("8-bit RGB", 0)
-     << tr("10-bit RGB", 0)
-     << tr("12-bit RGB", 0)
-     << tr("14-bit RGB", 0)
-     << tr("16-bit RGB", 0)
+//     << tr("10-bit RGB", 0)
+//     << tr("12-bit RGB", 0)
+//     << tr("14-bit RGB", 0)
+//     << tr("16-bit RGB", 0)
     );
     horizontalLayout_2->addWidget(cbColorTypeInput);
 
@@ -81,7 +81,7 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
     QLabel *labelInputScale = new QLabel();
     labelInputScale->setObjectName(QStringLiteral("InputScale"));
     labelInputScale->setText(tr(" Scale:"));
-    QDoubleSpinBox *InputScale = new QDoubleSpinBox();
+    InputScale = new QDoubleSpinBox();
     InputScale->setMinimum(0.1);
     InputScale->setMaximum(2.0);
     InputScale->setSingleStep(0.1);
@@ -299,6 +299,8 @@ void ImageSequenceConfigPage::playImgages()
 //    //qDebug()<<"playImgages :: filename :"<<filename;
 //    if (digs==0) return;
      emit customfpsChanged(fps);
+    if (InputScale->value()) emit setPlayerScale(InputScale->value());
+     emit RepeatLoopChanged(checkLoop->isChecked()?Qt::Checked:Qt::Unchecked);
 //    //if (startPos) emit toggleRepeat(true);
 //    playing_start=true;
     emit stop();

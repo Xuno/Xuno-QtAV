@@ -378,6 +378,8 @@ QSlider::handle:horizontal { \
     connect(mpImageSequence, SIGNAL(toggleRepeat(bool)), SLOT(toggleRepeat(bool)));
     connect(mpImageSequence, SIGNAL(customfpsChanged(double)), SLOT(customfpsChanged(double)));
     connect(mpImageSequence, SIGNAL(toogledFrameExtractor(bool)), SLOT(onImageSequenceToogledFrameExtractor(bool)));
+    connect(mpImageSequence, SIGNAL(setPlayerScale(double)), SLOT(setPlayerScale(double)));
+    connect(mpImageSequence, SIGNAL(RepeatLoopChanged(int)), SLOT(RepeatLoopChanged(int)));
 
     mpMenu->addAction(tr("Image Sequence"), this, SLOT(onImageSequenceConfig()));
 
@@ -942,7 +944,7 @@ void MainWindow::setRepeatLoop(const bool loop)
 
 void MainWindow::setPlayerScale(const double scale)
 {
-    if (scale) mPlayerScale=scale;
+    if (scale>0) mPlayerScale=scale;
 }
 
 void MainWindow::setFileName(const QString fname)
@@ -1868,8 +1870,8 @@ void MainWindow::reSizeByMovie()
 {
     if (isFullScreen()) return;
     QSize t=mpRenderer->frameSize();
-    if ((t.width()+t.height())==0){
-      Statistics st=mpPlayer->statistics();
+    Statistics st=mpPlayer->statistics();
+    if (st.video_only.width>0 && st.video_only.width>0 && mPlayerScale>0 ){ //(t.width()+t.height())==0
       t.setWidth(st.video_only.width*mPlayerScale);
       t.setHeight(st.video_only.height*mPlayerScale);
     }

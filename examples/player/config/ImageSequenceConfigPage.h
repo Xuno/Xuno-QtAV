@@ -47,6 +47,8 @@ signals:
     void toggleRepeat(bool);
     void customfpsChanged(double);
     void toogledFrameExtractor(bool state);
+    void setPlayerScale(double);
+    void RepeatLoopChanged(int i);
 
 
 public slots:
@@ -77,6 +79,7 @@ private:
     QLabel *InputAllTotalFrame;
     QCheckBox *checkLoop;
     QPushButton *checkBoxExtractor;
+    QDoubleSpinBox *InputScale;
 
 
     void calculatePos();
