@@ -154,10 +154,10 @@ QMAKE_INFO_PLIST = $$PWD/Info.plist
 
 defineTest(genRC) {
     RC_ICONS = $$PROJECTROOT/src/Xuno-QtAV.ico
-    QMAKE_TARGET_COMPANY = "Shanghai University->S3 Graphics->Deepin | wbsecg1@gmail.com"
-    QMAKE_TARGET_DESCRIPTION = "QtAV Multimedia playback framework. https://github.com/Xuno/Xuno-QtAV."
-    QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2015 WangBin, wbsecg1@gmail.com, http://www.xuno.com"
-    QMAKE_TARGET_PRODUCT = "Xuno-QtAV player $$1"
+    QMAKE_TARGET_COMPANY = "Aaex Corp. http://www.xuno.com. https://github.com/Xuno/Xuno-QtAV"
+    QMAKE_TARGET_DESCRIPTION = "XunoPlayer - QtAV Multimedia Framework"
+    QMAKE_TARGET_COPYRIGHT = ""
+    QMAKE_TARGET_PRODUCT = "Xuno-QtAV player"
     export(RC_ICONS)
     export(QMAKE_TARGET_COMPANY)
     export(QMAKE_TARGET_DESCRIPTION)
