@@ -131,6 +131,10 @@ private slots:
         if (!mpEditorWidget)
             return;
         mpEditorWidget->setVisible(!mpEditorWidget->isVisible());
+        QToolButton *b = qobject_cast<QToolButton*>(sender());
+        if (b) {
+            b->setText(mpEditorWidget->isVisible()?"-":"+");
+        }
         parentWidget()->adjustSize();
     }
 
@@ -161,7 +165,8 @@ DecoderConfigPage::DecoderConfigPage(QWidget *parent) :
     mpSelectedDec = 0;
     setWindowTitle("Video decoder config page");
     QVBoxLayout *vbs = new QVBoxLayout(this);
-    setLayout(vbs);
+    QSpacerItem *horizontalSpacer = new QSpacerItem(320, 0, QSizePolicy::Minimum, QSizePolicy::Minimum);
+    vbs->addItem(horizontalSpacer);
     QScrollArea *scrollArea = new QScrollArea(this);
     scrollArea->setWidgetResizable(true);
     QWidget *scrollAreaWidgetContents = new QWidget(this);
@@ -171,9 +176,9 @@ DecoderConfigPage::DecoderConfigPage(QWidget *parent) :
     QVBoxLayout *vb = new QVBoxLayout;
     vb->setSpacing(0);
 
-    QFrame *frame = new QFrame(scrollAreaWidgetContents);
-    frame->setFrameShape(QFrame::HLine);
-    vb->addWidget(frame);
+    //QFrame *frame = new QFrame(scrollAreaWidgetContents);
+    //frame->setFrameShape(QFrame::HLine);
+    //vb->addWidget(frame);
     vb->addWidget(new QLabel(tr("Decoder") + " " + tr("Priorities") + " (" + tr("reopen is required") + ")"));
 
     sPriorityUi = idsFromNames(Config::instance().decoderPriorityNames());
@@ -227,11 +232,10 @@ DecoderConfigPage::DecoderConfigPage(QWidget *parent) :
     hb->addWidget(mpUp);
     hb->addWidget(mpDown);
     vb->addLayout(hb);
-
+    vb->addSpacerItem(new QSpacerItem(width(), 10, QSizePolicy::Ignored, QSizePolicy::Expanding));
     vlsroll->addLayout(vb);
     scrollArea->setWidget(scrollAreaWidgetContents);
     vbs->addWidget(scrollArea);
-
     connect(&Config::instance(), SIGNAL(decoderPriorityNamesChanged()), SLOT(onConfigChanged()));
     applyToUi();
 }
