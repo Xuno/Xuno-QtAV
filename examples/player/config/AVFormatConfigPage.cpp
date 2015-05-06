@@ -24,6 +24,7 @@
 #include <QSpinBox>
 #include <QLineEdit>
 #include <QLabel>
+#include <QGroupBox>
 
 #include "common/Config.h"
 
@@ -31,30 +32,69 @@ AVFormatConfigPage::AVFormatConfigPage(QWidget *parent) :
     ConfigPageBase(parent)
 {
     setObjectName("avformat");
-    QGridLayout *gl = new QGridLayout();
-    setLayout(gl);
-    gl->setSizeConstraint(QLayout::SetFixedSize);
+    QVBoxLayout *vl= new QVBoxLayout(this);
+    QGroupBox *video = new QGroupBox(this);
+    video->setTitle(tr(" Video"));
+    QGridLayout *gl = new QGridLayout(video);
+    gl->setContentsMargins(6, 6, 6, 6);
+    //gl->setSizeConstraint(QLayout::SetFixedSize);
     int r = 0;
-    m_on = new QCheckBox(tr("Enable") + " " + "avformat " + tr("options"));
+    m_on = new QCheckBox(tr("Enable") + " " + "avformat " + tr("options"),video);
     gl->addWidget(m_on, r++, 0);
-    m_direct = new QCheckBox(tr("Reduce buffering"));
+    m_direct = new QCheckBox(tr("Reduce buffering"),video);
     gl->addWidget(m_direct, r++, 0);
-    gl->addWidget(new QLabel(tr("Probe size")), r, 0, Qt::AlignRight);
-    m_probeSize = new QSpinBox();
+    gl->addWidget(new QLabel(tr("Probe size"),video), r, 0, Qt::AlignRight);
+    m_probeSize = new QSpinBox(video);
     m_probeSize->setMaximum(std::numeric_limits<int>::max());
     m_probeSize->setMinimum(0);
     m_probeSize->setToolTip("0: auto");
     gl->addWidget(m_probeSize, r++, 1, Qt::AlignLeft);
-    gl->addWidget(new QLabel(tr("Max analyze duration")), r, 0, Qt::AlignRight);
-    m_analyzeDuration = new QSpinBox();
+    gl->addWidget(new QLabel(tr("Max analyze duration"),video), r, 0, Qt::AlignRight);
+    m_analyzeDuration = new QSpinBox(video);
     m_analyzeDuration->setMaximum(std::numeric_limits<int>::max());
     m_analyzeDuration->setToolTip("0: auto. how many microseconds are analyzed to probe the input");
     gl->addWidget(m_analyzeDuration, r++, 1, Qt::AlignLeft);
 
-    gl->addWidget(new QLabel(tr("Extra")), r, 0, Qt::AlignRight);
-    m_extra = new QLineEdit();
+    gl->addWidget(new QLabel(tr("Extra"),video), r, 0, Qt::AlignRight);
+    m_extra = new QLineEdit(video);
     m_extra->setToolTip("key1=value1 key2=value2 ...");
     gl->addWidget(m_extra, r++, 1, Qt::AlignLeft);
+    vl->addWidget(video);
+
+
+    QGroupBox *imgSeq = new QGroupBox(this);
+    imgSeq->setTitle(tr(" Image Sequence"));
+    QGridLayout *ggli = new QGridLayout(imgSeq);
+    ggli->setContentsMargins(6, 6, 6, 6);
+
+    r = 0;
+    m_Ion = new QCheckBox(tr("Enable") + " " + "avformat " + tr("options"),imgSeq);
+    ggli->addWidget(m_Ion, r++, 0);
+    m_Idirect = new QCheckBox(tr("Reduce buffering"),imgSeq);
+    ggli->addWidget(m_Idirect, r++, 0);
+    ggli->addWidget(new QLabel(tr("Probe size"),imgSeq), r, 0, Qt::AlignRight);
+    m_IprobeSize = new QSpinBox(imgSeq);
+    m_IprobeSize->setMaximum(std::numeric_limits<int>::max());
+    m_IprobeSize->setMinimum(0);
+    m_IprobeSize->setToolTip("0: auto");
+    ggli->addWidget(m_IprobeSize, r++, 1, Qt::AlignLeft);
+    ggli->addWidget(new QLabel(tr("Max analyze duration"),imgSeq), r, 0, Qt::AlignRight);
+    m_IanalyzeDuration = new QSpinBox(imgSeq);
+    m_IanalyzeDuration->setMaximum(std::numeric_limits<int>::max());
+    m_IanalyzeDuration->setToolTip("0: auto. how many microseconds are analyzed to probe the input");
+    ggli->addWidget(m_IanalyzeDuration, r++, 1, Qt::AlignLeft);
+
+    ggli->addWidget(new QLabel(tr("Extra"),imgSeq), r, 0, Qt::AlignRight);
+    m_Iextra = new QLineEdit(imgSeq);
+    m_Iextra->setToolTip("key1=value1 key2=value2 ...");
+    ggli->addWidget(m_Iextra, r++, 1, Qt::AlignLeft);
+    vl->addWidget(imgSeq);
+
+
+
+    vl->addWidget(imgSeq);
+    setLayout(vl);
+
     applyToUi();
 }
 
@@ -70,7 +110,12 @@ void AVFormatConfigPage::applyFromUi()
             .probeSize(m_probeSize->value())
             .analyzeDuration(m_analyzeDuration->value())
             .reduceBuffering(m_direct->isChecked())
-            .avformatExtra(m_extra->text());
+            .avformatExtra(m_extra->text())
+            .setAvformatOptionsEnabledI(m_Ion->isChecked())
+            .probeSizeI(m_IprobeSize->value())
+            .analyzeDurationI(m_IanalyzeDuration->value())
+            .reduceBufferingI(m_Idirect->isChecked())
+            .avformatExtraI(m_Iextra->text());
 }
 
 void AVFormatConfigPage::applyToUi()
@@ -80,4 +125,10 @@ void AVFormatConfigPage::applyToUi()
     m_probeSize->setValue(Config::instance().probeSize());
     m_analyzeDuration->setValue(Config::instance().analyzeDuration());
     m_extra->setText(Config::instance().avformatExtra());
+
+    m_Ion->setChecked(Config::instance().avformatOptionsEnabledI());
+    m_Idirect->setChecked(Config::instance().reduceBufferingI());
+    m_IprobeSize->setValue(Config::instance().probeSizeI());
+    m_IanalyzeDuration->setValue(Config::instance().analyzeDurationI());
+    m_Iextra->setText(Config::instance().avformatExtraI());
 }

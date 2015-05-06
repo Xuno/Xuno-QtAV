@@ -892,8 +892,15 @@ void MainWindow::play(const QString &name)
     if (!applyCustomFPS()){
         mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
     }
-    if (Config::instance().avformatOptionsEnabled())
-        mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
+
+    if (isFileImgageSequence()){
+        if (Config::instance().avformatOptionsEnabledI())
+            mpPlayer->setOptionsForFormat(Config::instance().avformatOptionsI());
+    }else{
+        if (Config::instance().avformatOptionsEnabled())
+            mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
+    }
+
     PlayListItem item;
     item.setUrl(mFile);
     item.setTitle(mTitle);

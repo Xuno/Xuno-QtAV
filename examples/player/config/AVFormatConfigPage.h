@@ -26,6 +26,8 @@
 class QCheckBox;
 class QSpinBox;
 class QLineEdit;
+class QGroupBox;
+class QVBoxLayout;
 class AVFormatConfigPage : public ConfigPageBase
 {
     Q_OBJECT
@@ -41,6 +43,12 @@ private:
     QSpinBox *m_probeSize;
     QSpinBox *m_analyzeDuration;
     QLineEdit *m_extra;
+
+    QCheckBox* m_Ion;
+    QCheckBox *m_Idirect;
+    QSpinBox *m_IprobeSize;
+    QSpinBox *m_IanalyzeDuration;
+    QLineEdit *m_Iextra;
 };
 
 #endif // AVFORMATCONFIGPAGE_H

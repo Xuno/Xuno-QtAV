@@ -58,6 +58,7 @@ class COMMON_EXPORT Config : public QObject
     Q_PROPERTY(int previewHeight READ previewHeight WRITE setPreviewHeight NOTIFY previewHeightChanged)
     Q_PROPERTY(bool ANGLE READ isANGLE WRITE setANGLE NOTIFY ANGLEChanged)
     Q_PROPERTY(bool avformatOptionsEnabled READ avformatOptionsEnabled WRITE setAvformatOptionsEnabled NOTIFY avformatOptionsEnabledChanged)
+    Q_PROPERTY(bool avformatOptionsEnabledI READ avformatOptionsEnabledI WRITE setAvformatOptionsEnabledI NOTIFY avformatOptionsEnabledChangedI)
     Q_PROPERTY(qreal timeout READ timeout WRITE setTimeout NOTIFY timeoutChanged)
     Q_PROPERTY(int bufferValue READ bufferValue WRITE setBufferValue NOTIFY bufferValueChanged)
 public:
@@ -131,6 +132,19 @@ public:
     QString avformatExtra() const;
     Config& avformatExtra(const QString& text);
 
+    QVariantHash avformatOptionsI() const;
+    bool avformatOptionsEnabledI() const;
+    Config& setAvformatOptionsEnabledI(bool value);
+    int analyzeDurationI() const;
+    Config& analyzeDurationI(int ad);
+    unsigned int probeSizeI() const;
+    Config& probeSizeI(unsigned int ps);
+    bool reduceBufferingI() const;
+    Config& reduceBufferingI(bool y);
+    QString avformatExtraI() const;
+    Config& avformatExtraI(const QString& text);
+
+
     QString avfilterVideoOptions() const;
     Config& avfilterVideoOptions(const QString& options);
     bool avfilterVideoEnable() const;
@@ -184,6 +198,7 @@ public:
     Q_SIGNAL void previewHeightChanged();
     Q_SIGNAL void ANGLEChanged();
     Q_SIGNAL void avformatOptionsEnabledChanged();
+    Q_SIGNAL void avformatOptionsEnabledChangedI();
     Q_SIGNAL void bufferValueChanged();
     Q_SIGNAL void timeoutChanged();
     Q_SIGNAL void abortOnTimeoutChanged();
