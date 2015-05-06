@@ -1,4 +1,4 @@
-# [QtAV](http://www.qtav.org)  [![Build Status](https://travis-ci.org/wang-bin/QtAV.svg)](https://travis-ci.org/wang-bin/QtAV)
+# [Xuno-QtAV](http://www.qtav.org)  [![Build Status](https://travis-ci.org/wang-bin/QtAV.svg)](https://travis-ci.org/wang-bin/QtAV)
 
 Xuno-QtAV is fork of QtAV a multimedia playback library based on Qt and FFmpeg. It can help you to write a player
 with less effort than ever before.
