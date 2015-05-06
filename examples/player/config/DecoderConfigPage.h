@@ -24,12 +24,15 @@
 
 #include <QtCore/QVariant>
 #include <QWidget>
+#include <QScrollArea>
 #include "ConfigPageBase.h"
+
 
 class QListWidget;
 class QToolButton;
 class QSpinBox;
 class QVBoxLayout;
+class QScrollArea;
 class DecoderConfigPage : public ConfigPageBase
 {
     Q_OBJECT

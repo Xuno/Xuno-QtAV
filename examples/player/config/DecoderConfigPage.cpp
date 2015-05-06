@@ -160,10 +160,18 @@ DecoderConfigPage::DecoderConfigPage(QWidget *parent) :
 {
     mpSelectedDec = 0;
     setWindowTitle("Video decoder config page");
-    QVBoxLayout *vb = new QVBoxLayout;
-    setLayout(vb);
+    QVBoxLayout *vbs = new QVBoxLayout(this);
+    setLayout(vbs);
+    QScrollArea *scrollArea = new QScrollArea(this);
+    scrollArea->setWidgetResizable(true);
+    QWidget *scrollAreaWidgetContents = new QWidget(this);
+    QVBoxLayout *vlsroll = new QVBoxLayout(scrollAreaWidgetContents);
+    vlsroll->setSpacing(0);
 
-    QFrame *frame = new QFrame();
+    QVBoxLayout *vb = new QVBoxLayout;
+    vb->setSpacing(0);
+
+    QFrame *frame = new QFrame(scrollAreaWidgetContents);
     frame->setFrameShape(QFrame::HLine);
     vb->addWidget(frame);
     vb->addWidget(new QLabel(tr("Decoder") + " " + tr("Priorities") + " (" + tr("reopen is required") + ")"));
@@ -177,11 +185,11 @@ DecoderConfigPage::DecoderConfigPage(QWidget *parent) :
         if (!vids.contains(vid))
             all.push_back(vid);
     }
-    mpDecLayout = new QVBoxLayout;
+    mpDecLayout = new QVBoxLayout(scrollAreaWidgetContents);
 
     foreach (QtAV::VideoDecoderId vid, all) {
         VideoDecoder *vd = VideoDecoderFactory::create(vid);
-        DecoderItemWidget *iw = new DecoderItemWidget();
+        DecoderItemWidget *iw = new DecoderItemWidget(scrollAreaWidgetContents);
         iw->buildUiFor(vd);
         mDecItems.append(iw);
         iw->setName(vd->name());
@@ -208,10 +216,10 @@ DecoderConfigPage::DecoderConfigPage(QWidget *parent) :
     vb->addLayout(mpDecLayout);
     vb->addSpacerItem(new QSpacerItem(width(), 10, QSizePolicy::Ignored, QSizePolicy::Expanding));
 
-    mpUp = new QToolButton;
+    mpUp = new QToolButton(scrollAreaWidgetContents);
     mpUp->setText("Up");
     connect(mpUp, SIGNAL(clicked()), SLOT(priorityUp()));
-    mpDown = new QToolButton;
+    mpDown = new QToolButton(scrollAreaWidgetContents);
     mpDown->setText("Down");
     connect(mpDown, SIGNAL(clicked()), SLOT(priorityDown()));
 
@@ -219,6 +227,11 @@ DecoderConfigPage::DecoderConfigPage(QWidget *parent) :
     hb->addWidget(mpUp);
     hb->addWidget(mpDown);
     vb->addLayout(hb);
+
+    vlsroll->addLayout(vb);
+    scrollArea->setWidget(scrollAreaWidgetContents);
+    vbs->addWidget(scrollArea);
+
     connect(&Config::instance(), SIGNAL(decoderPriorityNamesChanged()), SLOT(onConfigChanged()));
     applyToUi();
 }
