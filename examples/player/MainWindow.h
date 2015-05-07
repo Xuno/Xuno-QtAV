@@ -163,6 +163,7 @@ private slots:
     void onClickXunoBrowser(QUrl url);
     void customfpsChanged(double n);
     void changeClockType(QAction* action);
+    void setClockType();
     void RepeatLoopChanged(int i);
     void syncVolumeUi(qreal value);
     void onImageSequenceConfig();
@@ -220,6 +221,8 @@ private:
     QAction *mpAudioTrackAction;
     QMenu *mpAudioTrackMenu;
     QMenu *mpChannelMenu;
+    QMenu *mpClockMenu = 0;
+    QActionGroup *mpClockMenuAction = 0;
     QAction *mpChannelAction;
     QList<QAction*> mVOActions;
 
