@@ -88,6 +88,7 @@ AVPlayer::AVPlayer(QObject *parent) :
     connect(d->read_thread, SIGNAL(requestClockPause(bool)), masterClock(), SLOT(pause(bool)), Qt::DirectConnection);
     connect(d->read_thread, SIGNAL(mediaStatusChanged(QtAV::MediaStatus)), this, SLOT(updateMediaStatus(QtAV::MediaStatus)));
     connect(d->read_thread, SIGNAL(bufferProgressChanged(qreal)), this, SIGNAL(bufferProgressChanged(qreal)));
+    connect(d->read_thread, SIGNAL(seekFinished(qint64)), this, SIGNAL(seekFinished()), Qt::DirectConnection);
 
     d->vcapture = new VideoCapture(this);
 }
@@ -437,7 +438,7 @@ AVInput* AVPlayer::input() const
     return d->current_source.value<QtAV::AVInput*>();
 }
 
-VideoCapture* AVPlayer::videoCapture()
+VideoCapture* AVPlayer::videoCapture() const
 {
     return d->vcapture;
 }
@@ -1218,6 +1219,8 @@ void AVPlayer::stop()
         qDebug("stopping demuxer thread...");
         d->read_thread->stop();
         d->read_thread->wait(500);
+        // interrupt to quit av_read_frame quickly.
+        d->demuxer.setInterruptStatus(-1);
     }
     qDebug("all audio/video threads  stopped...");
 }
