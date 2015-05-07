@@ -25,6 +25,7 @@
 #include <QLineEdit>
 #include <QLabel>
 #include <QGroupBox>
+#include <QDebug>
 
 #include "common/Config.h"
 
@@ -66,7 +67,6 @@ AVFormatConfigPage::AVFormatConfigPage(QWidget *parent) :
     imgSeq->setTitle(tr(" Image Sequence"));
     QGridLayout *ggli = new QGridLayout(imgSeq);
     ggli->setContentsMargins(6, 6, 6, 6);
-
     r = 0;
     m_Ion = new QCheckBox(tr("Enable") + " " + "avformat " + tr("options"),imgSeq);
     ggli->addWidget(m_Ion, r++, 0);

@@ -47,6 +47,9 @@ public:
         QSettings settings(file, QSettings::IniFormat);
         timeout = settings.value("timeout", 30.0).toReal();
         abort_timeout = settings.value("abort_timeout", true).toBool();
+        timeoutI = settings.value("timeoutImgSeq", 30.0).toReal();
+        abort_timeoutI = settings.value("abort_timeoutImgSeq", true).toBool();
+        force_videoclockI = settings.value("force_videoclockI", true).toBool();
         force_fps = settings.value("force_fps", 0.0).toReal();
         settings.beginGroup("decoder");
         settings.beginGroup("video");
@@ -100,10 +103,10 @@ public:
         avformat_extra = settings.value("extra", "").toString();
         settings.endGroup();
         settings.beginGroup("avformatImgSeq");
-        avformat_onI = settings.value("enable", false).toBool();
-        directI = settings.value("avioflags", 0).toString() == "direct";
-        probe_sizeI = settings.value("probesize", 10000000).toUInt();
-        analyze_durationI = settings.value("analyzeduration", 10000000).toInt();
+        avformat_onI = settings.value("enable", true).toBool();
+        directI = settings.value("avioflags", "direct").toString() == "direct";
+        probe_sizeI = settings.value("probesize", 0).toUInt();
+        analyze_durationI = settings.value("analyzeduration", 0).toInt();
         avformat_extraI = settings.value("extra", "").toString();
         settings.endGroup();
         settings.beginGroup("avfilterVideo");
@@ -121,11 +124,18 @@ public:
         weblinks = settings.value("links",tmpweb).toMap();
         settings.endGroup();
         settings.beginGroup("opengl");
-        angle = settings.value("angle", false).toBool();
+        angle = settings.value("angle", true).toBool();
+        settings.endGroup();
+        settings.beginGroup("openglImgSeq");
+        angleI = settings.value("angle", true).toBool();
         settings.endGroup();
         settings.beginGroup("buffer");
-        buffer_value = settings.value("value", -1).toInt();
+        buffer_value = settings.value("value", 25).toInt();
         settings.endGroup();
+        settings.beginGroup("bufferImgSeq");
+        buffer_valueI = settings.value("value", 1).toInt();
+        settings.endGroup();
+
     }
     void save() {
         qDebug() << "sync config to " << file;
@@ -133,7 +143,10 @@ public:
         // TODO: why crash on mac qt5.4 if call on aboutToQuit()
         settings.setValue("timeout", timeout);
         settings.setValue("abort_timeout", abort_timeout);
+        settings.setValue("timeoutImgSeq", timeoutI);
+        settings.setValue("abort_timeoutImgSeq", abort_timeoutI);
         settings.setValue("force_fps", force_fps);
+        settings.setValue("force_videoclockI", force_videoclockI);
         settings.beginGroup("decoder");
         settings.beginGroup("video");
         settings.setValue("priority", video_decoders.join(" "));
@@ -187,9 +200,16 @@ public:
         settings.beginGroup("opengl");
         settings.setValue("angle", angle);
         settings.endGroup();
+        settings.beginGroup("openglImgSeq");
+        settings.setValue("angle", angleI);
+        settings.endGroup();
         settings.beginGroup("buffer");
         settings.setValue("value", buffer_value);
         settings.endGroup();
+        settings.beginGroup("bufferImgSeq");
+        settings.setValue("value", buffer_valueI);
+        settings.endGroup();
+
         qDebug() << "sync end";
     }
 
@@ -237,6 +257,12 @@ public:
     bool abort_timeout;
     qreal timeout;
     int buffer_value;
+
+    bool angleI;
+    bool abort_timeoutI;
+    qreal timeoutI;
+    int buffer_valueI;
+    bool force_videoclockI;
 };
 
 Config& Config::instance()
@@ -763,6 +789,11 @@ bool Config::isANGLE() const
     return mpData->angle;
 }
 
+bool Config::isANGLEI() const
+{
+    return mpData->angleI;
+}
+
 Config& Config::setANGLE(bool value)
 {
     if (mpData->angle == value)
@@ -772,10 +803,25 @@ Config& Config::setANGLE(bool value)
     return *this;
 }
 
+Config& Config::setANGLEI(bool value)
+{
+    if (mpData->angleI == value)
+        return *this;
+    mpData->angleI = value;
+    emit ANGLEChangedI();
+    return *this;
+}
+
 int Config::bufferValue() const
 {
     return mpData->buffer_value;
 }
+
+int Config::bufferValueI() const
+{
+    return mpData->buffer_valueI;
+}
+
 
 Config& Config::setBufferValue(int value)
 {
@@ -785,6 +831,30 @@ Config& Config::setBufferValue(int value)
     emit bufferValueChanged();
     return *this;
 }
+
+Config& Config::setBufferValueI(int value)
+{
+    if (mpData->buffer_valueI == value)
+        return *this;
+    mpData->buffer_valueI = value;
+    emit bufferValueChangedI();
+    return *this;
+}
+
+bool Config::forceVideoClockI() const
+{
+    return mpData->force_videoclockI;
+}
+
+Config& Config::setForceVideoClockI(bool value)
+{
+    if (mpData->force_videoclockI == value)
+        return *this;
+    mpData->force_videoclockI = value;
+    emit forceVideoClockChangedI();
+    return *this;
+}
+
 
 qreal Config::timeout() const
 {
@@ -800,10 +870,12 @@ Config& Config::setTimeout(qreal value)
     return *this;
 }
 
+
 bool Config::abortOnTimeout() const
 {
     return mpData->abort_timeout;
 }
+
 
 Config& Config::setAbortOnTimeout(bool value)
 {
