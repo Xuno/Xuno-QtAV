@@ -189,6 +189,11 @@ void VideoCapture::request()
     emit requested();
 }
 
+void VideoCapture::capture()
+{
+    emit requested();
+}
+
 void VideoCapture::start()
 {
     emit frameAvailable(frame); //TODO: no copy
