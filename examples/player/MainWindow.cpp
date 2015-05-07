@@ -485,19 +485,21 @@ QSlider::handle:horizontal { \
 
     mpMenu->addSeparator();
 
-    subMenu = new ClickableMenu(tr("Clock"));
-    mpMenu->addMenu(subMenu);
-    QActionGroup *ag = new QActionGroup(subMenu);
-    ag->setExclusive(true);
-    connect(subMenu, SIGNAL(triggered(QAction*)), SLOT(changeClockType(QAction*)));
-    subMenu->addAction(tr("Auto"))->setData(-1);
-    subMenu->addAction(tr("Audio"))->setData(AVClock::AudioClock);
-    subMenu->addAction(tr("Video"))->setData(AVClock::VideoClock);
-    foreach(QAction* action, subMenu->actions()) {
-        action->setActionGroup(ag);
+    mpClockMenu = new ClickableMenu(tr("Clock"));
+    mpClockMenu->setObjectName(QStringLiteral("Clock"));
+    mpMenu->addMenu(mpClockMenu);
+    mpClockMenuAction = new QActionGroup(mpClockMenu);
+    mpClockMenuAction->setObjectName(QStringLiteral("ClockAction"));
+    mpClockMenuAction->setExclusive(true);
+    connect(mpClockMenu, SIGNAL(triggered(QAction*)), SLOT(changeClockType(QAction*)));
+    mpClockMenu->addAction(tr("Auto"))->setData(-1);
+    mpClockMenu->addAction(tr("Audio"))->setData(AVClock::AudioClock);
+    mpClockMenu->addAction(tr("Video"))->setData(AVClock::VideoClock);
+    foreach(QAction* action, mpClockMenu->actions()) {
+        action->setActionGroup(mpClockMenuAction);
         action->setCheckable(true);
     }
-    QAction *autoClockAction = subMenu->actions().at(0);
+    QAction *autoClockAction = mpClockMenu->actions().at(0);
     autoClockAction->setChecked(true);
     autoClockAction->setToolTip(tr("Take effect in next playback"));
 
@@ -560,7 +562,7 @@ QSlider::handle:horizontal { \
     subMenu->addAction(tr("Mono (center)"))->setData(AudioFormat::ChannelLayout_Center);
     subMenu->addAction(tr("Left"))->setData(AudioFormat::ChannelLayout_Left);
     subMenu->addAction(tr("Right"))->setData(AudioFormat::ChannelLayout_Right);
-    ag = new QActionGroup(subMenu);
+    QActionGroup *ag = new QActionGroup(subMenu);
     ag->setExclusive(true);
     foreach(QAction* action, subMenu->actions()) {
         ag->addAction(action);
@@ -892,8 +894,17 @@ void MainWindow::play(const QString &name)
     if (!applyCustomFPS()){
         mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
     }
-    if (Config::instance().avformatOptionsEnabled())
-        mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
+
+    if (isFileImgageSequence()){
+        if (Config::instance().avformatOptionsEnabledI())
+            mpPlayer->setOptionsForFormat(Config::instance().avformatOptionsI());
+    }else{
+        if (Config::instance().avformatOptionsEnabled())
+            mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
+    }
+
+    setClockType();
+
     PlayListItem item;
     item.setUrl(mFile);
     item.setTitle(mTitle);
@@ -1827,6 +1838,33 @@ void MainWindow::changeClockType(QAction *action)
     mpPlayer->masterClock()->setClockType(AVClock::ClockType(value));
 }
 
+void MainWindow::setClockType()
+{
+    qDebug()<<"setClockType";
+    if (isFileImgageSequence()){
+        qDebug()<<"setClockType for ImgageSequence force AVClock::VideoClock";
+        mpPlayer->masterClock()->setClockAuto(false);
+        mpPlayer->masterClock()->setClockType(AVClock::VideoClock);
+    }else{
+        qDebug()<<"setClockType for Video from Menu";
+        if (mpClockMenuAction) {
+            QAction *a = mpClockMenuAction->checkedAction();
+            if (a){
+                int value = mpClockMenuAction->checkedAction()->data().toInt();
+                qDebug()<<"setClockType Video objevct action "<<value;
+                if (value < 0) {
+                    mpPlayer->masterClock()->setClockAuto(true);
+                    // TODO: guess clock type
+                    return;
+                }else{
+                    mpPlayer->masterClock()->setClockAuto(false);
+                    mpPlayer->masterClock()->setClockType(AVClock::ClockType(value));
+                }
+            }
+        }
+    }
+}
+
 void MainWindow::syncVolumeUi(qreal value)
 {
     const int v(value/kVolumeInterval);
@@ -1914,7 +1952,7 @@ void MainWindow::tuneRepeatMovieDuration(){
 }
 
 bool MainWindow::isFileImgageSequence(){
-    return (QDir::toNativeSeparators(mFile).contains(QString(QDir::separator()).append("%0")) && mFile.contains("d."));
+    return (QDir::toNativeSeparators(mFile).contains("%0") && mFile.contains("d."));
 }
 
 bool MainWindow::applyCustomFPS(){

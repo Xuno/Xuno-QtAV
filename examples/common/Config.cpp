@@ -99,6 +99,13 @@ public:
         analyze_duration = settings.value("analyzeduration", 10000000).toInt();
         avformat_extra = settings.value("extra", "").toString();
         settings.endGroup();
+        settings.beginGroup("avformatImgSeq");
+        avformat_onI = settings.value("enable", false).toBool();
+        directI = settings.value("avioflags", 0).toString() == "direct";
+        probe_sizeI = settings.value("probesize", 10000000).toUInt();
+        analyze_durationI = settings.value("analyzeduration", 10000000).toInt();
+        avformat_extraI = settings.value("extra", "").toString();
+        settings.endGroup();
         settings.beginGroup("avfilterVideo");
         avfilterVideo_on = settings.value("enable", true).toBool();
         avfilterVideo = settings.value("options", "").toString();
@@ -159,6 +166,13 @@ public:
         settings.setValue("analyzeduration", analyze_duration);
         settings.setValue("extra", avformat_extra);
         settings.endGroup();
+        settings.beginGroup("avformatImgSeq");
+        settings.setValue("enable", avformat_onI);
+        settings.setValue("avioflags", directI ? "direct" : 0);
+        settings.setValue("probesize", probe_sizeI);
+        settings.setValue("analyzeduration", analyze_durationI);
+        settings.setValue("extra", avformat_extraI);
+        settings.endGroup();
         settings.beginGroup("avfilterVideo");
         settings.setValue("enable", avfilterVideo_on);
         settings.setValue("options", avfilterVideo);
@@ -194,6 +208,14 @@ public:
     unsigned int probe_size;
     int analyze_duration;
     QString avformat_extra;
+
+    bool avformat_onI;
+    bool directI;
+    unsigned int probe_sizeI;
+    int analyze_durationI;
+    QString avformat_extraI;
+
+
     bool avfilterVideo_on;
     QString avfilterVideo;
     bool avfilterAudio_on;
@@ -571,6 +593,96 @@ Config& Config::avformatExtra(const QString &text)
     mpData->avformat_extra = text;
     return *this;
 }
+
+//imgseq
+
+QVariantHash Config::avformatOptionsI() const
+{
+    QVariantHash vh;
+    if (!mpData->avformat_extraI.isEmpty()) {
+        QStringList s(mpData->avformat_extraI.split(" "));
+        for (int i = 0; i < s.size(); ++i) {
+            int eq = s[i].indexOf("=");
+            if (eq < 0) {
+                continue;
+            } else {
+                vh[s[i].mid(0, eq)] = s[i].mid(eq+1);
+            }
+        }
+    }
+    if (mpData->probe_sizeI > 0) {
+        vh["probesizeI"] = mpData->probe_sizeI;
+    }
+    if (mpData->analyze_durationI) {
+        vh["analyzedurationI"] = mpData->analyze_durationI;
+    }
+    if (mpData->directI) {
+        vh["avioflagsI"] = "direct";
+    };
+    return vh;
+}
+
+bool Config::avformatOptionsEnabledI() const
+{
+    return mpData->avformat_onI;
+}
+
+Config& Config::setAvformatOptionsEnabledI(bool value)
+{
+    if (mpData->avformat_onI == value)
+        return *this;
+    mpData->avformat_onI = value;
+    emit avformatOptionsEnabledChangedI();
+    return *this;
+}
+
+unsigned int Config::probeSizeI() const
+{
+    return mpData->probe_sizeI;
+}
+
+Config& Config::probeSizeI(unsigned int ps)
+{
+    mpData->probe_sizeI = ps;
+    return *this;
+}
+
+int Config::analyzeDurationI() const
+{
+    return mpData->analyze_durationI;
+}
+
+Config& Config::analyzeDurationI(int ad)
+{
+    mpData->analyze_durationI = ad;
+    return *this;
+}
+
+bool Config::reduceBufferingI() const
+{
+    return mpData->directI;
+}
+
+Config& Config::reduceBufferingI(bool y)
+{
+    mpData->directI = y;
+    return *this;
+}
+
+QString Config::avformatExtraI() const
+{
+    return mpData->avformat_extraI;
+}
+
+Config& Config::avformatExtraI(const QString &text)
+{
+    mpData->avformat_extraI = text;
+    return *this;
+}
+
+
+//
+
 
 QString Config::avfilterVideoOptions() const
 {
