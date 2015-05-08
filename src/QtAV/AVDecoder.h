@@ -30,7 +30,6 @@
 
 class QByteArray;
 struct AVCodecContext;
-struct AVFrame;
 
 namespace QtAV {
 
@@ -55,9 +54,6 @@ public:
     virtual void flush();
     void setCodecContext(AVCodecContext* codecCtx); //protected
     AVCodecContext* codecContext() const;
-    // force a codec
-    void setCodecName(const QString& name);
-    QString codecName() const;
     /*not available if AVCodecContext == 0*/
     bool isAvailable() const;
     // TODO: remove
@@ -87,9 +83,13 @@ public:
 Q_SIGNALS:
     void error(const QtAV::AVError& e); //explictly use QtAV::AVError in connection for Qt4 syntax
     void descriptionChanged();
+    virtual void codecNameChanged();
 protected:
     AVDecoder(AVDecoderPrivate& d);
     DPTR_DECLARE(AVDecoder)
+    // force a codec. only used by avcodec sw decoders
+    void setCodecName(const QString& name);
+    QString codecName() const;
 private:
     Q_DISABLE_COPY(AVDecoder)
     AVDecoder(); // base class, not direct create. only final class has is enough

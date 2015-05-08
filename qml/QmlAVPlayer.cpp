@@ -22,6 +22,7 @@
 #include "QmlAV/QmlAVPlayer.h"
 #include <QtAV/AVPlayer.h>
 #include <QtAV/AudioOutput.h>
+#include <QtAV/VideoCapture.h>
 
 template<typename ID, typename Factory>
 static QStringList idsToNames(QVector<ID> ids) {
@@ -72,10 +73,13 @@ QmlAVPlayer::QmlAVPlayer(QObject *parent) :
   , mChannelLayout(ChannelLayoutAuto)
   , m_timeout(30000)
 {
+    classBegin();
 }
 
 void QmlAVPlayer::classBegin()
 {
+    if (mpPlayer)
+        return;
     mpPlayer = new AVPlayer(this);
     connect(mpPlayer, SIGNAL(mediaStatusChanged(QtAV::MediaStatus)), SLOT(_q_statusChanged()));
     connect(mpPlayer, SIGNAL(error(QtAV::AVError)), SLOT(_q_error(QtAV::AVError)));
@@ -84,6 +88,7 @@ void QmlAVPlayer::classBegin()
     connect(mpPlayer, SIGNAL(stopped()), SLOT(_q_stopped()));
     connect(mpPlayer, SIGNAL(positionChanged(qint64)), SIGNAL(positionChanged()));
     connect(mpPlayer, SIGNAL(seekableChanged()), SIGNAL(seekableChanged()));
+    connect(mpPlayer, SIGNAL(seekFinished()), this, SIGNAL(seekFinished()), Qt::DirectConnection);
     connect(mpPlayer, SIGNAL(bufferProgressChanged(qreal)), SIGNAL(bufferProgressChanged()));
     connect(this, SIGNAL(channelLayoutChanged()), SLOT(applyChannelLayout()));
     // direct connection to ensure volume() in slots is correct
@@ -201,6 +206,11 @@ MediaMetaData* QmlAVPlayer::metaData() const
 QObject* QmlAVPlayer::mediaObject() const
 {
     return mpPlayer;
+}
+
+VideoCapture *QmlAVPlayer::videoCapture() const
+{
+    return mpPlayer->videoCapture();
 }
 
 QStringList QmlAVPlayer::videoCodecs() const

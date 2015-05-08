@@ -88,6 +88,7 @@ AVPlayer::AVPlayer(QObject *parent) :
     connect(d->read_thread, SIGNAL(requestClockPause(bool)), masterClock(), SLOT(pause(bool)), Qt::DirectConnection);
     connect(d->read_thread, SIGNAL(mediaStatusChanged(QtAV::MediaStatus)), this, SLOT(updateMediaStatus(QtAV::MediaStatus)));
     connect(d->read_thread, SIGNAL(bufferProgressChanged(qreal)), this, SIGNAL(bufferProgressChanged(qreal)));
+    connect(d->read_thread, SIGNAL(seekFinished(qint64)), this, SIGNAL(seekFinished()), Qt::DirectConnection);
 
     d->vcapture = new VideoCapture(this);
 }
@@ -437,7 +438,7 @@ AVInput* AVPlayer::input() const
     return d->current_source.value<QtAV::AVInput*>();
 }
 
-VideoCapture* AVPlayer::videoCapture()
+VideoCapture* AVPlayer::videoCapture() const
 {
     return d->vcapture;
 }
@@ -810,14 +811,6 @@ void AVPlayer::setPosition(qint64 position)
     d->seeking = true;
     d->seek_target = position;
     qreal s = (qreal)pos_pts/1000.0;
-    if (seekType() == AccurateSeek) {
-        if (d->athread) {
-            d->athread->skipRenderUntil(s);
-        }
-        if (d->vthread) {
-            d->vthread->skipRenderUntil(s);
-        }
-    }
     masterClock()->updateValue(double(pos_pts)/1000.0); //what is duration == 0
     masterClock()->updateExternalClock(pos_pts); //in msec. ignore usec part using t/1000
     d->read_thread->seek(pos_pts, seekType());
@@ -1218,6 +1211,8 @@ void AVPlayer::stop()
         qDebug("stopping demuxer thread...");
         d->read_thread->stop();
         d->read_thread->wait(500);
+        // interrupt to quit av_read_frame quickly.
+        d->demuxer.setInterruptStatus(-1);
     }
     qDebug("all audio/video threads  stopped...");
 }

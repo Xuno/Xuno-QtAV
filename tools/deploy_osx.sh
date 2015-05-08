@@ -5,6 +5,7 @@ if [ $# -lt 1 ]; then
   exit 1
 fi
 #set -ev
+THIS_DIR=$PWD
 BUILD_DIR=$1
 QTBIN=`grep -m 1 QT_BIN $BUILD_DIR/.qmake.cache |cut -d "=" -f 2 | tr -d ' '`
 QTDIR=$QTBIN/..
@@ -36,7 +37,7 @@ deploy() {
   local APP=$1
   local FRAMEWORK_DIR=bin/${APP}.app/Contents/Frameworks
   local EXE=bin/${APP}.app/Contents/MacOS/$APP
-  [ -f sdk_osx.sh ] && cp -Lf sdk_osx.sh bin/${APP}.app/
+  [ -f $THIS_DIR/sdk_osx.sh ] && cp -Lf $THIS_DIR/sdk_osx.sh bin/${APP}.app/
   mkdir -p $FRAMEWORK_DIR
 
   local LIBCOMMON=`otool -L $EXE |awk '{print $1}' |grep libcommon`
@@ -103,7 +104,7 @@ Plugins = PlugIns
 Qml2Imports = Resources/qml
 EOF
   cd -
-  test -f ./yoursway-create-dmg/create-dmg && ./yoursway-create-dmg/create-dmg  --window-size 500 300  --icon-size 96 --volname "QtAV $APP"  --app-drop-link 240 200 QtAV-$APP.dmg $BUILD_DIR/bin/${APP}.app &
+  test -f ./create-dmg/create-dmg && ./create-dmg/create-dmg  --window-size 500 300  --icon-size 96 --volname "QtAV $APP"  --app-drop-link 240 200 QtAV-$APP.dmg $BUILD_DIR/bin/${APP}.app &
 }
 
 deploy player
