@@ -184,7 +184,7 @@ void VideoCapture::handleAppQuit()
     videoCaptureThreadPool()->waitForDone();
 }
 
-void VideoCapture::capture()
+void  VideoCapture::capture()
 {
     request();
 }
