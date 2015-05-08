@@ -48,7 +48,7 @@ ConfigDialog::ConfigDialog(QWidget *parent) :
 
     mpContent = new QTabWidget();
     mpContent->setTabPosition(QTabWidget::West);
-    mpContent->setFixedHeight(350);
+    mpContent->setMinimumHeight(350);
 
     mpButtonBox = new QDialogButtonBox(Qt::Horizontal);
     mpButtonBox->addButton(tr("Reset"), QDialogButtonBox::ResetRole);// (QDialogButtonBox::Reset);

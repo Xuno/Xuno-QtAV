@@ -57,10 +57,14 @@ class COMMON_EXPORT Config : public QObject
     Q_PROPERTY(int previewWidth READ previewWidth WRITE setPreviewWidth NOTIFY previewWidthChanged)
     Q_PROPERTY(int previewHeight READ previewHeight WRITE setPreviewHeight NOTIFY previewHeightChanged)
     Q_PROPERTY(bool ANGLE READ isANGLE WRITE setANGLE NOTIFY ANGLEChanged)
+    Q_PROPERTY(bool ANGLEI READ isANGLEI WRITE setANGLEI NOTIFY ANGLEChangedI)
     Q_PROPERTY(bool avformatOptionsEnabled READ avformatOptionsEnabled WRITE setAvformatOptionsEnabled NOTIFY avformatOptionsEnabledChanged)
     Q_PROPERTY(bool avformatOptionsEnabledI READ avformatOptionsEnabledI WRITE setAvformatOptionsEnabledI NOTIFY avformatOptionsEnabledChangedI)
     Q_PROPERTY(qreal timeout READ timeout WRITE setTimeout NOTIFY timeoutChanged)
     Q_PROPERTY(int bufferValue READ bufferValue WRITE setBufferValue NOTIFY bufferValueChanged)
+    Q_PROPERTY(int bufferValueI READ bufferValueI WRITE setBufferValueI NOTIFY bufferValueChangedI)
+    Q_PROPERTY(bool forceVideoClockI READ forceVideoClockI WRITE setForceVideoClockI NOTIFY forceVideoClockChangedI)
+
 public:
     static Config& instance();
 
@@ -159,6 +163,8 @@ public:
     Config& setWebLinks(const QMap<QString, QVariant> &value);
     bool isANGLE() const; // false: auto
     Config& setANGLE(bool value);
+    bool isANGLEI() const; // false: auto
+    Config& setANGLEI(bool value);
 
     // ms >0. default 30000ms
     qreal timeout() const;
@@ -170,6 +176,11 @@ public:
     // <0: auto
     int bufferValue() const;
     Config& setBufferValue(int value);
+    int bufferValueI() const;
+    Config& setBufferValueI(int value);
+
+    bool forceVideoClockI() const;
+    Config& setForceVideoClockI(bool value);
 
     Q_INVOKABLE QVariant operator ()(const QString& key) const;
     Q_INVOKABLE Config& operator ()(const QString& key, const QVariant& value);
@@ -197,11 +208,17 @@ public:
     Q_SIGNAL void previewWidthChanged();
     Q_SIGNAL void previewHeightChanged();
     Q_SIGNAL void ANGLEChanged();
+    Q_SIGNAL void ANGLEChangedI();
     Q_SIGNAL void avformatOptionsEnabledChanged();
     Q_SIGNAL void avformatOptionsEnabledChangedI();
     Q_SIGNAL void bufferValueChanged();
     Q_SIGNAL void timeoutChanged();
     Q_SIGNAL void abortOnTimeoutChanged();
+    Q_SIGNAL void bufferValueChangedI();
+    Q_SIGNAL void timeoutChangedI();
+    Q_SIGNAL void abortOnTimeoutChangedI();
+    Q_SIGNAL void forceVideoClockChangedI();
+
 protected:
     explicit Config(QObject *parent = 0);
     ~Config();

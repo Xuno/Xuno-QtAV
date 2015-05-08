@@ -24,6 +24,7 @@
 #include "ConfigPageBase.h"
 #include <QCheckBox>
 #include <QDoubleSpinBox>
+#include <QGroupBox>
 
 class MiscPage : public ConfigPageBase
 {
@@ -44,6 +45,10 @@ private:
     QDoubleSpinBox *m_timeout;
     QCheckBox *m_timeout_abort;
     QCheckBox *m_angle;
+    //imgseq
+    QSpinBox *m_buffer_valueI;
+    QCheckBox *m_angleI;
+    QCheckBox *m_forceVideoClockI;
 };
 
 #endif // MISCPAGE_H

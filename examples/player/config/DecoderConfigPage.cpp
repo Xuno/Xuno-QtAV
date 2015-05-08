@@ -172,7 +172,6 @@ DecoderConfigPage::DecoderConfigPage(QWidget *parent) :
     QWidget *scrollAreaWidgetContents = new QWidget(this);
     QVBoxLayout *vlsroll = new QVBoxLayout(scrollAreaWidgetContents);
     vlsroll->setSpacing(0);
-
     QVBoxLayout *vb = new QVBoxLayout;
     vb->setSpacing(0);
 
@@ -190,7 +189,7 @@ DecoderConfigPage::DecoderConfigPage(QWidget *parent) :
         if (!vids.contains(vid))
             all.push_back(vid);
     }
-    mpDecLayout = new QVBoxLayout(scrollAreaWidgetContents);
+    mpDecLayout = new QVBoxLayout;
 
     foreach (QtAV::VideoDecoderId vid, all) {
         VideoDecoder *vd = VideoDecoderFactory::create(vid);
