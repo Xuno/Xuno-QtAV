@@ -33,7 +33,7 @@ AVFilterConfigPage::AVFilterConfigPage(QWidget *parent)
     setObjectName("avfilter");
     QGridLayout *gl = new QGridLayout();
     setLayout(gl);
-    gl->setSizeConstraint(QLayout::SetFixedSize);
+    //gl->setSizeConstraint(QLayout::SetFixedSize);
     int r = 0;
     m_ui[0].type = tr("Video");
     m_ui[1].type = tr("Audio");

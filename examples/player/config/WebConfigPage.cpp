@@ -20,7 +20,7 @@ WebConfigPage::WebConfigPage()
     vbox->setAlignment(Qt::AlignTop);
     QGroupBox *groupBox = new QGroupBox(tr("Edit list of Web links"));
     QVBoxLayout *gl = new QVBoxLayout();
-    gl->setSizeConstraint(QLayout::SetFixedSize);
+    //gl->setSizeConstraint(QLayout::SetFixedSize);
 
     initModelData();
 

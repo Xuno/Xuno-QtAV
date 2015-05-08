@@ -60,7 +60,7 @@ AVFormatConfigPage::AVFormatConfigPage(QWidget *parent) :
     m_extra = new QLineEdit(video);
     m_extra->setToolTip("key1=value1 key2=value2 ...");
     gl->addWidget(m_extra, r++, 1, Qt::AlignLeft);
-    vl->addWidget(video);
+    vl->addWidget(video, 1, Qt::AlignTop);
 
 
     QGroupBox *imgSeq = new QGroupBox(this);
@@ -88,11 +88,8 @@ AVFormatConfigPage::AVFormatConfigPage(QWidget *parent) :
     m_Iextra = new QLineEdit(imgSeq);
     m_Iextra->setToolTip("key1=value1 key2=value2 ...");
     ggli->addWidget(m_Iextra, r++, 1, Qt::AlignLeft);
-    vl->addWidget(imgSeq);
+    vl->addWidget(imgSeq, 1, Qt::AlignTop);
 
-
-
-    vl->addWidget(imgSeq);
     setLayout(vl);
 
     applyToUi();

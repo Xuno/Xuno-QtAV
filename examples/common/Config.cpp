@@ -98,8 +98,8 @@ public:
         settings.beginGroup("avformat");
         avformat_on = settings.value("enable", false).toBool();
         direct = settings.value("avioflags", 0).toString() == "direct";
-        probe_size = settings.value("probesize", 10000000).toUInt();
-        analyze_duration = settings.value("analyzeduration", 10000000).toInt();
+        probe_size = settings.value("probesize", 100000000).toUInt();
+        analyze_duration = settings.value("analyzeduration", 100000000).toInt();
         avformat_extra = settings.value("extra", "").toString();
         settings.endGroup();
         settings.beginGroup("avformatImgSeq");
@@ -130,7 +130,7 @@ public:
         angleI = settings.value("angle", true).toBool();
         settings.endGroup();
         settings.beginGroup("buffer");
-        buffer_value = settings.value("value", 25).toInt();
+        buffer_value = settings.value("value", 100).toInt();
         settings.endGroup();
         settings.beginGroup("bufferImgSeq");
         buffer_valueI = settings.value("value", 1).toInt();
