@@ -129,7 +129,13 @@ private:
     QProgressBar *EXEprogressProgressBar=0;
     QProgressBar *EXEprogressFpsBar=0;
 
-    const QStringList ImageTypes = QStringList()
+    const QStringList ImageTypes_ffmpeg = QStringList()
+     <<  "bmp"
+     <<  "jpg"
+     <<  "png"
+     <<  "tif";
+
+    const QStringList ImageTypes_ext = QStringList()
     <<  "tif"
     <<  "bmp"
     <<  "dpx"
@@ -138,14 +144,16 @@ private:
     <<  "jxr"
     <<  "png"
     <<  "tga";
+
+    const QStringList ImageTypes = QStringList(ImageTypes_ffmpeg);
     const QStringList ImageTypes_8bit = QStringList(ImageTypes);
-    const QStringList ImageTypes_10bit = QStringList()
-    <<  "tif"
-    <<  "dpx"
-    <<  "jp2"
-    <<  "jxr"
-    <<  "png"
-    <<  "tga";
+    const QStringList ImageTypes_10bit = QStringList();
+//    <<  "tif"
+//    <<  "dpx"
+//    <<  "jp2"
+//    <<  "jxr"
+//    <<  "png"
+//    <<  "tga";
     const QStringList ImageTypes_12bit = QStringList(ImageTypes_10bit);
     const QStringList ImageTypes_14bit = QStringList(ImageTypes_10bit);
     const QStringList ImageTypes_16bit = QStringList(ImageTypes_10bit);

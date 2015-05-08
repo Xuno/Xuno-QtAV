@@ -47,7 +47,6 @@ private:
     QCheckBox *m_angle;
     //imgseq
     QSpinBox *m_buffer_valueI;
-    QCheckBox *m_angleI;
     QCheckBox *m_forceVideoClockI;
 };
 

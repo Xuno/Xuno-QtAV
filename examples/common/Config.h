@@ -57,7 +57,6 @@ class COMMON_EXPORT Config : public QObject
     Q_PROPERTY(int previewWidth READ previewWidth WRITE setPreviewWidth NOTIFY previewWidthChanged)
     Q_PROPERTY(int previewHeight READ previewHeight WRITE setPreviewHeight NOTIFY previewHeightChanged)
     Q_PROPERTY(bool ANGLE READ isANGLE WRITE setANGLE NOTIFY ANGLEChanged)
-    Q_PROPERTY(bool ANGLEI READ isANGLEI WRITE setANGLEI NOTIFY ANGLEChangedI)
     Q_PROPERTY(bool avformatOptionsEnabled READ avformatOptionsEnabled WRITE setAvformatOptionsEnabled NOTIFY avformatOptionsEnabledChanged)
     Q_PROPERTY(bool avformatOptionsEnabledI READ avformatOptionsEnabledI WRITE setAvformatOptionsEnabledI NOTIFY avformatOptionsEnabledChangedI)
     Q_PROPERTY(qreal timeout READ timeout WRITE setTimeout NOTIFY timeoutChanged)
@@ -163,8 +162,6 @@ public:
     Config& setWebLinks(const QMap<QString, QVariant> &value);
     bool isANGLE() const; // false: auto
     Config& setANGLE(bool value);
-    bool isANGLEI() const; // false: auto
-    Config& setANGLEI(bool value);
 
     // ms >0. default 30000ms
     qreal timeout() const;
@@ -208,7 +205,6 @@ public:
     Q_SIGNAL void previewWidthChanged();
     Q_SIGNAL void previewHeightChanged();
     Q_SIGNAL void ANGLEChanged();
-    Q_SIGNAL void ANGLEChangedI();
     Q_SIGNAL void avformatOptionsEnabledChanged();
     Q_SIGNAL void avformatOptionsEnabledChangedI();
     Q_SIGNAL void bufferValueChanged();

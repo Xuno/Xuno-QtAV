@@ -637,13 +637,13 @@ QVariantHash Config::avformatOptionsI() const
         }
     }
     if (mpData->probe_sizeI > 0) {
-        vh["probesizeI"] = mpData->probe_sizeI;
+        vh["probesize"] = mpData->probe_sizeI;
     }
     if (mpData->analyze_durationI) {
-        vh["analyzedurationI"] = mpData->analyze_durationI;
+        vh["analyzeduration"] = mpData->analyze_durationI;
     }
     if (mpData->directI) {
-        vh["avioflagsI"] = "direct";
+        vh["avioflags"] = "direct";
     };
     return vh;
 }
@@ -789,26 +789,12 @@ bool Config::isANGLE() const
     return mpData->angle;
 }
 
-bool Config::isANGLEI() const
-{
-    return mpData->angleI;
-}
-
 Config& Config::setANGLE(bool value)
 {
     if (mpData->angle == value)
         return *this;
     mpData->angle = value;
     emit ANGLEChanged();
-    return *this;
-}
-
-Config& Config::setANGLEI(bool value)
-{
-    if (mpData->angleI == value)
-        return *this;
-    mpData->angleI = value;
-    emit ANGLEChangedI();
     return *this;
 }
 

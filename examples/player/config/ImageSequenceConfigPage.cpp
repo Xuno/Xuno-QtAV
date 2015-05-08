@@ -449,8 +449,15 @@ int ImageSequenceConfigPage::getTotalNumberFilename(QString filename) {
 QString ImageSequenceConfigPage::getSequenceFilename(QString filename) {
     QFileInfo fileinfo = QFileInfo(filename);
     int digs=getDigetsFilename(filename);
+    QString prefix="";
+    QRegularExpression re("^(\\D+)\\d+$");
+    QRegularExpressionMatch match = re.match(fileinfo.baseName());
+    if (match.hasMatch()) {
+        prefix=match.captured(1);
+    }
+
     //qDebug()<<"playImgages :: getDigetsFilename :"<<digs;
-    QString newfilename=QDir::toNativeSeparators(fileinfo.absolutePath()).append(QDir::separator()).append("%0").append(QString("%1d.").arg(digs)).append(fileinfo.suffix());
+    QString newfilename=QDir::toNativeSeparators(fileinfo.absolutePath()).append(QDir::separator()).append(prefix).append("%0").append(QString("%1d.").arg(digs)).append(fileinfo.suffix());
     //qDebug()<<"playImgages :: filename :"<<newfilename;
     return (newfilename);
 }

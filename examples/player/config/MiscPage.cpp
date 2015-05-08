@@ -76,7 +76,8 @@ MiscPage::MiscPage()
     gl->addLayout(hb, r++, 1);
 
     m_angle = new QCheckBox("Force OpenGL ANGLE (Windows)",video);
-    gl->addWidget(m_angle, r, 0);
+    gl->addWidget(m_angle, r++, 0);
+    gl->addItem(new QSpacerItem(185, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r,0);
     gl->addItem(new QSpacerItem(118, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r++,1);
 
     vl->addWidget(video,1, Qt::AlignTop);
@@ -96,13 +97,10 @@ MiscPage::MiscPage()
     m_buffer_valueI->setToolTip("-1: auto");
     gli->addWidget(m_buffer_valueI, r++, 1);
 
-    m_angleI = new QCheckBox(tr("Force OpenGL ANGLE (Windows)"),imgSeq);
-    gli->addWidget(m_angleI, r++, 0);
-
     m_forceVideoClockI = new QCheckBox(tr("Force Video Clock"),imgSeq);
-    gli->addWidget(m_forceVideoClockI, r, 0);
+    gli->addWidget(m_forceVideoClockI, r++, 0);
+    gli->addItem(new QSpacerItem(185, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r,0);
     gli->addItem(new QSpacerItem(118, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r++,1);
-
     vl->addWidget(imgSeq,1, Qt::AlignTop);
 
     setLayout(vl);
@@ -125,7 +123,6 @@ void MiscPage::applyFromUi()
             .setBufferValue(m_buffer_value->value())
             .setTimeout(m_timeout->value())
             .setAbortOnTimeout(m_timeout_abort->isChecked())
-            .setANGLEI(m_angleI->isChecked())
             .setBufferValueI(m_buffer_valueI->value())
             .setForceVideoClockI(m_forceVideoClockI->isChecked())
             ;
@@ -137,7 +134,6 @@ void MiscPage::applyToUi()
     m_preview_w->setValue(Config::instance().previewWidth());
     m_preview_h->setValue(Config::instance().previewHeight());
     m_angle->setChecked(Config::instance().isANGLE());
-    m_angleI->setChecked(Config::instance().isANGLEI());
     m_fps->setValue(Config::instance().forceFrameRate());
     //m_notify_interval->setValue(Config::instance().avfilterOptions());
     m_buffer_value->setValue(Config::instance().bufferValue());

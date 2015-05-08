@@ -886,7 +886,10 @@ void MainWindow::play(const QString &name)
     mpPlayer->setInterruptOnTimeout(Config::instance().abortOnTimeout());
     mpPlayer->setInterruptTimeout(Config::instance().timeout()*1000.0);
     mpPlayer->setBufferMode(QtAV::BufferPackets);
-    mpPlayer->setBufferValue(Config::instance().bufferValue());
+    if (isFileImgageSequence())
+        mpPlayer->setBufferValue(Config::instance().bufferValueI());
+    else
+        mpPlayer->setBufferValue(Config::instance().bufferValue());
     mpPlayer->setRepeat(mRepeateMax);
     mpPlayer->setPriority(idsFromNames(Config::instance().decoderPriorityNames()));
     mpPlayer->setOptionsForAudioCodec(mpDecoderConfigPage->audioDecoderOptions());
@@ -1840,8 +1843,7 @@ void MainWindow::changeClockType(QAction *action)
 
 void MainWindow::setClockType()
 {
-    qDebug()<<"setClockType";
-    if (isFileImgageSequence()){
+    if (isFileImgageSequence() && Config::instance().forceVideoClockI()){
         qDebug()<<"setClockType for ImgageSequence force AVClock::VideoClock";
         mpPlayer->masterClock()->setClockAuto(false);
         mpPlayer->masterClock()->setClockType(AVClock::VideoClock);
@@ -1851,7 +1853,7 @@ void MainWindow::setClockType()
             QAction *a = mpClockMenuAction->checkedAction();
             if (a){
                 int value = mpClockMenuAction->checkedAction()->data().toInt();
-                qDebug()<<"setClockType Video objevct action "<<value;
+                qDebug()<<"setClockType Video object action from menu action "<<value;
                 if (value < 0) {
                     mpPlayer->masterClock()->setClockAuto(true);
                     // TODO: guess clock type
