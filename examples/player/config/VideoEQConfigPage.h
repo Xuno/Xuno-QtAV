@@ -46,7 +46,8 @@ public:
         qreal saturation;
         qreal gammaRGB;
         qreal filterSharp;
-        ColorSpacePreset() : name(""),brightness(0.0),contrast(0.0),hue(0.0),saturation(0.0),gammaRGB(0.0),filterSharp(0.0) {}
+        bool loaded;
+        ColorSpacePreset() : name(""),brightness(0.0),contrast(0.0),hue(0.0),saturation(0.0),gammaRGB(0.0),filterSharp(0.0),loaded(false) {}
     };
     explicit VideoEQConfigPage(QWidget *parent = 0);
     void setEngines(const QVector<Engine>& engines);
@@ -99,6 +100,7 @@ signals:
 private slots:
     void onGlobalSet(bool);
     void onReset();
+    void onResetByZerro();
     void onEngineChangedByUI();
     void onLoadPreset();
     void onSavePreset();
@@ -113,6 +115,7 @@ private slots:
     void saturationTChanged(double);
     void gammaRGBTChanged(double);
     void filterSharpTChanged(double);
+    bool resetByRemotePreset();
 
 
 private:

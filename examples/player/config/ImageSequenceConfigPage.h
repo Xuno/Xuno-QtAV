@@ -91,7 +91,7 @@ private:
     <<  "bmp"
     <<  "cr2"
     <<  "dng"
-    <<  "dxp"
+    <<  "dpx"
     <<  "exr"
     <<  "jp2"
     <<  "png"
