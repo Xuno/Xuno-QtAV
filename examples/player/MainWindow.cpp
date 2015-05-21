@@ -696,7 +696,7 @@ QSlider::handle:horizontal { \
 //    } \
 //    ");
 
-    //connect(pSpeedBox, SIGNAL(valueChanged(double)), SLOT(onSpinBoxChanged(double)));
+    connect(pSpeedBox, SIGNAL(valueChanged(double)), SLOT(onSpinBoxChanged(double)));
     connect(mpOpenBtn, SIGNAL(clicked()), SLOT(openFile()));
     connect(mpPlayPauseBtn, SIGNAL(clicked()), SLOT(togglePlayPause()));
     connect(mpInfoBtn, SIGNAL(clicked()), SLOT(showInfo()));
