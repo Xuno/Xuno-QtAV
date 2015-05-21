@@ -35,6 +35,7 @@
 #include <QSizePolicy>
 #include <QMessageBox>
 #include <QJsonDocument>
+#include <QDebug>
 
 
 VideoEQConfigPage::VideoEQConfigPage(QWidget *parent) :
@@ -148,7 +149,7 @@ VideoEQConfigPage::VideoEQConfigPage(QWidget *parent) :
     connect(mpSavePreset, SIGNAL(clicked()), SLOT(onSavePreset()));
     connect(mpLoadPreset, SIGNAL(clicked()), SLOT(onLoadPreset()));
 
-    connect(mpResetLocalCongig, SIGNAL(clicked()), SLOT(onResetLocalCongig()));
+    connect(mpResetLocalCongig, SIGNAL(clicked()), SLOT(onResetByZerro()));
     connect(mpSaveLocalCongig, SIGNAL(clicked()), SLOT(onSaveLocalCongig()));
 }
 
@@ -260,12 +261,13 @@ VideoEQConfigPage::Engine VideoEQConfigPage::engine() const
 qreal VideoEQConfigPage::brightness() const
 {
     //return (qreal)mpBSlider->value()/100.0;
-    return brightness_p()+mRemotePreset.brightness;
+    return brightness_p();
 }
 
 qreal VideoEQConfigPage::brightness_p() const
 {
     qreal d=((qreal)mpBSlider->value()/100.0);
+    //d+=mRemotePreset.brightness;
     mpBSliderT->setValue(d);
     return d;
 }
@@ -278,7 +280,7 @@ void VideoEQConfigPage::brightness(qreal val)
 qreal VideoEQConfigPage::contrast() const
 {
     //return (qreal)mpCSlider->value()/100.0;
-    return contrast_p()+mRemotePreset.contrast;
+    return contrast_p();
 }
 
 qreal VideoEQConfigPage::contrast_p() const
@@ -296,7 +298,7 @@ void VideoEQConfigPage::contrast(qreal val) const
 qreal VideoEQConfigPage::hue() const
 {
    //return (qreal)mpHSlider->value()/100.0;
-   return hue_p()+mRemotePreset.hue;
+   return hue_p();
 }
 
 qreal VideoEQConfigPage::hue_p() const
@@ -314,7 +316,7 @@ void VideoEQConfigPage::hue(qreal val) const
 qreal VideoEQConfigPage::saturation() const
 {
     //return (qreal)mpSSlider->value()/100.0;
-    return saturation_p()+mRemotePreset.saturation;
+    return saturation_p();
 }
 
 qreal VideoEQConfigPage::saturation_p() const
@@ -331,7 +333,7 @@ void VideoEQConfigPage::saturation(qreal val) const
 
 qreal VideoEQConfigPage::gammaRGB() const
 {
-    return gammaRGB_p()+mRemotePreset.gammaRGB;
+    return gammaRGB_p();
 }
 
 qreal VideoEQConfigPage::gammaRGB_p() const
@@ -349,7 +351,7 @@ void VideoEQConfigPage::gammaRGB(qreal val) const
 qreal VideoEQConfigPage::filterSharp() const
 {
     //qDebug("VideoEQConfigPage::filterSharp return bar:%f bar+remote:%f,remote: %f",filterSharp_p(),filterSharp_p()+mRemotePreset.filterSharp,mRemotePreset.filterSharp);
-    return filterSharp_p()+mRemotePreset.filterSharp;
+    return filterSharp_p();
 }
 
 qreal VideoEQConfigPage::filterSharp_p() const
@@ -366,6 +368,11 @@ void VideoEQConfigPage::filterSharp(qreal val) const
 
 void VideoEQConfigPage::onReset()
 {
+    if (!resetByRemotePreset()) onResetLocalCongig();
+}
+
+void VideoEQConfigPage::onResetByZerro()
+{
     mpBSlider->setValue(0);
     mpCSlider->setValue(0);
     mpHSlider->setValue(0);
@@ -373,6 +380,7 @@ void VideoEQConfigPage::onReset()
     mpGSlider->setValue(0);
     mpFSSlider->setValue(-100);
 }
+
 
 void VideoEQConfigPage::onLoadPreset()
 {
@@ -472,13 +480,31 @@ void VideoEQConfigPage::parseJsonPressetData (QString &strReply){
                 mRemotePreset.saturation=jsonObject.value("saturation").toDouble();
                 mRemotePreset.gammaRGB=jsonObject.value("gammaRGB").toDouble();
                 mRemotePreset.filterSharp=jsonObject.value("filterSharp").toDouble();
+                mRemotePreset.loaded=true;
                 qDebug(" *********  mLoadPreset json loaded");
+                qDebug("b=%f,c=%f,h=%f,s=%f,g=%f,s=%f",mRemotePreset.brightness,mRemotePreset.contrast,mRemotePreset.hue,mRemotePreset.saturation,mRemotePreset.gammaRGB,mRemotePreset.filterSharp);
                 presetUrl=mURL;
+                resetByRemotePreset();
                 emit engineChanged();
             }
         }
     }
 }
+
+bool VideoEQConfigPage::resetByRemotePreset(){
+
+    if (mRemotePreset.loaded){
+        mpBSliderT->setValue(mRemotePreset.brightness);
+        mpCSliderT->setValue(mRemotePreset.contrast);
+        mpHSliderT->setValue(mRemotePreset.hue);
+        mpSSliderT->setValue(mRemotePreset.saturation);
+        mpGSliderT->setValue(mRemotePreset.gammaRGB);
+        mpFSSliderT->setValue(mRemotePreset.filterSharp);
+        return true;
+    }
+    return false;
+}
+
 
 void VideoEQConfigPage::getLocalPressets (){
     if ( mURL.isEmpty()) return;
