@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -19,70 +19,87 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
 
-#ifndef QTAV_AVDECODER_P_H
-#define QTAV_AVDECODER_P_H
+#ifndef QTAV_AVENCODER_P_H
+#define QTAV_AVENCODER_P_H
 
-#include <QtCore/QByteArray>
-#include <QtCore/QHash>
+#include <QtCore/QVariant>
+#include "QtAV/Packet.h"
+#include "QtAV/VideoFormat.h"
 #include "QtAV/private/AVCompat.h"
+
+// FF_API_PIX_FMT
+#ifdef PixelFormat
+#undef PixelFormat
+#endif
 
 namespace QtAV {
 
-class Q_AV_PRIVATE_EXPORT AVDecoderPrivate : public DPtrPrivate<AVDecoder>
+class Q_AV_PRIVATE_EXPORT AVEncoderPrivate : public DPtrPrivate<AVEncoder>
 {
 public:
-    AVDecoderPrivate():
-        codec_ctx(0)
-      , available(true)
+    AVEncoderPrivate():
+        avctx(0)
       , is_open(false)
-      , undecoded_size(0)
+      , bit_rate(0)
       , dict(0)
     {
-        codec_ctx = avcodec_alloc_context3(NULL);
     }
-    virtual ~AVDecoderPrivate() {
+    virtual ~AVEncoderPrivate() {
         if (dict) {
             av_dict_free(&dict);
         }
-        if (codec_ctx) {
-            avcodec_free_context(&codec_ctx);
+        if (avctx) {
+            avcodec_free_context(&avctx);
         }
     }
     virtual bool open() {return true;}
-    virtual void close() {}
+    virtual bool close() {return true;}
+    // used iff avctx != null
     void applyOptionsForDict();
     void applyOptionsForContext();
 
-    AVCodecContext *codec_ctx; //set once and not change
-    bool available; //TODO: true only when context(and hw ctx) is ready
+    AVCodecContext *avctx; // null if not avcodec. allocated in ffmpeg based encoders
     bool is_open;
-    int undecoded_size;
+    int bit_rate;
     QString codec_name;
     QVariantHash options;
-    AVDictionary *dict;
+    AVDictionary *dict; // null if not avcodec
+    Packet packet;
 };
 
 class AudioResampler;
-class AudioDecoderPrivate : public AVDecoderPrivate
+class AudioEncoderPrivate : public AVEncoderPrivate
 {
 public:
-    AudioDecoderPrivate();
-    virtual ~AudioDecoderPrivate();
+    AudioEncoderPrivate()
+        : AVEncoderPrivate()
+    {
+        bit_rate = 64000;
+    }
+
+    virtual ~AudioEncoderPrivate();
 
     AudioResampler *resampler;
-    QByteArray decoded;
 };
 
-class Q_AV_PRIVATE_EXPORT VideoDecoderPrivate : public AVDecoderPrivate
+class Q_AV_PRIVATE_EXPORT VideoEncoderPrivate : public AVEncoderPrivate
 {
 public:
-    VideoDecoderPrivate():
-        AVDecoderPrivate()
+    VideoEncoderPrivate():
+        AVEncoderPrivate()
       , width(0)
       , height(0)
-    {}
-    virtual ~VideoDecoderPrivate() {}
+      , frame_rate(25.0)
+      , format_used(VideoFormat::Format_Invalid)
+      , format(format_used)
+    {
+        bit_rate = 400000;
+    }
+    virtual ~VideoEncoderPrivate() {}
     int width, height;
+    qreal frame_rate;
+    VideoFormat::PixelFormat format_used;
+    VideoFormat format;
 };
 } //namespace QtAV
-#endif // QTAV_AVDECODER_P_H
+#endif // QTAV_AVENCODER_P_H

@@ -83,18 +83,28 @@ Rectangle {
             }
         }
 
+        onDurationChanged: control.duration = duration
         onPlaying: {
             control.mediaSource = player.source
-            control.duration = duration
             control.setPlayingState()
             if (!pageLoader.item)
                 return
-            pageLoader.item.information = {
-                source: player.source,
-                hasAudio: player.hasAudio,
-                hasVideo: player.hasVideo,
-                metaData: player.metaData
+            if (pageLoader.item.information) {
+                pageLoader.item.information = {
+                    source: player.source,
+                    hasAudio: player.hasAudio,
+                    hasVideo: player.hasVideo,
+                    metaData: player.metaData
+                }
             }
+        }
+        onInternalAudioTracksChanged: {
+            if (typeof(pageLoader.item.internalTracks) != "undefined")
+                pageLoader.item.internalTracks = player.internalAudioTracks
+        }
+        onExternalAudioTracksChanged: {
+            if (typeof(pageLoader.item.externalTracks) != "undefined")
+                pageLoader.item.externalTracks = player.externalAudioTracks
         }
 
         onStopped: control.setStopState()
@@ -125,6 +135,7 @@ Rectangle {
         onBufferProgressChanged: {
             msg.info("Buffering " + Math.floor(bufferProgress*100) + "%...")
         }
+       // onSeekFinished: msg.info("Seek finished: " + Utils.msec2string(position))
     }
     Subtitle {
         id: subtitle
@@ -328,12 +339,19 @@ Rectangle {
             onLoaded: {
                 if (!item)
                     return
-                item.information = {
-                    source: player.source,
-                    hasAudio: player.hasAudio,
-                    hasVideo: player.hasVideo,
-                    metaData: player.metaData
+                if (item.information) {
+                    item.information = {
+                        source: player.source,
+                        hasAudio: player.hasAudio,
+                        hasVideo: player.hasVideo,
+                        metaData: player.metaData
+                    }
                 }
+                console.log("onXXXternalAudioTracksChanged...")
+                if (typeof(item.internalTracks) != "undefined")
+                    item.internalTracks = player.internalAudioTracks
+                if (typeof(item.externalTracks) != "undefined")
+                    item.externalTracks = player.externalAudioTracks
             }
         }
         Connections {
@@ -345,6 +363,8 @@ Rectangle {
             onChannelChanged: player.channelLayout = channel
             onSubtitleChanged: subtitle.file = file
             onMuteChanged: player.muted = value
+            onExternalAudioChanged: player.externalAudio = file
+            onAudioTrackChanged: player.audioTrack = track
         }
     }
     ConfigPanel {

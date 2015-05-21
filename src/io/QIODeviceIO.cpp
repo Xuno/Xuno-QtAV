@@ -19,13 +19,13 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
 
-#include "QtAV/AVInput.h"
-#include "QtAV/private/AVInput_p.h"
+#include "QtAV/MediaIO.h"
+#include "QtAV/private/MediaIO_p.h"
 #include "QtAV/private/mkid.h"
 #include "QtAV/private/prepost.h"
 #include <QtCore/QFile>
 #include <QtCore/QMetaType>
-#ifndef TEST_QTAV_QIODEVICEINPUT
+#ifndef TEST_QTAV_QIODeviceIO
 #include "utils/Logger.h"
 #else
 #include <QtDebug>
@@ -36,21 +36,23 @@ Q_DECLARE_METATYPE(QIODevice*)
 #endif
 
 namespace QtAV {
-class QIODeviceInputPrivate;
-class QIODeviceInput : public AVInput
+class QIODeviceIOPrivate;
+class QIODeviceIO : public MediaIO
 {
     Q_OBJECT
     Q_PROPERTY(QIODevice* device READ device WRITE setDevice NOTIFY deviceChanged)
-    DPTR_DECLARE_PRIVATE(QIODeviceInput)
+    DPTR_DECLARE_PRIVATE(QIODeviceIO)
 public:
-    QIODeviceInput();
+    QIODeviceIO();
     virtual QString name() const Q_DECL_OVERRIDE;
     // MUST open/close outside
-    void setDevice(QIODevice *dev); // set private in QFileInput etc
+    void setDevice(QIODevice *dev); // set private in QFileIO etc
     QIODevice* device() const;
 
     virtual bool isSeekable() const Q_DECL_OVERRIDE;
+    virtual bool isWritable() const Q_DECL_OVERRIDE;
     virtual qint64 read(char *data, qint64 maxSize) Q_DECL_OVERRIDE;
+    virtual qint64 write(const char *data, qint64 maxSize) Q_DECL_OVERRIDE;
     virtual bool seek(qint64 offset, int from) Q_DECL_OVERRIDE;
     virtual qint64 position() const Q_DECL_OVERRIDE;
     /*!
@@ -61,58 +63,72 @@ public:
 Q_SIGNALS:
     void deviceChanged();
 protected:
-    QIODeviceInput(QIODeviceInputPrivate &d);
+    QIODeviceIO(QIODeviceIOPrivate &d);
 };
 
-static const AVInputId AVInputId_QIODevice = mkid::id32base36_6<'Q','I','O','D','e','v'>::value;
+static const MediaIOId MediaIOId_QIODevice = mkid::id32base36_6<'Q','I','O','D','e','v'>::value;
 static const char kQIODevName[] = "QIODevice";
-FACTORY_REGISTER_ID_TYPE(AVInput, AVInputId_QIODevice, QIODeviceInput, kQIODevName)
+FACTORY_REGISTER_ID_TYPE(MediaIO, MediaIOId_QIODevice, QIODeviceIO, kQIODevName)
 
-class QIODeviceInputPrivate : public AVInputPrivate
+class QIODeviceIOPrivate : public MediaIOPrivate
 {
 public:
-    QIODeviceInputPrivate()
-        : AVInputPrivate()
+    QIODeviceIOPrivate()
+        : MediaIOPrivate()
         , dev(0)
     {}
     QIODevice *dev;
 };
 
-QIODeviceInput::QIODeviceInput() : AVInput(*new QIODeviceInputPrivate()) {}
-QIODeviceInput::QIODeviceInput(QIODeviceInputPrivate &d) : AVInput(d) {}
-QString QIODeviceInput::name() const { return kQIODevName;}
+QIODeviceIO::QIODeviceIO() : MediaIO(*new QIODeviceIOPrivate()) {}
+QIODeviceIO::QIODeviceIO(QIODeviceIOPrivate &d) : MediaIO(d) {}
+QString QIODeviceIO::name() const { return kQIODevName;}
 
-void QIODeviceInput::setDevice(QIODevice *dev)
+void QIODeviceIO::setDevice(QIODevice *dev)
 {
-    DPTR_D(QIODeviceInput);
+    DPTR_D(QIODeviceIO);
     if (d.dev == dev)
         return;
     d.dev = dev;
     emit deviceChanged();
 }
 
-QIODevice* QIODeviceInput::device() const
+QIODevice* QIODeviceIO::device() const
 {
     return d_func().dev;
 }
 
-bool QIODeviceInput::isSeekable() const
+bool QIODeviceIO::isSeekable() const
 {
-    DPTR_D(const QIODeviceInput);
+    DPTR_D(const QIODeviceIO);
     return d.dev && !d.dev->isSequential();
 }
 
-qint64 QIODeviceInput::read(char *data, qint64 maxSize)
+bool QIODeviceIO::isWritable() const
 {
-    DPTR_D(QIODeviceInput);
+    DPTR_D(const QIODeviceIO);
+    return d.dev && d.dev->isWritable();
+}
+
+qint64 QIODeviceIO::read(char *data, qint64 maxSize)
+{
+    DPTR_D(QIODeviceIO);
     if (!d.dev)
         return 0;
     return d.dev->read(data, maxSize);
 }
 
-bool QIODeviceInput::seek(qint64 offset, int from)
+qint64 QIODeviceIO::write(const char *data, qint64 maxSize)
 {
-    DPTR_D(QIODeviceInput);
+    DPTR_D(QIODeviceIO);
+    if (!d.dev)
+        return 0;
+    return d.dev->write(data, maxSize);
+}
+
+bool QIODeviceIO::seek(qint64 offset, int from)
+{
+    DPTR_D(QIODeviceIO);
     if (!d.dev)
         return false;
     if (from == 2) {
@@ -123,29 +139,29 @@ bool QIODeviceInput::seek(qint64 offset, int from)
     return d.dev->seek(offset);
 }
 
-qint64 QIODeviceInput::position() const
+qint64 QIODeviceIO::position() const
 {
-    DPTR_D(const QIODeviceInput);
+    DPTR_D(const QIODeviceIO);
     if (!d.dev)
         return 0;
     return d.dev->pos();
 }
 
-qint64 QIODeviceInput::size() const
+qint64 QIODeviceIO::size() const
 {
-    DPTR_D(const QIODeviceInput);
+    DPTR_D(const QIODeviceIO);
     if (!d.dev)
         return 0;
     return d.dev->size(); // sequential device returns bytesAvailable()
 }
 // qrc support
 static const char kQFileName[] = "QFile";
-class QFileInputPrivate;
-class QFileInput : public QIODeviceInput
+class QFileIOPrivate;
+class QFileIO Q_DECL_FINAL: public QIODeviceIO
 {
-    DPTR_DECLARE_PRIVATE(QFileInput)
+    DPTR_DECLARE_PRIVATE(QFileIO)
 public:
-    QFileInput();
+    QFileIO();
     QString name() const Q_DECL_OVERRIDE { return kQFileName;}
     const QStringList& protocols() const Q_DECL_OVERRIDE
     {
@@ -155,32 +171,32 @@ public:
 protected:
     void onUrlChanged() Q_DECL_OVERRIDE;
 private:
-    using QIODeviceInput::setDevice;
+    using QIODeviceIO::setDevice;
 };
 
-static const AVInputId AVInputId_QFile = mkid::id32base36_5<'Q','F','i','l','e'>::value;
-FACTORY_REGISTER_ID_TYPE(AVInput, AVInputId_QFile, QFileInput, kQFileName)
+static const MediaIOId MediaIOId_QFile = mkid::id32base36_5<'Q','F','i','l','e'>::value;
+FACTORY_REGISTER_ID_TYPE(MediaIO, MediaIOId_QFile, QFileIO, kQFileName)
 
-class QFileInputPrivate : public QIODeviceInputPrivate
+class QFileIOPrivate Q_DECL_FINAL: public QIODeviceIOPrivate
 {
 public:
-    QFileInputPrivate() : QIODeviceInputPrivate() {}
-    ~QFileInputPrivate() {
+    QFileIOPrivate() : QIODeviceIOPrivate() {}
+    ~QFileIOPrivate() {
         if (file.isOpen())
             file.close();
     }
     QFile file;
 };
 
-QFileInput::QFileInput()
-    : QIODeviceInput(*new QFileInputPrivate())
+QFileIO::QFileIO()
+    : QIODeviceIO(*new QFileIOPrivate())
 {
     setDevice(&d_func().file);
 }
 
-void QFileInput::onUrlChanged()
+void QFileIO::onUrlChanged()
 {
-    DPTR_D(QFileInput);
+    DPTR_D(QFileIO);
     if (d.file.isOpen())
         d.file.close();
     QString path(url());
@@ -194,16 +210,16 @@ void QFileInput::onUrlChanged()
 }
 
 } //namespace QtAV
-#include "QIODeviceInput.moc"
-#ifdef TEST_QTAV_QIODEVICEINPUT
+#include "QIODeviceIO.moc"
+#ifdef TEST_QTAV_QIODeviceIO
 int main(int, char**)
 {
-    QtAV::QFileInput fi;
+    QtAV::QFileIO fi;
     qDebug() << "protocols: " << fi.protocols();
     fi.setUrl("qrc:/QtAV.svg");
     QByteArray data(1024, 0);
     fi.read(data.data(), data.size());
-    qDebug("QFileInput url: %s, seekable: %d, size: %lld", fi.url().toUtf8().constData(), fi.isSeekable(), fi.size());
+    qDebug("QFileIO url: %s, seekable: %d, size: %lld", fi.url().toUtf8().constData(), fi.isSeekable(), fi.size());
     qDebug() << data;
     return 0;
 }

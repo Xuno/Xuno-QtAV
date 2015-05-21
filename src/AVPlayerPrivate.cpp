@@ -278,7 +278,10 @@ void AVPlayer::Private::initVideoStatistics(int s)
 // notify statistics change after audio/video thread is set
 bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
 {
-    demuxer.setStreamIndex(AVDemuxer::AudioStream, audio_track);
+    AVDemuxer *ademuxer = &demuxer;
+    if (!external_audio.isEmpty())
+        ademuxer = &audio_demuxer;
+    ademuxer->setStreamIndex(AVDemuxer::AudioStream, audio_track);
     // pause demuxer, clear queues, set demuxer stream, set decoder, set ao, resume
     // clear packets before stream changed
     if (athread) {
@@ -286,7 +289,7 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
         athread->setDecoder(0);
         athread->setOutput(0);
     }
-    AVCodecContext *avctx = demuxer.audioCodecContext();
+    AVCodecContext *avctx = ademuxer->audioCodecContext();
     if (!avctx) {
         // TODO: close ao? //TODO: check pulseaudio perapp control if closed
         return false;
@@ -372,8 +375,33 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
     athread->setDecoder(adec);
     setAVOutput(ao, ao, athread);
     updateBufferValue(athread->packetQueue());
-    initAudioStatistics(demuxer.audioStream());
+    initAudioStatistics(ademuxer->audioStream());
     return true;
+}
+
+QVariantList AVPlayer::Private::getAudioTracksInfo(AVDemuxer *demuxer)
+{
+    QVariantList info;
+    if (!demuxer)
+        return info;
+    foreach (int s, demuxer->audioStreams()) {
+        QVariantMap t;
+        t["id"] = info.size();
+        t["file"] = demuxer->fileName();
+        AVStream *stream = demuxer->formatContext()->streams[s];
+        AVDictionaryEntry *tag = av_dict_get(stream->metadata, "language", NULL, 0);
+        if (!tag)
+            tag = av_dict_get(stream->metadata, "lang", NULL, 0);
+        if (tag) {
+            t["language"] = tag->value;
+        }
+        tag = av_dict_get(stream->metadata, "title", NULL, 0);
+        if (tag) {
+            t["title"] = tag->value;
+        }
+        info.push_back(t);
+    }
+    return info;
 }
 
 bool AVPlayer::Private::setupVideoThread(AVPlayer *player)
@@ -448,23 +476,23 @@ void AVPlayer::Private::updateBufferValue(PacketBuffer* buf)
 {
     const bool video = vthread && buf == vthread->packetQueue();
     const qreal fps = qMax<qreal>(24.0, statistics.video.frame_rate);
-    int bv = 0.5*fps;
+    qint64 bv = 0.5*fps;
     if (!video) {
         // if has video, then audio buffer should not block the video buffer (bufferValue == 1, modified in AVDemuxThread)
         bv = statistics.audio.frame_rate > 0 && statistics.audio.frame_rate < 60 ?
-                        statistics.audio.frame_rate : 1;
+                        statistics.audio.frame_rate : 1LL;
     }
     if (buffer_mode == BufferTime)
-        bv = 600; //ms
+        bv = 600LL; //ms
     else if (buffer_mode == BufferBytes)
-        bv = 1024;
+        bv = 1024LL;
     // no block for music with cover
     if (video) {
         if (demuxer.hasAttacedPicture() || (statistics.video.frames > 0 && statistics.video.frames < bv))
-            bv = qMax<int>(1, statistics.video.frames);
+            bv = qMax<qint64>(1LL, statistics.video.frames);
     }
     buf->setBufferMode(buffer_mode);
-    buf->setBufferValue(buffer_value < 0 ? bv : buffer_value);
+    buf->setBufferValue(buffer_value < 0LL ? bv : buffer_value);
 }
 
 void AVPlayer::Private::updateBufferValue()

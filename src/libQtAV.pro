@@ -284,6 +284,7 @@ SOURCES += \
     utils/GPUMemCopy.cpp \
     utils/Logger.cpp \
     AudioThread.cpp \
+    utils/internal.cpp \
     AVThread.cpp \
     AudioFormat.cpp \
     AudioFrame.cpp \
@@ -292,6 +293,8 @@ SOURCES += \
     codec/AVDecoder.cpp \
     codec/audio/AudioDecoder.cpp \
     codec/audio/AudioDecoderFFmpeg.cpp \
+    codec/AVEncoder.cpp \
+    AVMuxer.cpp \
     AVDemuxer.cpp \
     AVDemuxThread.cpp \
     ColorTransform.cpp \
@@ -312,8 +315,8 @@ SOURCES += \
     VideoCapture.cpp \
     VideoFormat.cpp \
     VideoFrame.cpp \
-    input/AVInput.cpp \
-    input/QIODeviceInput.cpp \
+    io/MediaIO.cpp \
+    io/QIODeviceIO.cpp \
     output/audio/AudioOutput.cpp \
     output/audio/AudioOutputBackend.cpp \
     output/video/VideoRenderer.cpp \
@@ -328,6 +331,8 @@ SOURCES += \
     codec/video/VideoDecoderFFmpegBase.cpp \
     codec/video/VideoDecoderFFmpeg.cpp \
     codec/video/VideoDecoderFFmpegHW.cpp \
+    codec/video/VideoEncoder.cpp \
+    codec/video/VideoEncoderFFmpeg.cpp \
     VideoThread.cpp \
     VideoFrameExtractor.cpp \
     CommonTypes.cpp
@@ -344,7 +349,9 @@ SDK_HEADERS *= \
     QtAV/AudioFrame.h \
     QtAV/AudioOutput.h \
     QtAV/AVDecoder.h \
+    QtAV/AVEncoder.h \
     QtAV/AVDemuxer.h \
+    QtAV/AVMuxer.h \
     QtAV/CommonTypes.h \
     QtAV/Filter.h \
     QtAV/FilterContext.h \
@@ -358,11 +365,12 @@ SDK_HEADERS *= \
     QtAV/VideoRenderer.h \
     QtAV/VideoRendererTypes.h \
     QtAV/VideoOutput.h \
-    QtAV/AVInput.h \
+    QtAV/MediaIO.h \
     QtAV/AVOutput.h \
     QtAV/AVClock.h \
     QtAV/VideoDecoder.h \
     QtAV/VideoDecoderTypes.h \
+    QtAV/VideoEncoder.h \
     QtAV/VideoFormat.h \
     QtAV/VideoFrame.h \
     QtAV/VideoFrameExtractor.h \
@@ -384,7 +392,8 @@ SDK_PRIVATE_HEADERS *= \
     QtAV/private/AudioOutputBackend.h \
     QtAV/private/AudioResampler_p.h \
     QtAV/private/AVDecoder_p.h \
-    QtAV/private/AVInput_p.h \
+    QtAV/private/AVEncoder_p.h \
+    QtAV/private/MediaIO_p.h \
     QtAV/private/AVOutput_p.h \
     QtAV/private/Filter_p.h \
     QtAV/private/Frame_p.h \
@@ -417,6 +426,7 @@ HEADERS *= \
     utils/Logger.h \
     utils/SharedPtr.h \
     utils/ring.h \
+    utils/internal.h \
     output/OutputSet.h \
     QtAV/ColorTransform.h
 

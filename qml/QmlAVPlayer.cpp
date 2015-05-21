@@ -72,6 +72,8 @@ QmlAVPlayer::QmlAVPlayer(QObject *parent) :
   , mpPlayer(0)
   , mChannelLayout(ChannelLayoutAuto)
   , m_timeout(30000)
+  , m_abort_timeout(true)
+  , m_audio_track(0)
 {
     classBegin();
 }
@@ -81,6 +83,9 @@ void QmlAVPlayer::classBegin()
     if (mpPlayer)
         return;
     mpPlayer = new AVPlayer(this);
+    connect(mpPlayer, SIGNAL(internalAudioTracksChanged(QVariantList)), SIGNAL(internalAudioTracksChanged()));
+    connect(mpPlayer, SIGNAL(externalAudioTracksChanged(QVariantList)), SIGNAL(externalAudioTracksChanged()));
+    connect(mpPlayer, SIGNAL(durationChanged(qint64)), SIGNAL(durationChanged()));
     connect(mpPlayer, SIGNAL(mediaStatusChanged(QtAV::MediaStatus)), SLOT(_q_statusChanged()));
     connect(mpPlayer, SIGNAL(error(QtAV::AVError)), SLOT(_q_error(QtAV::AVError)));
     connect(mpPlayer, SIGNAL(paused(bool)), SLOT(_q_paused(bool)));
@@ -305,6 +310,45 @@ bool QmlAVPlayer::abortOnTimeout() const
     return m_abort_timeout;
 }
 
+int QmlAVPlayer::audioTrack() const
+{
+    return m_audio_track;
+}
+
+void QmlAVPlayer::setAudioTrack(int value)
+{
+    if (m_audio_track == value)
+        return;
+    m_audio_track = value;
+    emit audioTrackChanged();
+    if (mpPlayer)
+        mpPlayer->setAudioStream(value);
+}
+
+QUrl QmlAVPlayer::externalAudio() const
+{
+    return m_audio;
+}
+
+void QmlAVPlayer::setExternalAudio(const QUrl &url)
+{
+    if (m_audio == url)
+        return;
+    m_audio = url;
+    mpPlayer->setExternalAudio(QUrl::fromPercentEncoding(m_audio.toEncoded()));
+    emit externalAudioChanged();
+}
+
+QVariantList QmlAVPlayer::externalAudioTracks() const
+{
+    return mpPlayer ? mpPlayer->externalAudioTracks() : QVariantList();
+}
+
+QVariantList QmlAVPlayer::internalAudioTracks() const
+{
+    return mpPlayer ? mpPlayer->internalAudioTracks() : QVariantList();
+}
+
 QStringList QmlAVPlayer::videoCodecPriority() const
 {
     return mVideoCodecs;
@@ -434,6 +478,7 @@ void QmlAVPlayer::setPlaybackState(PlaybackState playbackState)
             mpPlayer->setInterruptTimeout(m_timeout);
             mpPlayer->setInterruptOnTimeout(m_abort_timeout);
             mpPlayer->setRepeat(mLoopCount - 1);
+            mpPlayer->setAudioStream(m_audio_track);
             if (!vcodec_opt.isEmpty()) {
                 QVariantHash vcopt;
                 for (QVariantMap::const_iterator cit = vcodec_opt.cbegin(); cit != vcodec_opt.cend(); ++cit) {

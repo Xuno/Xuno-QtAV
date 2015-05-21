@@ -19,8 +19,8 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
 
-#ifndef QTAV_AVINPUT_H
-#define QTAV_AVINPUT_H
+#ifndef QTAV_MediaIO_H
+#define QTAV_MediaIO_H
 
 #include <QtAV/QtAV_Global.h>
 #include <QtAV/FactoryDefine.h>
@@ -29,38 +29,55 @@
 
 namespace QtAV {
 
-typedef int AVInputId;
-class AVInput;
-FACTORY_DECLARE(AVInput)
+typedef int MediaIOId;
+class MediaIO;
+FACTORY_DECLARE(MediaIO)
 
-class AVInputPrivate;
-class Q_AV_EXPORT AVInput : public QObject
+class MediaIOPrivate;
+class Q_AV_EXPORT MediaIO : public QObject
 {
     Q_OBJECT
-    DPTR_DECLARE_PRIVATE(AVInput)
-    Q_DISABLE_COPY(AVInput)
+    DPTR_DECLARE_PRIVATE(MediaIO)
+    Q_DISABLE_COPY(MediaIO)
+    Q_ENUMS(AccessMode)
 public:
-    /// Registered AVInput::name(): "QIODevice", "QFile"
+    enum AccessMode {
+        Read, // default
+        Write
+    };
+
+    /// Registered MediaIO::name(): "QIODevice", "QFile"
     static QStringList builtInNames();
-    static AVInput* create(const QString& name);
+    static MediaIO* create(const QString& name);
     /*!
      * \brief createForProtocol
-     * If an AVInput subclass SomeInput.protocols() contains the protocol, return it's instance.
+     * If an MediaIO subclass SomeInput.protocols() contains the protocol, return it's instance.
      * "QFile" input has protocols "qrc"(and empty "" means "qrc")
-     * \return Null if none of registered AVInput supports the protocol
+     * \return Null if none of registered MediaIO supports the protocol
      */
-    static AVInput* createForProtocol(const QString& protocol);
+    static MediaIO* createForProtocol(const QString& protocol);
+    static MediaIO* createForUrl(const QString& url);
 
-    AVInput();
-    AVInput(QObject *parent);
-    virtual ~AVInput();
+    MediaIO();
+    MediaIO(QObject *parent);
+    virtual ~MediaIO();
     virtual QString name() const = 0;
     virtual void setUrl(const QString& url);
     QString url() const;
+    /*!
+     * \brief setAccessMode
+     * A MediaIO instance can be 1 mode, Read or Write. If !isWritable(), then set to Write will fail and mode does not change
+     * \return false if set failed
+     */
+    bool setAccessMode(AccessMode value);
+    AccessMode accessMode() const;
+
     /// supported protocols. default is empty
     virtual const QStringList& protocols() const;
     virtual bool isSeekable() const = 0;
+    virtual bool isWritable() const = 0;
     virtual qint64 read(char *data, qint64 maxSize) = 0;
+    virtual qint64 write(const char* data, qint64 maxSize) = 0;
     /*!
      * \brief seek
      * \param from
@@ -84,11 +101,12 @@ public:
     void* avioContext(); //const?
     void release(); //TODO: how to remove it?
 protected:
-    AVInput(AVInputPrivate& d, QObject* parent = 0);
+    MediaIO(MediaIOPrivate& d, QObject* parent = 0);
     virtual void onUrlChanged();
-    DPTR_DECLARE(AVInput)
+    DPTR_DECLARE(MediaIO)
 };
+Q_DECL_DEPRECATED typedef MediaIO AVInput; // for compatibility
 } //namespace QtAV
 //#include <QtCore/QMetaType>
-//Q_DECLARE_METATYPE(QtAV::AVInput*)
-#endif // QTAV_AVINPUT_H
+//Q_DECLARE_METATYPE(QtAV::MediaIO*)
+#endif // QTAV_MediaIO_H

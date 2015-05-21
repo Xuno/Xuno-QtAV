@@ -47,6 +47,7 @@ public:
     void initAudioStatistics(int s);
     void initVideoStatistics(int s);
     void initSubtitleStatistics(int s);
+    QVariantList getAudioTracksInfo(AVDemuxer* demuxer);
 
     bool setupAudioThread(AVPlayer *player);
     bool setupVideoThread(AVPlayer *player);
@@ -103,6 +104,7 @@ public:
     QVariant current_source, pendding_source;
     bool loaded; // for current source
     bool relative_time_mode;
+    // TODO: remove
     AVFormatContext	*fmt_ctx; //changed when reading a packet
     qint64 media_start_pts; // read from media stream
     qint64 media_end;
@@ -119,8 +121,11 @@ public:
     int timer_id; //notify position change and check AB repeat range. active when playing
 
     int audio_track, video_track, subtitle_track;
+    QString external_audio;
+    AVDemuxer audio_demuxer;
+    QVariantList audio_tracks, external_audio_tracks;
     BufferMode buffer_mode;
-    int buffer_value;
+    qint64 buffer_value;
     //the following things are required and must be set not null
     AVDemuxer demuxer;
     AVDemuxThread *read_thread;

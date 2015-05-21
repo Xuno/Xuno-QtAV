@@ -34,7 +34,7 @@ class QIODevice;
 
 namespace QtAV {
 
-class AVInput;
+class MediaIO;
 class AudioOutput;
 class VideoRenderer;
 class AVClock;
@@ -49,6 +49,7 @@ class Q_AV_EXPORT AVPlayer : public QObject
     Q_PROPERTY(bool asyncLoad READ isAsyncLoad WRITE setAsyncLoad NOTIFY asyncLoadChanged)
     Q_PROPERTY(qreal bufferProgress READ bufferProgress NOTIFY bufferProgressChanged)
     Q_PROPERTY(bool seekable READ isSeekable NOTIFY seekableChanged)
+    Q_PROPERTY(qint64 duration READ duration NOTIFY durationChanged)
     Q_PROPERTY(qint64 position READ position WRITE setPosition NOTIFY positionChanged)
     Q_PROPERTY(qint64 startPosition READ startPosition WRITE setStartPosition NOTIFY startPositionChanged)
     Q_PROPERTY(qint64 stopPosition READ stopPosition WRITE setStopPosition NOTIFY stopPositionChanged)
@@ -85,8 +86,8 @@ public:
      * \brief setInput
      * AVPlayer's demuxer takes the ownership. Call it when player is stopped.
      */
-    void setInput(AVInput* in);
-    AVInput* input() const;
+    void setInput(MediaIO* in);
+    MediaIO* input() const;
 
     // force reload even if already loaded. otherwise only reopen codecs if necessary
     QTAV_DEPRECATED bool load(const QString& path, bool reload = true); //deprecated
@@ -159,12 +160,44 @@ public:
     //0: play once. N: play N+1 times. <0: infinity
     int repeat() const; //or repeatMax()?
     int currentRepeat() const;
-    /*
+    /*!
+     * \brief setExternalAudio
+     * set audio track from an external audio stream. this will try to load the external audio and
+     * select the 1st audio stream. If no error happens, the external audio stream will be set to
+     * current audio track.
+     * If external audio stream <0 before play, stream is auto selected
+     * You have to manually empty value to unload the external audio!
+     * \param file external audio file path. Set empty to use internal audio tracks. TODO: reset stream number if switch to internal
+     * \return true if no error happens
+     */
+    bool setExternalAudio(const QString& file);
+    QString externalAudio() const;
+    /*!
+     * \brief externalAudioTracks
+     * [ {id: 0, file: abc.dts, language: eng, title: xyz}, ...]
+     * id: used for setAudioStream(id)
+     */
+    QVariantList externalAudioTracks() const;
+    QVariantList internalAudioTracks() const;
+    /*!
+     * \brief setAudioStream
+     * set an external audio file and stream number as audio track
+     * \param file external audio file. set empty to use internal audio tracks
+     * \param n audio stream number n=0, 1, ....
+     * TODO: if internal audio stream <0, disable audio
+     * \return false if fail
+     */
+    bool setAudioStream(const QString& file, int n = 0);
+    /*!
      * set audio/video/subtitle stream to n. n=0, 1, 2..., means the 1st, 2nd, 3rd audio/video/subtitle stream
      * If a new file is set(except the first time) then a best stream will be selected. If the file not changed,
      * e.g. replay, then the stream not change
      * return: false if stream not changed, not valid
      * TODO: rename to track instead of stream
+     */
+    /*!
+     * \brief setAudioStream
+     * Set audio stream number in current media or external audio file
      */
     bool setAudioStream(int n);
     bool setVideoStream(int n);
@@ -361,7 +394,7 @@ public slots:
      * \brief buffered
      * Current buffered value in msecs, bytes or packet count depending on bufferMode()
      */
-    int buffered() const;
+    qint64 buffered() const;
     void setBufferMode(BufferMode mode);
     BufferMode bufferMode() const;
     /*!
@@ -370,7 +403,7 @@ public slots:
      * Set before playback starts.
      * \param value <0: auto; BufferBytes: bytes, BufferTime: msecs, BufferPackets: packets count
      */
-    void setBufferValue(int value);
+    void setBufferValue(qint64 value);
     int bufferValue() const;
 
     /*!
@@ -397,6 +430,10 @@ Q_SIGNALS:
     void sourceChanged();
     void loaded(); // == mediaStatusChanged(QtAV::LoadedMedia)
     void mediaStatusChanged(QtAV::MediaStatus status); //explictly use QtAV::MediaStatus
+    /*!
+     * \brief durationChanged emit when media is loaded/unloaded
+     */
+    void durationChanged(qint64);
     void error(const QtAV::AVError& e); //explictly use QtAV::AVError in connection for Qt4 syntax
     void paused(bool p);
     void started();
@@ -416,6 +453,8 @@ Q_SIGNALS:
     void contrastChanged(int val);
     void hueChanged(int val);
     void saturationChanged(int val);
+    void internalAudioTracksChanged(const QVariantList& tracks);
+    void externalAudioTracksChanged(const QVariantList& tracks);
 private Q_SLOTS:
     void loadInternal(); // simply load
     void unloadInternal();

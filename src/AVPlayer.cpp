@@ -32,7 +32,7 @@
 #include "QtAV/AVDemuxer.h"
 #include "QtAV/Packet.h"
 #include "QtAV/AudioDecoder.h"
-#include "QtAV/AVInput.h"
+#include "QtAV/MediaIO.h"
 #include "QtAV/VideoRenderer.h"
 #include "QtAV/AVClock.h"
 #include "QtAV/VideoCapture.h"
@@ -46,7 +46,7 @@
 #include "QtAV/private/AVCompat.h"
 #include "utils/Logger.h"
 
-Q_DECLARE_METATYPE(QtAV::AVInput*)
+Q_DECLARE_METATYPE(QtAV::MediaIO*)
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
 Q_DECLARE_METATYPE(QIODevice*)
 #endif
@@ -397,7 +397,7 @@ void AVPlayer::setIODevice(QIODevice* device)
     } else {
         if (d->current_source.canConvert<QIODevice*>()) {
             d->reset_state = d->current_source.value<QIODevice*>() != device;
-        } else { // AVInput
+        } else { // MediaIO
             d->reset_state = true;
         }
     }
@@ -409,7 +409,7 @@ void AVPlayer::setIODevice(QIODevice* device)
     }
 }
 
-void AVPlayer::setInput(AVInput *in)
+void AVPlayer::setInput(MediaIO *in)
 {
     // TODO: d->reset_state = d->demuxer2.setMedia(in);
     if (d->current_source.type() == QVariant::String) {
@@ -417,25 +417,25 @@ void AVPlayer::setInput(AVInput *in)
     } else {
         if (d->current_source.canConvert<QIODevice*>()) {
             d->reset_state = true;
-        } else { // AVInput
-            d->reset_state = d->current_source.value<QtAV::AVInput*>() != in;
+        } else { // MediaIO
+            d->reset_state = d->current_source.value<QtAV::MediaIO*>() != in;
         }
     }
     d->loaded = false;
-    d->current_source = QVariant::fromValue<QtAV::AVInput*>(in);
+    d->current_source = QVariant::fromValue<QtAV::MediaIO*>(in);
     if (d->reset_state) {
         d->audio_track = d->video_track = d->subtitle_track = 0;
         emit sourceChanged();
     }
 }
 
-AVInput* AVPlayer::input() const
+MediaIO* AVPlayer::input() const
 {
     if (d->current_source.type() == QVariant::String)
         return 0;
-    if (!d->current_source.canConvert<QtAV::AVInput*>())
+    if (!d->current_source.canConvert<QtAV::MediaIO*>())
         return 0;
-    return d->current_source.value<QtAV::AVInput*>();
+    return d->current_source.value<QtAV::MediaIO*>();
 }
 
 VideoCapture* AVPlayer::videoCapture() const
@@ -555,8 +555,8 @@ bool AVPlayer::load(bool reload)
         } else {
             if (d->current_source.canConvert<QIODevice*>()) {
                 reload = d->demuxer.ioDevice() != d->current_source.value<QIODevice*>();
-            } else { // AVInput
-                reload = d->demuxer.input() != d->current_source.value<QtAV::AVInput*>();
+            } else { // MediaIO
+                reload = d->demuxer.input() != d->current_source.value<QtAV::MediaIO*>();
             }
         }
         reload = reload || !d->demuxer.isLoaded();
@@ -601,16 +601,21 @@ void AVPlayer::loadInternal()
     } else {
         if (d->current_source.canConvert<QIODevice*>()) {
             d->demuxer.setMedia(d->current_source.value<QIODevice*>());
-        } else { // AVInput
-            d->demuxer.setMedia(d->current_source.value<QtAV::AVInput*>());
+        } else { // MediaIO
+            d->demuxer.setMedia(d->current_source.value<QtAV::MediaIO*>());
         }
     }
     d->loaded = d->demuxer.load();
     if (!d->loaded) {
         d->statistics.reset();
         qWarning("Load failed!");
+        d->audio_tracks = d->getAudioTracksInfo(&d->demuxer);
+        Q_EMIT internalAudioTracksChanged(d->audio_tracks);
         return;
     }
+    d->audio_tracks = d->getAudioTracksInfo(&d->demuxer);
+    Q_EMIT internalAudioTracksChanged(d->audio_tracks);
+    Q_EMIT durationChanged(duration());
     // setup parameters from loaded media
     d->fmt_ctx = d->demuxer.formatContext();
     d->media_start_pts = d->demuxer.startTime();
@@ -664,7 +669,7 @@ void AVPlayer::unloadInternal()
     if (isPlaying())
         stop();
 
-    if (d->adec) {
+    if (d->adec) { // FIXME: crash if audio external=>internal then replay
         d->adec->setCodecContext(0);
         delete d->adec;
         d->adec = 0;
@@ -675,6 +680,9 @@ void AVPlayer::unloadInternal()
         d->vdec = 0;
     }
     d->demuxer.unload();
+    Q_EMIT durationChanged(0LL);
+    d->audio_tracks = d->getAudioTracksInfo(&d->demuxer);
+    Q_EMIT internalAudioTracksChanged(d->audio_tracks);
 }
 
 void AVPlayer::setRelativeTimeMode(bool value)
@@ -837,30 +845,135 @@ void AVPlayer::setRepeat(int max)
     emit repeatChanged(d->repeat_max);
 }
 
-
-bool AVPlayer::setAudioStream(int n)
+bool AVPlayer::setExternalAudio(const QString &file)
 {
-    if (n < 0)
+    // TODO: update statistics
+    int stream = currentAudioStream();
+    if (!isLoaded() && stream < 0)
+        stream = 0;
+    return setAudioStream(file, stream);
+}
+
+QString AVPlayer::externalAudio() const
+{
+    return d->external_audio;
+}
+
+QVariantList AVPlayer::externalAudioTracks() const
+{
+    return d->external_audio_tracks;
+}
+
+QVariantList AVPlayer::internalAudioTracks() const
+{
+    return d->audio_tracks;
+}
+
+bool AVPlayer::setAudioStream(const QString &file, int n)
+{
+    if (n < 0) // TODO: disable audio
         return false;
-    if (d->audio_track == n)
+    QString path(file);
+    // QFile does not support "file:"
+    if (path.startsWith("file:"))
+        path = getLocalPath(path);
+    if (d->audio_track == n && d->external_audio == path)
         return true;
-    if (isLoaded()) {
-        if (n >= d->demuxer.audioStreams().size())
-            return false;
+    const bool audio_changed = d->audio_demuxer.fileName() != path;
+    if (path.isEmpty()) {
+        if (isLoaded()) {
+            if (n >= d->demuxer.audioStreams().size()) {
+                qWarning("Invalid audio stream number %d/%d", n, d->demuxer.audioStreams().size()-1);
+                return false;
+            }
+        }
+        if (audio_changed) {
+            d->external_audio_tracks = QVariantList();
+            Q_EMIT externalAudioTracksChanged(d->external_audio_tracks);
+        }
+    } else {
+        if (!audio_changed && d->audio_demuxer.isLoaded()) {
+            if (n >= d->audio_demuxer.audioStreams().size()) {
+                qWarning("Invalid external audio stream number %d/%d", n, d->audio_demuxer.audioStreams().size()-1);
+                return false;
+            }
+        }
     }
     d->audio_track = n;
-    if (!isPlaying())
-        return true;
+    d->external_audio = path;
+    d->audio_demuxer.setMedia(d->external_audio);
+    struct scoped_pause {
+        scoped_pause() : was_paused(false), player(0) {}
+        void set(bool old, AVPlayer* p) {
+            was_paused = old;
+            player = p;
+            if (player)
+                player->pause(true);
+        }
+        ~scoped_pause() {
+            if (player && !was_paused) {
+                player->pause(false);
+            }
+        }
+        bool was_paused;
+        AVPlayer* player;
+    };
+    scoped_pause sp;
+    if (!isPlaying()) {
+        qDebug("set audio track when not playing");
+        goto update_demuxer;
+    }
     // pause demuxer, clear queues, set demuxer stream, set decoder, set ao, resume
-    bool p = isPaused();
-    pause(true);
-    if (!d->setupAudioThread(this)) {
+    sp.set(isPaused(), this); //before read_thread->pause(true, true)
+    if (!d->external_audio.isEmpty())
+        d->read_thread->pause(true, true); // wait to safe set ademuxer
+
+update_demuxer:
+     if (!d->external_audio.isEmpty()) {
+        if (audio_changed || !d->audio_demuxer.isLoaded()) {
+            if (!d->audio_demuxer.load()) {
+                qWarning("Failed to load audio track %d@%s", d->audio_track, d->external_audio.toUtf8().constData());
+                d->external_audio_tracks = QVariantList();
+                Q_EMIT externalAudioTracksChanged(d->external_audio_tracks);
+                return false;
+            }
+            d->external_audio_tracks = d->getAudioTracksInfo(&d->audio_demuxer);
+            Q_EMIT externalAudioTracksChanged(d->external_audio_tracks);
+            d->read_thread->setAudioDemuxer(&d->audio_demuxer);
+        }
+        if (d->audio_track < 0) {
+            d->audio_track = d->audio_demuxer.audioStream();
+        }
+    }
+    if (!isPlaying()) {
+        if (d->external_audio.isEmpty()) {
+            if (audio_changed) {
+                d->read_thread->setAudioDemuxer(0);
+                d->audio_demuxer.unload();
+            }
+        }
+        return true;
+    }
+
+    if (!d->setupAudioThread(this)) { // adec will be deleted. so audio_demuxer must unload later
         stop();
         return false;
     }
-    if (!p)
-        pause(false);
+
+    if (d->external_audio.isEmpty()) {
+        if (audio_changed) {
+            d->read_thread->setAudioDemuxer(0);
+            d->audio_demuxer.unload();
+        }
+    } else {
+        d->audio_demuxer.seek(position());
+    }
     return true;
+}
+
+bool AVPlayer::setAudioStream(int n)
+{
+    return setAudioStream(externalAudio(), n);
 }
 
 bool AVPlayer::setVideoStream(int n)
@@ -1321,10 +1434,10 @@ qreal AVPlayer::bufferProgress() const
     return buf ? buf->bufferProgress() : 0;
 }
 
-int AVPlayer::buffered() const
+qint64 AVPlayer::buffered() const
 {
     const PacketBuffer* buf = d->read_thread->buffer();
-    return buf ? buf->buffered() : 0;
+    return buf ? buf->buffered() : 0LL;
 }
 
 void AVPlayer::setBufferMode(BufferMode mode)
@@ -1337,7 +1450,7 @@ BufferMode AVPlayer::bufferMode() const
     return d->buffer_mode;
 }
 
-void AVPlayer::setBufferValue(int value)
+void AVPlayer::setBufferValue(qint64 value)
 {
     if (d->buffer_value == value)
         return;
