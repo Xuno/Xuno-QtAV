@@ -912,13 +912,9 @@ void MainWindow::play(const QString &name)
     mpPlayer->setPriority(idsFromNames(Config::instance().decoderPriorityNames()));
     mpPlayer->setOptionsForAudioCodec(mpDecoderConfigPage->audioDecoderOptions());
     mpPlayer->setOptionsForVideoCodec(mpDecoderConfigPage->videoDecoderOptions());
-    if (!applyCustomFPS()){
-        mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
-    }
 
     if (isFileImgageSequence()){
-        if (Config::instance().avformatOptionsEnabledI())
-            mpPlayer->setOptionsForFormat(Config::instance().avformatOptionsI());
+        applyCustomFPS(); //set options  avformatOptions included
     }else{
         if (Config::instance().avformatOptionsEnabled())
             mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
@@ -2002,7 +1998,8 @@ bool MainWindow::isFileImgageSequence(){
 bool MainWindow::applyCustomFPS(){
     bool ret=false; // return true if custom fps was applied
     if (isFileImgageSequence() && (mCustomFPS>0)){
-        QVariantHash tmp=Config::instance().avformatOptions();
+        QVariantHash tmp;
+        if (Config::instance().avformatOptionsEnabledI()) tmp=Config::instance().avformatOptionsI();
         tmp["framerate"]=mCustomFPS;
         mpPlayer->setOptionsForFormat(tmp);
         ret=true;
@@ -2069,11 +2066,13 @@ bool MainWindow::applyCustomFPS(){
  void MainWindow::analyeUsedFPS()
  {
      Statistics st=mpPlayer->statistics();
-     qDebug()<<"analyeUsedFPS"<<st.video.frame_rate;
+     qDebug()<<"analyeUsedFPS"<<st.video.frame_rate<<mCustomFPS;
      if (mCustomFPS==0.)
          if (mpImgSeqExtract){
              //Statistics st=mpPlayer->statistics();
-             if (st.video.frame_rate>0.)
+             if (st.video.frame_rate>0.){
+                 qDebug()<<"setFPS analyeUsedFPS video.frame_rate"<<st.video.frame_rate;
                  mpImgSeqExtract->setFPS(st.video.frame_rate);
+             }
          }
  }
