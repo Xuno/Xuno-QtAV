@@ -986,6 +986,15 @@ void MainWindow::setFileName(const QString fname)
     }
 }
 
+void MainWindow::setExtractTask(const QString fname){
+    if (!fname.isEmpty()){
+        qDebug()<<"MainWindow :: setExtractTask"<<fname;
+        onImageSequenceToogledFrameExtractor(true);
+        if (mpImgSeqExtract) {
+            mpImgSeqExtract->setOutputPath(fname);
+        }
+    }
+}
 
 void MainWindow::setVideoDecoderNames(const QStringList &vd)
 {

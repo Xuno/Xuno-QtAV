@@ -75,6 +75,7 @@ public:
     void setFpsSequenceFrame(const double fps);
     void setRepeatLoop(const bool loop);
     void setFileName(const QString fname);
+    void setExtractTask(const QString fname);
 
 public slots:
     void play(const QString& name);

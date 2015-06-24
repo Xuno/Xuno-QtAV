@@ -224,6 +224,14 @@ int main(int argc, char *argv[])
         }
     }
 
+    op = options.option("ep");
+    if (op.isSet()) {
+        QString fname = op.value().toString();
+        if (!fname.isEmpty()){
+            qDebug()<<"extract task"<<fname;
+            window.setExtractTask(fname);
+        }
+    }
 
     op = options.option("vd");
     if (op.isSet()) {

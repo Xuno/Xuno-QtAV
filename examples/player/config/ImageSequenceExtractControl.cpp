@@ -461,6 +461,10 @@ void ImgSeqExtractControl::on_btSelectOutputPath_clicked()
     }
 }
 
+void ImgSeqExtractControl::setOutputPath(QString name){
+    OutputPath->setText(name);
+}
+
 void ImgSeqExtractControl::on_buttonSetStartSeekFrame_clicked()
 {
     QTime t=frameToTime(ImageSequenceStartFrame->value());

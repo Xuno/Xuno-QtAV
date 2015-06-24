@@ -47,6 +47,7 @@ QOptions get_common_options()
             ("fps",0.0,"set fps for sequence of images")
             ("loop","set loop for sequence of images")
             ("scale",0.0,"set scale for sequence of images")
+            ("ep","","extract path")
             ("qmljsdebugger")
             ;
     return ops;

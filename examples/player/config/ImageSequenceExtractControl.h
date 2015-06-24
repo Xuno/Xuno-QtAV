@@ -60,6 +60,7 @@ public:
     qint64 EndPosExtract();
     bool regionPlaying();
     void setMovieName(QString name);
+    void setOutputPath(QString name);
 
 public slots:
     void onPaused();
