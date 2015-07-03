@@ -149,12 +149,13 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
     sizePolicy.setVerticalStretch(0);
     sizePolicy.setHeightForWidth(cb_OutputType->sizePolicy().hasHeightForWidth());
     cb_OutputType->setSizePolicy(sizePolicy);
-    cb_OutputType->setMinimumSize(QSize(60, 0));
+    cb_OutputType->setMinimumSize(QSize(45, 0));
 
     horizontalLayout_6->addWidget(cb_OutputType);
 
     cbColorTypeOutput = new QComboBox(verticalLayoutWidget);
     cbColorTypeOutput->setObjectName(QStringLiteral("cbColorTypeOutput"));
+    cbColorTypeOutput->setMinimumSize(QSize(55, 0));
 
     horizontalLayout_6->addWidget(cbColorTypeOutput);
     horizontalLayout_6->addItem(new QSpacerItem(1, 1, QSizePolicy::Minimum, QSizePolicy::Minimum));
@@ -195,7 +196,22 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
 
     hlPrefix_3->addWidget(OutputFileNumberingSeperator, 0, Qt::AlignRight);
 
-    hlPrefix_3->addItem(new QSpacerItem(8, 1, QSizePolicy::Minimum, QSizePolicy::Minimum));
+    hlPrefix_3->addItem(new QSpacerItem(6, 1, QSizePolicy::Minimum, QSizePolicy::Minimum));
+
+    cbOutputFileSizeUse = new QCheckBox(verticalLayoutWidget);
+    cbOutputFileSizeUse->setObjectName(QStringLiteral("cbOutputFileSizeUse"));
+    cbOutputFileSizeUse->setChecked(false);
+
+    hlPrefix_3->addWidget(cbOutputFileSizeUse);
+
+    cbOutputFileDepthUse = new QCheckBox(verticalLayoutWidget);
+    cbOutputFileDepthUse->setObjectName(QStringLiteral("cbOutputFileDepthUse"));
+    cbOutputFileDepthUse->setChecked(false);
+
+    hlPrefix_3->addWidget(cbOutputFileDepthUse);
+
+
+    hlPrefix_3->addItem(new QSpacerItem(4, 1, QSizePolicy::Minimum, QSizePolicy::Minimum));
 
 
     buttonExtractFrames = new QPushButton(verticalLayoutWidget);
@@ -232,9 +248,22 @@ void ImgSeqExtractControl::retranslateUi()
     setupColorTypeOutput();
     QObject::connect(cb_OutputType,SIGNAL(currentIndexChanged(int)),SLOT(setupColorTypeOutput(int)));
     labelFilePrefix->setText(QApplication::translate("ImageSequenceExtract", "Prefix:", 0));
+    OutputFileNumberingPrefix->setText("img");
     labelFileSeparator->setText(QApplication::translate("ImageSequenceExtract", "Separator:", 0));
+    OutputFileNumberingSeperator->setText("-");
     buttonExtractFrames->setStyleSheet(buttTextPadding);
     buttonExtractFrames->setText(QApplication::translate("ImageSequenceExtract", "Extract Frames", 0));
+
+    cbOutputFileSizeUse->setText(QApplication::translate("ImageSequenceExtract", "Size", 0));
+    cbOutputFileDepthUse->setText(QApplication::translate("ImageSequenceExtract", "Depth", 0));
+
+#ifndef QT_NO_TOOLTIP
+    cbOutputFileSizeUse->setToolTip(QApplication::translate("ImageSequenceExtract", "Use information about image dimension in file name", 0));
+    cbOutputFileDepthUse->setToolTip(QApplication::translate("ImageSequenceExtract", "Use information about color depth in file name", 0));
+#endif // QT_NO_TOOLTIP
+
+
+
     mpPlayPauseBtn->setToolTip(QApplication::translate("ImageSequenceExtract", "play selected region form start to end frames", 0));
 } // retranslateUi
 
@@ -485,24 +514,41 @@ void ImgSeqExtractControl::on_buttonExtractFrames_clicked()
     if (ImageSequenceStartFrame->isEnabled() && ImageSequenceEndFrame->isEnabled()){
         emit pause();
         QString file_prefix=OutputFileNumberingPrefix->text();
-        if (file_prefix.isEmpty()) file_prefix="img";
+        //if (file_prefix.isEmpty()) file_prefix="img";
         QString file_separator=OutputFileNumberingSeperator->text();
-        if (file_separator.isEmpty()) file_separator="-";
+        //if (file_separator.isEmpty()) file_separator="-";
         QString file_ext=cb_OutputType->currentText();
         int sf=getStartFrame();
         QString sft=frameToTime(sf).toString("hh:mm:ss.zzz");
         int tf=getTotalFrames();
         int idig=(QString("%1").arg(timeToFrame(isEndTime))).count();
+        QString informatonMedia="";
+        QString colordepth=getColorDepth(true);
+        if (cbOutputFileSizeUse->isChecked()){
+            if (outputDimension.isValid()){
+                informatonMedia.append(QString("%1%2x%3").arg(file_prefix.isEmpty()?"":dataImageSeparator).arg(outputDimension.width()).arg(outputDimension.height()));
+            }
+        }
+        if (cbOutputFileDepthUse->isChecked()){
+            if (!colordepth.isEmpty()){
+                QString sep=(file_prefix.isEmpty() && informatonMedia.isEmpty())?"":dataImageSeparator;
+                informatonMedia.append(QString("%1%2bit").arg(sep).arg(colordepth));
+            }
+        }
+
+        if (!informatonMedia.isEmpty() && file_separator.isEmpty()) {
+           informatonMedia.append(QString("%1").arg(dataImageSeparator));
+        }
 
         QString firstfilename=QString("%1").arg(sf,idig,10,QLatin1Char('0'));
-        QString outputfirstframe=QString().append(file_path).append(QString(QDir::separator())).append(file_prefix).append(file_separator).append(firstfilename).append(file_ext);
+        QString outputfirstframe=QString().append(file_path).append(QString(QDir::separator())).append(file_prefix).append(informatonMedia).append(file_separator).append(firstfilename).append(file_ext);
         qDebug()<<"do checkDirectoryPermissions";
         if (!checkDirectoryPermissions(outputfirstframe)) return;
         qDebug()<<"pass checkDirectoryPermissions";
         QString digits=QString("%").append(QString("%1d").arg(idig,2,10,QLatin1Char('0')));
-        QString output=QString().append(file_path).append(QString(QDir::separator())).append(file_prefix).append(file_separator).append(digits).append(file_ext);
+        QString output=QString().append(file_path).append(QString(QDir::separator())).append(file_prefix).append(informatonMedia).append(file_separator).append(digits).append(file_ext);
         QString imgParams;
-        QString colordepth=getColorDepth();
+        colordepth=getColorDepth(false);
         if (!colordepth.isEmpty())
             imgParams.append("-pix_fmt|").append(colordepth);
         QString exefile=QDir::toNativeSeparators(qApp->applicationDirPath()).append(QDir::separator()).append(ffmpegexecute);
@@ -597,18 +643,22 @@ void ImgSeqExtractControl::setupColorTypeOutput(int id)
     if (ImageTypes_16bit.contains(cType)) cbColorTypeOutput->addItem("16-bit");
 }
 
-QString ImgSeqExtractControl::getColorDepth()
+QString ImgSeqExtractControl::getColorDepth(bool numberOutput)
 {
     QString file_colorspace=cbColorTypeOutput->currentText();
-    int cd=file_colorspace.split("-")[0].toInt();
     QString pixfmt;
-    switch (cd) {
-    case 8:
-        pixfmt="rgb24";
-        break;
-    case 16:
-        pixfmt="rgb48le";
-        break;
+    int cd=file_colorspace.split("-")[0].toInt();
+    if (!numberOutput){
+        switch (cd) {
+        case 8:
+            pixfmt="rgb24";
+            break;
+        case 16:
+            pixfmt="rgb48le";
+            break;
+        }
+    }else{
+        pixfmt=QString("%1").arg(cd);
     }
     return pixfmt;
 }
@@ -732,4 +782,9 @@ void ImgSeqExtractControl::customStyles()
     } \
     ");
 
+}
+void ImgSeqExtractControl::setOutputDimension(QSize size){
+    if (size.isValid()){
+        outputDimension=size;
+    }
 }

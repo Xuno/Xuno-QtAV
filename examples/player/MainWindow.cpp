@@ -1043,6 +1043,10 @@ void MainWindow::pause()
         qDebug("isPaused = %d", mpPlayer->isPaused());
         mpPlayer->pause(true);
     }
+    if (mpImgSeqExtract) {
+        Statistics st=mpPlayer->statistics();
+        mpImgSeqExtract->setOutputDimension(QSize(st.video_only.width,st.video_only.height));
+    }
 }
 
 void MainWindow::showNextOSD()

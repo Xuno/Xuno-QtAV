@@ -10,6 +10,7 @@
 #include <QApplication>
 #include <QButtonGroup>
 #include <QComboBox>
+#include <QCheckBox>
 #include <QDialog>
 #include <QFileDialog>
 #include <QHBoxLayout>
@@ -61,6 +62,7 @@ public:
     bool regionPlaying();
     void setMovieName(QString name);
     void setOutputPath(QString name);
+    void setOutputDimension(QSize size);
 
 public slots:
     void onPaused();
@@ -114,6 +116,9 @@ private:
     QPixmap mPausePixmap;
     Button *mpPlayPauseBtn;
 
+    QCheckBox *cbOutputFileSizeUse;
+    QCheckBox *cbOutputFileDepthUse;
+
     const QString timeFormat ="hh:mm:ss.zzz";
     QTime isStartTime,isEndTime;
     qint64 isStartPosExtract, isEndPosExtract;
@@ -130,10 +135,13 @@ private:
     QProgressBar *EXEprogressProgressBar=0;
     QProgressBar *EXEprogressFpsBar=0;
 
+    QSize outputDimension=QSize(0,0);
+
     const QStringList ImageTypes_ffmpeg = QStringList()
      <<  "bmp"
      <<  "jpg"
      <<  "png"
+     <<  "dpx"
      <<  "tif";
 
     const QStringList ImageTypes_ext = QStringList()
@@ -149,15 +157,18 @@ private:
     const QStringList ImageTypes = QStringList(ImageTypes_ffmpeg);
     const QStringList ImageTypes_8bit = QStringList(ImageTypes);
     const QStringList ImageTypes_10bit = QStringList();
+//     <<  "dpx";
 //    <<  "tif"
-//    <<  "dpx"
 //    <<  "jp2"
 //    <<  "jxr"
 //    <<  "png"
 //    <<  "tga";
-    const QStringList ImageTypes_12bit = QStringList(ImageTypes_10bit);
-    const QStringList ImageTypes_14bit = QStringList(ImageTypes_10bit);
-    const QStringList ImageTypes_16bit = QStringList(ImageTypes_10bit);
+    const QStringList ImageTypes_12bit = QStringList();
+    const QStringList ImageTypes_14bit = QStringList();
+    const QStringList ImageTypes_16bit = QStringList()
+       <<  "png"
+       <<  "dpx"
+       <<  "tif";
 
     void setupOutputType();
     void detectFFMpegOutputFrames();
@@ -171,9 +182,11 @@ private:
 #endif
 
     void ExecuteExtApp(QString file,bool searchEnv, QString param);
-    QString getColorDepth();
+    QString getColorDepth(bool numberOutput=false);
     void customStyles();
     bool checkDirectoryPermissions(QString pathfile);
+
+    const QString dataImageSeparator="_";
 
 
 private slots:
