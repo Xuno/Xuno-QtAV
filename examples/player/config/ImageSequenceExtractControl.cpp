@@ -621,10 +621,7 @@ void ImgSeqExtractControl::setMovieName(QString name)
     movieName=name;//QDir::toNativeSeparators
 }
 
-void ImgSeqExtractControl::setupOutputType()
-{
-    cb_OutputType->clear();
-
+QStringList ImgSeqExtractControl::getImageTypes(){
     QStringList IT = QStringList();
     IT.append(ImageTypes_8bit);
     IT.append(ImageTypes_10bit);
@@ -632,7 +629,15 @@ void ImgSeqExtractControl::setupOutputType()
     IT.append(ImageTypes_14bit);
     IT.append(ImageTypes_16bit);
     IT.removeDuplicates();
+    IT.sort();
+    return IT;
+}
 
+
+void ImgSeqExtractControl::setupOutputType()
+{
+    cb_OutputType->clear();
+    QStringList IT = getImageTypes();
     for (int i=0; i<IT.size(); i++)
     {
         cb_OutputType->addItem(QString(".").append(IT.at(i)));

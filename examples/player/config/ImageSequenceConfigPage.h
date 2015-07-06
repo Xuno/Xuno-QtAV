@@ -88,6 +88,10 @@ private:
     bool playing_start;
 
     const QStringList ImageTypes = QStringList()
+    <<  "420"
+    <<  "422"
+    <<  "RGB"
+    <<  "RGBA"
     <<  "bmp"
     <<  "cr2"
     <<  "dng"

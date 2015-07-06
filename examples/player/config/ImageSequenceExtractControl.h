@@ -181,6 +181,7 @@ private:
     void detectFFMpegOutputFrames();
     void updateProgressBar(int frame);
     void updateFpsBar(int val);
+    QStringList getImageTypes();
 
 #ifdef Q_OS_WIN32
     const QString ffmpegexecute="ffmpeg.exe";
