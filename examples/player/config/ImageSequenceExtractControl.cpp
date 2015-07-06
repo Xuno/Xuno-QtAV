@@ -648,10 +648,25 @@ QString ImgSeqExtractControl::getColorDepth(bool numberOutput)
     QString file_colorspace=cbColorTypeOutput->currentText();
     QString pixfmt;
     int cd=file_colorspace.split("-")[0].toInt();
+
+    QString currentOutputType=cb_OutputType->currentText();
     if (!numberOutput){
         switch (cd) {
         case 8:
-            pixfmt="rgb24";
+            if (currentOutputType.endsWith("420")) {
+                pixfmt="yuv420p";
+            }else if (currentOutputType.endsWith("422")) {
+                pixfmt="yuv422p";
+            }else{
+                pixfmt="rgb24";
+            }
+            break;
+        case 10:
+            if (currentOutputType.endsWith("420")) {
+                pixfmt="yuv420p10le";
+            }else if (currentOutputType.endsWith("422")) {
+                pixfmt="yuv422p10le";
+            }
             break;
         case 16:
             pixfmt="rgb48le";
