@@ -63,6 +63,8 @@ private slots:
     void on_InputStartFrame_valueChanged(int arg1);
     void on_InputEndFrame_valueChanged(int arg1);
     void on_InputTotalFrame_valueChanged(int arg1);
+    void on_cbDecodeGeometryFromFileName_toggled(bool checked);
+    void on_InputPath_textChanged(const QString &text);
     void playImgages();
 
 private:
@@ -78,6 +80,7 @@ private:
     QSpinBox *InputStartFrame, *InputEndFrame, *InputTotalFrame;
     QLabel *InputAllTotalFrame;
     QCheckBox *checkLoop;
+    QComboBox *cbColorTypeInput;
     QPushButton *checkBoxExtractor;
     QDoubleSpinBox *InputScale;
     QCheckBox *cbDecodeGeometryFromFileName;
@@ -89,6 +92,8 @@ private:
     void analyzeFilename();
     int getDigetsFilename();
     bool playing_start;
+
+    const QString dataImageSeparator="_";
 
     const QStringList ImageTypes = QStringList()
     <<  "420"
@@ -113,6 +118,7 @@ private:
     QString getSequenceFilename(QString filename);
     void updateInputTotalFrameValue();
     void updateInputEndFrameValue();
+    void getGeometryFromFilename(QString filename, QSize &size, int &depth);
 
 };
 

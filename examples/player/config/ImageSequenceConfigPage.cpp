@@ -63,7 +63,7 @@ ImageSequenceConfigPage::ImageSequenceConfigPage(QWidget *parent) :
 
     horizontalLayout_2->addWidget(label_5);
 
-    QComboBox *cbColorTypeInput = new QComboBox();
+    cbColorTypeInput = new QComboBox();
     cbColorTypeInput->setObjectName(QStringLiteral("cbColorTypeInput"));
     cbColorTypeInput->clear();
     cbColorTypeInput->insertItems(0, QStringList()
@@ -489,21 +489,18 @@ int ImageSequenceConfigPage::getTotalNumberFilename(QString filename) {
     return filelist.size();
 }
 
+
 QString ImageSequenceConfigPage::getSequenceFilename(QString filename) {
     QFileInfo fileinfo = QFileInfo(filename);
+    if (fileinfo.completeBaseName().contains('%')) return filename;
     int digs=getDigetsFilename(filename);
     QString prefix="";
-    QRegularExpression re("^(\\D+)\\d+$");
-    QRegularExpressionMatch match = re.match(fileinfo.baseName());
-    if (match.hasMatch()) {
-        prefix=match.captured(1);
-    }
-
-    //qDebug()<<"playImgages :: getDigetsFilename :"<<digs;
+    prefix=fileinfo.completeBaseName();
+    prefix.chop(digs);
     QString newfilename=QDir::toNativeSeparators(fileinfo.absolutePath()).append(QDir::separator()).append(prefix).append("%0").append(QString("%1d.").arg(digs)).append(fileinfo.suffix());
-    //qDebug()<<"playImgages :: filename :"<<newfilename;
     return (newfilename);
 }
+
 
 void ImageSequenceConfigPage::updateInputTotalFrameValue(){
     qint32 start=InputStartFrame->value();
@@ -565,4 +562,53 @@ void ImageSequenceConfigPage::setEnableFrameExtractor(bool s)
 bool ImageSequenceConfigPage::getEnableFrameExtractor() const
 {
     return checkBoxExtractor->isChecked();
+}
+
+void ImageSequenceConfigPage::on_InputPath_textChanged(const QString &text){
+    Q_UNUSED(text);
+    on_cbDecodeGeometryFromFileName_toggled(cbDecodeGeometryFromFileName->isChecked());
+}
+
+
+
+void ImageSequenceConfigPage::on_cbDecodeGeometryFromFileName_toggled(bool checked)
+{
+    if (!checked){
+        inputImageH->setValue(0);
+        inputImageW->setValue(0);
+    }else{
+        QSize isize;
+        int iColorDepth=0;
+        getGeometryFromFilename(InputPath->text(),isize,iColorDepth);
+        qDebug()<<"on_cbDecodeGeometryFromFileName_toggled iColorDepth"<<iColorDepth;
+        if (!isize.isEmpty()){
+            inputImageH->setValue(isize.height());
+            inputImageW->setValue(isize.width());
+        }
+        if (iColorDepth>0){
+            int ci=cbColorTypeInput->findText(QString("%1").arg(iColorDepth),Qt::MatchStartsWith);
+            if (ci!=-1) cbColorTypeInput->setCurrentIndex(ci);
+        }
+    }
+}
+
+void ImageSequenceConfigPage::getGeometryFromFilename(QString filename, QSize &size, int &depth){
+    if (!filename.isEmpty()){
+        QFileInfo fileinfo = QFileInfo(filename);
+        if (&size){
+            QRegularExpression re = QRegularExpression(QString("%1(\\d+)x(\\d+)%1").arg(dataImageSeparator));
+            QRegularExpressionMatch match = re.match(fileinfo.completeBaseName());
+            if (match.hasMatch()) {
+                size.setWidth(match.captured(1).toInt());
+                size.setHeight(match.captured(2).toInt());
+            }
+        }
+        if (&depth){
+            QRegularExpression re = QRegularExpression(QString("%1(\\d+)bit").arg(dataImageSeparator));
+            QRegularExpressionMatch match = re.match(fileinfo.completeBaseName());
+            if (match.hasMatch()) {
+                depth=match.captured(1).toInt();
+            }
+        }
+    }
 }
