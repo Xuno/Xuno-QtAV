@@ -171,6 +171,8 @@ private:
     const QStringList ImageTypes_12bit = QStringList();
     const QStringList ImageTypes_14bit = QStringList();
     const QStringList ImageTypes_16bit = QStringList()
+       <<  "RGB"
+       <<  "RGBA"
        <<  "png"
        <<  "dpx"
        <<  "tif";

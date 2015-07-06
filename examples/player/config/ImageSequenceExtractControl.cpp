@@ -276,9 +276,9 @@ ImgSeqExtractControl::~ImgSeqExtractControl()
 
 void ImgSeqExtractControl::RecalculateParentHeight(bool visible)
 {
-  if (parentWidget()){
-      parentWidget()->setMaximumHeight(baseParentMaxHeight+(visible?height():0));
-  }
+    if (parentWidget()){
+        parentWidget()->setMaximumHeight(baseParentMaxHeight+(visible?height():0));
+    }
 }
 
 void ImgSeqExtractControl::setVisible(bool visible)
@@ -354,7 +354,7 @@ int ImgSeqExtractControl::getEndFrame() const
 
 void ImgSeqExtractControl::calcStartFrame()
 {
-  setStartFrame(getTotalFrames()-getEndFrame()+1);
+    setStartFrame(getTotalFrames()-getEndFrame()+1);
 }
 
 
@@ -388,14 +388,14 @@ void ImgSeqExtractControl::calcEndFrame(QTime t)
 
 void ImgSeqExtractControl::calcTotalFrames()
 {
-  setTotalFrames(getEndFrame()-getStartFrame()+1);
+    setTotalFrames(getEndFrame()-getStartFrame()+1);
 }
 
 
 void ImgSeqExtractControl::setFPS(float fps)
 {
-  isFPS=fps;
-  qDebug()<<"ImgSeqExtractControl::setFPS"<<isFPS;
+    isFPS=fps;
+    qDebug()<<"ImgSeqExtractControl::setFPS"<<isFPS;
 }
 
 qint64 ImgSeqExtractControl::StartPosExtract()
@@ -485,8 +485,8 @@ void ImgSeqExtractControl::on_btSelectOutputPath_clicked()
     QString prevPath="E:\\public\\Videos\\OWN\\work\\image-seq\\testout";//= config.getLastUsedPath();
     QString directory = QDir::toNativeSeparators(QFileDialog::getExistingDirectory(this,tr("Directory path for exctract"), prevPath, QFileDialog::ShowDirsOnly));
     if (!directory.isEmpty()){
-         qDebug()<<"on_btSelectOutputPath_clicked"<<directory;
-         OutputPath->setText(directory);
+        qDebug()<<"on_btSelectOutputPath_clicked"<<directory;
+        OutputPath->setText(directory);
     }
 }
 
@@ -537,7 +537,7 @@ void ImgSeqExtractControl::on_buttonExtractFrames_clicked()
         }
 
         if (!informatonMedia.isEmpty() && file_separator.isEmpty()) {
-           informatonMedia.append(QString("%1").arg(dataImageSeparator));
+            informatonMedia.append(QString("%1").arg(dataImageSeparator));
         }
 
         QString firstfilename=QString("%1").arg(sf,idig,10,QLatin1Char('0'));
@@ -624,17 +624,26 @@ void ImgSeqExtractControl::setMovieName(QString name)
 void ImgSeqExtractControl::setupOutputType()
 {
     cb_OutputType->clear();
-    for (int i=0; i<ImageTypes.size(); i++)
+
+    QStringList IT = QStringList();
+    IT.append(ImageTypes_8bit);
+    IT.append(ImageTypes_10bit);
+    IT.append(ImageTypes_12bit);
+    IT.append(ImageTypes_14bit);
+    IT.append(ImageTypes_16bit);
+    IT.removeDuplicates();
+
+    for (int i=0; i<IT.size(); i++)
     {
-        cb_OutputType->addItem(QString(".").append(ImageTypes.at(i)));
+        cb_OutputType->addItem(QString(".").append(IT.at(i)));
     }
 }
 
 void ImgSeqExtractControl::setupColorTypeOutput(int id)
 {
     Q_UNUSED(id);
-    int currentTypeID=cb_OutputType->currentIndex();
-    QString cType=ImageTypes.at(currentTypeID);
+    QString cType=cb_OutputType->currentText();
+    cType.replace('.',"");
     cbColorTypeOutput->clear();
     if (ImageTypes_8bit.contains(cType)) cbColorTypeOutput->addItem("8-bit");
     if (ImageTypes_10bit.contains(cType)) cbColorTypeOutput->addItem("10-bit");
@@ -650,6 +659,8 @@ QString ImgSeqExtractControl::getColorDepth(bool numberOutput)
     int cd=file_colorspace.split("-")[0].toInt();
 
     QString currentOutputType=cb_OutputType->currentText();
+    currentOutputType.replace('.',"");
+    qDebug()<<"ImgSeqExtractControl::getColorDepth currentOutputType"<<currentOutputType;
     if (!numberOutput){
         switch (cd) {
         case 8:
@@ -662,14 +673,18 @@ QString ImgSeqExtractControl::getColorDepth(bool numberOutput)
             }
             break;
         case 10:
-            if (currentOutputType.endsWith("420")) {
+            if (currentOutputType.startsWith("420")) {
                 pixfmt="yuv420p10le";
-            }else if (currentOutputType.endsWith("422")) {
+            }else if (currentOutputType.startsWith("422")) {
                 pixfmt="yuv422p10le";
             }
             break;
         case 16:
-            pixfmt="rgb48le";
+            if (currentOutputType.startsWith("RGB")) {
+                pixfmt="rgba64le";
+            }else{
+                pixfmt="rgb48le";
+            }
             break;
         }
     }else{
@@ -747,23 +762,23 @@ void ImgSeqExtractControl::updateEXEprogress()
 {
     if (modalinfo) {
         if (!modalinfo->isHidden() && EXEprogressProgressBar && EXEprogressFpsBar) {
-                detectFFMpegOutputFrames();
-                QTimer::singleShot(500, this, SLOT(updateEXEprogress()));
+            detectFFMpegOutputFrames();
+            QTimer::singleShot(500, this, SLOT(updateEXEprogress()));
         }
     }
 }
 
 void ImgSeqExtractControl::detectFFMpegOutputFrames()
 {
-   QString outtext = QString(builder->readAll());
-   outtext.truncate(40);
-   QString outtextfps=QString(outtext);
-   if (outtext.startsWith("frame=")) {
-       int frame=outtext.replace(QRegExp("^frame=\\s*(\\d+).*$"),"\\1").toInt();
-       if (frame) updateProgressBar(frame);
-       int fps=outtextfps.replace(QRegExp("^frame=.*\\sfps=\\s*(\\d+).*$"),"\\1").toInt();
-       if (fps) updateFpsBar(fps);
-   }
+    QString outtext = QString(builder->readAll());
+    outtext.truncate(40);
+    QString outtextfps=QString(outtext);
+    if (outtext.startsWith("frame=")) {
+        int frame=outtext.replace(QRegExp("^frame=\\s*(\\d+).*$"),"\\1").toInt();
+        if (frame) updateProgressBar(frame);
+        int fps=outtextfps.replace(QRegExp("^frame=.*\\sfps=\\s*(\\d+).*$"),"\\1").toInt();
+        if (fps) updateFpsBar(fps);
+    }
 }
 
 void ImgSeqExtractControl::updateProgressBar(int frame)
@@ -785,17 +800,17 @@ void ImgSeqExtractControl::updateFpsBar(int val)
 void ImgSeqExtractControl::customStyles()
 {
     setStyleSheet(" \
-    QSpinBox::up-arrow { \
-        image: url(:/theme/up_arrow-bw.png); \
-        width: 7px; \
-        height: 5px; \
-    } \
-    QSpinBox::down-arrow { \
-        image: url(:/theme/down_arrow-bw.png); \
-        width: 7px; \
-        height: 5px; \
-    } \
-    ");
+                  QSpinBox::up-arrow { \
+                      image: url(:/theme/up_arrow-bw.png); \
+                      width: 7px; \
+                      height: 5px; \
+                  } \
+                  QSpinBox::down-arrow { \
+                      image: url(:/theme/down_arrow-bw.png); \
+                      width: 7px; \
+                      height: 5px; \
+                  } \
+                  ");
 
 }
 void ImgSeqExtractControl::setOutputDimension(QSize size){
