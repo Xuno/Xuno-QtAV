@@ -80,6 +80,9 @@ private:
     QCheckBox *checkLoop;
     QPushButton *checkBoxExtractor;
     QDoubleSpinBox *InputScale;
+    QCheckBox *cbDecodeGeometryFromFileName;
+    QSpinBox *inputImageW;
+    QSpinBox *inputImageH;
 
 
     void calculatePos();
