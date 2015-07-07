@@ -551,6 +551,11 @@ void ImgSeqExtractControl::on_buttonExtractFrames_clicked()
         colordepth=getColorDepth(false);
         if (!colordepth.isEmpty())
             imgParams.append("-pix_fmt|").append(colordepth);
+
+        file_ext.replace('.',"");
+        if (ImageTypes_rawvideo.contains(file_ext)) {
+            imgParams.append("|-vcodec|rawvideo");
+        }
         QString exefile=QDir::toNativeSeparators(qApp->applicationDirPath()).append(QDir::separator()).append(ffmpegexecute);
         QString exeparam=QString("-v|32|-ss|%1|-i|%4|-start_number|%2|-vframes|%3|%5|-f|image2").arg(sft).arg(sf).arg(tf).arg(movieName).arg(imgParams);
         exeparam.append("|").append(output);
@@ -673,6 +678,10 @@ QString ImgSeqExtractControl::getColorDepth(bool numberOutput)
                 pixfmt="yuv420p";
             }else if (currentOutputType.endsWith("422")) {
                 pixfmt="yuv422p";
+            }else if (currentOutputType.startsWith("RGBA")) {
+                pixfmt="rgba";
+            }else if (currentOutputType.endsWith("RGB")) {
+                pixfmt="rgb24";
             }else{
                 pixfmt="rgb24";
             }
@@ -685,9 +694,11 @@ QString ImgSeqExtractControl::getColorDepth(bool numberOutput)
             }
             break;
         case 16:
-            if (currentOutputType.startsWith("RGB")) {
+            if (currentOutputType.startsWith("RGBA")) {
                 pixfmt="rgba64le";
-            }else{
+            }else if (currentOutputType.endsWith("RGB")) {
+                pixfmt="rgb48le";
+            } else {
                 pixfmt="rgb48le";
             }
             break;

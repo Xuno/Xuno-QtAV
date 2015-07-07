@@ -137,9 +137,17 @@ private:
 
     QSize outputDimension=QSize(0,0);
 
+    const QStringList ImageTypes_rawvideo = QStringList()
+    <<  "420"
+    <<  "422"
+    <<  "RGB"
+    <<  "RGBA";
+
     const QStringList ImageTypes_ffmpeg = QStringList()
      <<  "420"
      <<  "422"
+     <<  "RGB"
+     <<  "RGBA"
      <<  "bmp"
      <<  "jpg"
      <<  "png"
