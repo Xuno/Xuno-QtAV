@@ -679,7 +679,7 @@ QString ImgSeqExtractControl::getColorDepth(bool numberOutput)
             }else if (currentOutputType.endsWith("422")) {
                 pixfmt="yuv422p";
             }else if (currentOutputType.startsWith("RGBA")) {
-                pixfmt="rgba";
+                pixfmt="rgb32";
             }else if (currentOutputType.endsWith("RGB")) {
                 pixfmt="rgb24";
             }else{
