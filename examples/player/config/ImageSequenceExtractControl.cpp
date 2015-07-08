@@ -655,11 +655,16 @@ void ImgSeqExtractControl::setupColorTypeOutput(int id)
     QString cType=cb_OutputType->currentText();
     cType.replace('.',"");
     cbColorTypeOutput->clear();
-    if (ImageTypes_8bit.contains(cType)) cbColorTypeOutput->addItem("8-bit");
-    if (ImageTypes_10bit.contains(cType)) cbColorTypeOutput->addItem("10-bit");
-    if (ImageTypes_12bit.contains(cType)) cbColorTypeOutput->addItem("12-bit");
-    if (ImageTypes_14bit.contains(cType)) cbColorTypeOutput->addItem("14-bit");
-    if (ImageTypes_16bit.contains(cType)) cbColorTypeOutput->addItem("16-bit");
+    if (ImageTypes_8bit.indexOf(cType)!=-1) cbColorTypeOutput->addItem("8-bit");
+    if (ImageTypes_10bit.indexOf(cType)!=-1) cbColorTypeOutput->addItem("10-bit");
+    if (ImageTypes_12bit.indexOf(cType)!=-1) cbColorTypeOutput->addItem("12-bit");
+    if (ImageTypes_14bit.indexOf(cType)!=-1) cbColorTypeOutput->addItem("14-bit");
+    if (ImageTypes_16bit.indexOf(cType)!=-1) cbColorTypeOutput->addItem("16-bit");
+
+    if(ImageTypes_rawvideo.indexOf(cType)!=-1) {
+        cbOutputFileDepthUse->setChecked(true);
+        cbOutputFileSizeUse->setChecked(true);
+    }
 }
 
 QString ImgSeqExtractControl::getColorDepth(bool numberOutput)

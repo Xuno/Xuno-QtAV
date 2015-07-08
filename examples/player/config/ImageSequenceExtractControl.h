@@ -138,16 +138,11 @@ private:
     QSize outputDimension=QSize(0,0);
 
     const QStringList ImageTypes_rawvideo = QStringList()
-    <<  "420"
-    <<  "422"
     <<  "RGB"
     <<  "RGBA";
 
     const QStringList ImageTypes_ffmpeg = QStringList()
-     <<  "420"
-     <<  "422"
      <<  "RGB"
-     <<  "RGBA"
      <<  "bmp"
      <<  "jpg"
      <<  "png"
@@ -166,9 +161,8 @@ private:
 
     const QStringList ImageTypes = QStringList(ImageTypes_ffmpeg);
     const QStringList ImageTypes_8bit = QStringList(ImageTypes);
-    const QStringList ImageTypes_10bit = QStringList()
-    <<  "420"
-    <<  "422";
+    const QStringList ImageTypes_10bit = QStringList();
+
 
 //     <<  "dpx";
 //    <<  "tif"
