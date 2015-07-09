@@ -152,7 +152,7 @@ QMAKE_INFO_PLIST = $$PWD/Info.plist
 defineTest(genRC) {
     RC_ICONS = $$PROJECTROOT/src/Xuno-QtAV.ico
     QMAKE_TARGET_COMPANY = "Aaex Corp. http://www.xuno.com. https://github.com/Xuno/Xuno-QtAV"
-    QMAKE_TARGET_DESCRIPTION = "XunoPlayer - QtAV Multimedia Framework"
+    QMAKE_TARGET_DESCRIPTION = "XunoPlayer"
     QMAKE_TARGET_COPYRIGHT = ""
     QMAKE_TARGET_PRODUCT = "Xuno-QtAV player"
     export(RC_ICONS)

@@ -146,13 +146,11 @@ private:
      <<  "bmp"
      <<  "jpg"
      <<  "png"
-     <<  "dpx"
      <<  "tif";
 
     const QStringList ImageTypes_ext = QStringList()
     <<  "tif"
     <<  "bmp"
-    <<  "dpx"
     <<  "jp2"
     <<  "jpg"
     <<  "jxr"
@@ -176,7 +174,6 @@ private:
        <<  "RGB"
        <<  "RGBA"
        <<  "png"
-       <<  "dpx"
        <<  "tif";
 
     void setupOutputType();
