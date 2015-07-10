@@ -726,8 +726,9 @@ void ImgSeqExtractControl::onEXE_finished(int exitCode, QProcess::ExitStatus exi
                                  tr("Extraction ffmpeg error:\n%1").arg(outtext),
                                  QMessageBox::Ok);
         }else{
+            int tf=getTotalFrames();
             QMessageBox::information(this, tr("Extract"),
-                                     tr("Extraction done"),
+                                     tr("Frame Extraction Completed!\nTotal Frames Extracted: %1").arg(tf),
                                      QMessageBox::Ok);
         }
     }
