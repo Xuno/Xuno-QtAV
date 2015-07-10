@@ -553,7 +553,7 @@ QSlider::handle:horizontal { \
         action->setCheckable(true);
     }
 
-    subMenu = new QMenu(tr("Aspect ratio"), mpMenu);
+    subMenu = new QMenu(tr("Aspect ratio"));
     mpMenu->addMenu(subMenu);
     connect(subMenu, SIGNAL(triggered(QAction*)), SLOT(switchAspectRatio(QAction*)));
     mpARAction = subMenu->addAction(tr("Video"));
