@@ -310,6 +310,9 @@ QSlider::handle:horizontal { \
     mpWebBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
     mpWebBtn->setText(tr("Web"));
     //mpWebBtn->setMaximumHeight(kMaxButtonIconMargin);
+    mpWebBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    mpWebBtn->setMaximumHeight(mpInfoBtn->sizeHint().height());
+    mpWebBtn->setMinimumHeight(mpInfoBtn->sizeHint().height());
     mpWebBtn->setPopupMode(QToolButton::InstantPopup);
     mpWebBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
     mpWebBtn->setToolTip(tr("Open XunoWeb browser"));
@@ -337,6 +340,9 @@ QSlider::handle:horizontal { \
     mpMenuBtn->setText(tr("Menu "));
     mpMenuBtn->setToolTip(tr("Configuratrion menu"));
     mpMenuBtn->setStyleSheet("color:grey;");
+    mpMenuBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    mpMenuBtn->setMaximumHeight(mpInfoBtn->sizeHint().height());
+    mpMenuBtn->setMinimumHeight(mpInfoBtn->sizeHint().height());
 
     QMenu *subMenu = 0;
     QWidgetAction *pWA = 0;
