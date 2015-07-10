@@ -157,7 +157,6 @@ public:
     VideoDecoderCUDAPrivate():
         VideoDecoderPrivate()
       , can_load(true)
-      , flushing(false)
       , host_data(0)
       , host_data_size(0)
       , create_flags(cudaVideoCreate_Default)
@@ -196,7 +195,7 @@ public:
     }
     bool initCuda();
     bool releaseCuda();
-    bool createCUVIDDecoder(cudaVideoCodec cudaCodec, int w, int h);
+    bool createCUVIDDecoder(cudaVideoCodec cudaCodec, int cw, int ch);
     bool createCUVIDParser();
     bool flushParser();
     bool processDecodedData(CUVIDPARSERDISPINFO *cuviddisp, VideoFrame* outFrame = 0);
@@ -243,33 +242,19 @@ public:
             p->createCUVIDDecoder(cuvidfmt->codec, cuvidfmt->coded_width, cuvidfmt->coded_height);
             // how about parser.ulMaxNumDecodeSurfaces? recreate?
             AVCodecID codec = mapCodecToFFmpeg(cuvidfmt->codec);
-            if (codec == QTAV_CODEC_ID(H264)) {
-                if (!p->bitstream_filter_ctx) {
-                    p->bitstream_filter_ctx = av_bitstream_filter_init("h264_mp4toannexb");
-                    Q_ASSERT_X(p->bitstream_filter_ctx, "av_bitstream_filter_init", "Unknown bitstream filter");
-                }
-            } else {
-                if (p->bitstream_filter_ctx) {
-                    av_bitstream_filter_close(p->bitstream_filter_ctx);
-                    p->bitstream_filter_ctx = 0;
-                }
-            }
+            p->setBSF(codec);
         }
         //TODO: lavfilter
         return 1;
     }
     static int CUDAAPI HandlePictureDecode(void *obj, CUVIDPICPARAMS *cuvidpic) {
         VideoDecoderCUDAPrivate *p = reinterpret_cast<VideoDecoderCUDAPrivate*>(obj);
-        if (p->flushing)
-            return 0;
         //qDebug("%s @%d tid=%p dec=%p idx=%d inUse=%d", __FUNCTION__, __LINE__, QThread::currentThread(), p->dec, cuvidpic->CurrPicIdx, p->surface_in_use[cuvidpic->CurrPicIdx]);
         p->doDecodePicture(cuvidpic);
         return 1;
     }
     static int CUDAAPI HandlePictureDisplay(void *obj, CUVIDPARSERDISPINFO *cuviddisp) {
         VideoDecoderCUDAPrivate *p = reinterpret_cast<VideoDecoderCUDAPrivate*>(obj);
-        if (p->flushing)
-            return 0;
         p->surface_in_use[cuviddisp->picture_index] = true;
         //qDebug("mark in use pic_index: %d", cuviddisp->picture_index);
 #if COPY_ON_DECODE
@@ -279,9 +264,8 @@ public:
         return 1;
 #endif
     }
-    void setBSF(AVCodecID codec) {}
+    void setBSF(AVCodecID codec);
     bool can_load; //if linked to cuvid, it's true. otherwise(use dllapi) equals to whether cuvid can be loaded
-    bool flushing;
     uchar *host_data;
     int host_data_size;
     CUcontext cuctx;
@@ -363,17 +347,7 @@ bool VideoDecoderCUDA::prepare()
         return false;
     if (!d.cuctx)
         d.initCuda();
-    if (d.codec_ctx->codec_id == QTAV_CODEC_ID(H264)) {
-        if (!d.bitstream_filter_ctx) {
-            d.bitstream_filter_ctx = av_bitstream_filter_init("h264_mp4toannexb");
-            Q_ASSERT_X(d.bitstream_filter_ctx, "av_bitstream_filter_init", "Unknown bitstream filter");
-        }
-    } else {
-        if (d.bitstream_filter_ctx) {
-            av_bitstream_filter_close(d.bitstream_filter_ctx);
-            d.bitstream_filter_ctx = 0;
-        }
-    }
+    d.setBSF(d.codec_ctx->codec_id);
     // max decoder surfaces is computed in createCUVIDDecoder. createCUVIDParser use the value
     return d.createCUVIDDecoder(mapCodecFromFFmpeg(d.codec_ctx->codec_id), d.codec_ctx->coded_width, d.codec_ctx->coded_height)
             && d.createCUVIDParser();
@@ -437,6 +411,13 @@ bool VideoDecoderCUDA::decode(const Packet &packet)
         qWarning("CUVID parser not ready");
         return false;
     }
+    if (packet.isEOF()) {
+        if (!d.flushParser()) {
+            qDebug("Error decode EOS"); // when?
+            return false;
+        }
+        return !d.frame_queue.isEmpty();
+    }
     uint8_t *outBuf = 0;
     int outBufSize = 0;
     int filtered = 0;
@@ -478,6 +459,8 @@ bool VideoDecoderCUDA::decode(const Packet &packet)
 VideoFrame VideoDecoderCUDA::frame()
 {
     DPTR_D(VideoDecoderCUDA);
+    if (d.frame_queue.isEmpty())
+        return VideoFrame();
 #if COPY_ON_DECODE
     return d.frame_queue.take();
 #else
@@ -592,7 +575,7 @@ bool VideoDecoderCUDAPrivate::releaseCuda()
     return true;
 }
 
-bool VideoDecoderCUDAPrivate::createCUVIDDecoder(cudaVideoCodec cudaCodec, int w, int h)
+bool VideoDecoderCUDAPrivate::createCUVIDDecoder(cudaVideoCodec cudaCodec, int cw, int ch)
 {
     if (cudaCodec == cudaVideoCodec_NumCodecs) {
         return false;
@@ -603,8 +586,8 @@ bool VideoDecoderCUDAPrivate::createCUVIDDecoder(cudaVideoCodec cudaCodec, int w
         checkCudaErrors(cuvidDestroyDecoder(dec));
     }
     memset(&dec_create_info, 0, sizeof(CUVIDDECODECREATEINFO));
-    dec_create_info.ulWidth = w;
-    dec_create_info.ulHeight = h;
+    dec_create_info.ulWidth = cw; // Coded Sequence Width
+    dec_create_info.ulHeight = ch;
     dec_create_info.ulNumDecodeSurfaces = nb_dec_surface; //same as ulMaxNumDecodeSurfaces
     dec_create_info.CodecType = cudaCodec;
     dec_create_info.ChromaFormat = cudaVideoChromaFormat_420;  // cudaVideoChromaFormat_XXX (only 4:2:0 is currently supported)
@@ -614,8 +597,8 @@ bool VideoDecoderCUDAPrivate::createCUVIDDecoder(cudaVideoCodec cudaCodec, int w
     dec_create_info.OutputFormat = cudaVideoSurfaceFormat_NV12; // NV12 (currently the only supported output format)
     dec_create_info.DeinterlaceMode = deinterlace;
     // No scaling
-    dec_create_info.ulTargetWidth = dec_create_info.ulWidth;
-    dec_create_info.ulTargetHeight = dec_create_info.ulHeight;
+    dec_create_info.ulTargetWidth = cw;
+    dec_create_info.ulTargetHeight = ch;
     dec_create_info.ulNumOutputSurfaces = 2;  // We won't simultaneously map more than 8 surfaces
     dec_create_info.vidLock = vid_ctx_lock;//vidCtxLock; //FIXME
 
@@ -706,7 +689,6 @@ bool VideoDecoderCUDAPrivate::createCUVIDParser()
 
 bool VideoDecoderCUDAPrivate::flushParser()
 {
-    flushing = true;
     CUVIDSOURCEDATAPACKET flush_packet;
     memset(&flush_packet, 0, sizeof(CUVIDSOURCEDATAPACKET));
     flush_packet.flags |= CUVID_PKT_ENDOFSTREAM;
@@ -796,6 +778,21 @@ bool VideoDecoderCUDAPrivate::processDecodedData(CUVIDPARSERDISPINFO *cuviddisp,
         //qDebug("frame queue size: %d", frame_queue.size());
     }
     return true;
+}
+
+void VideoDecoderCUDAPrivate::setBSF(AVCodecID codec)
+{
+    if (codec == QTAV_CODEC_ID(H264)) {
+        if (!bitstream_filter_ctx) {
+            bitstream_filter_ctx = av_bitstream_filter_init("h264_mp4toannexb");
+            Q_ASSERT(bitstream_filter_ctx && "av_bitstream_filter_init error");
+        }
+    } else {
+        if (bitstream_filter_ctx) {
+            av_bitstream_filter_close(bitstream_filter_ctx);
+            bitstream_filter_ctx = 0;
+        }
+    }
 }
 
 } //namespace QtAV

@@ -23,6 +23,7 @@
 #include <QtAV/AVPlayer.h>
 #include <QtAV/AudioOutput.h>
 #include <QtAV/VideoCapture.h>
+#include <QDebug>
 
 template<typename ID, typename Factory>
 static QStringList idsToNames(QVector<ID> ids) {
@@ -57,6 +58,7 @@ static inline QVector<VideoDecoderId> VideoDecodersFromNames(const QStringList& 
 
 QmlAVPlayer::QmlAVPlayer(QObject *parent) :
     QObject(parent)
+  , mUseWallclockAsTimestamps(false)
   , m_complete(false)
   , m_mute(false)
   , mAutoPlay(false)
@@ -64,6 +66,7 @@ QmlAVPlayer::QmlAVPlayer(QObject *parent) :
   , mHasAudio(false)
   , mHasVideo(false)
   , m_fastSeek(false)
+  , m_loading(false)
   , mLoopCount(1)
   , mPlaybackRate(1.0)
   , mVolume(1.0)
@@ -170,6 +173,8 @@ void QmlAVPlayer::setSource(const QUrl &url)
         stop();
         //mpPlayer->load(); //QtAV internal bug: load() or play() results in reload
         if (mAutoPlay) {
+            //mPlaybackState is actually changed in slots. But if set to a new source the state may not change before call play()
+            mPlaybackState = StoppedState;
             play();
         }
     }
@@ -246,6 +251,31 @@ void QmlAVPlayer::setVideoCodecOptions(const QVariantMap &value)
     vcodec_opt = value;
     emit videoCodecOptionsChanged();
     // player maybe not ready
+}
+
+bool QmlAVPlayer::useWallclockAsTimestamps() const
+{
+    return mUseWallclockAsTimestamps;
+}
+
+void QmlAVPlayer::setWallclockAsTimestamps(bool use_wallclock_as_timestamps)
+{
+    if (mUseWallclockAsTimestamps == use_wallclock_as_timestamps)
+        return;
+
+    mUseWallclockAsTimestamps = use_wallclock_as_timestamps;
+
+    QVariantHash opt = mpPlayer->optionsForFormat();
+
+    if (use_wallclock_as_timestamps) {
+        opt["use_wallclock_as_timestamps"] = 1;
+        mpPlayer->setBufferValue(1);
+    } else {
+        opt.remove("use_wallclock_as_timestamps");
+        mpPlayer->setBufferValue(-1);
+    }
+    mpPlayer->setOptionsForFormat(opt);
+    emit useWallclockAsTimestampsChanged();
 }
 
 static AudioFormat::ChannelLayout toAudioFormatChannelLayout(QmlAVPlayer::ChannelLayout ch)
@@ -469,8 +499,7 @@ void QmlAVPlayer::setPlaybackState(PlaybackState playbackState)
     }
     if (!m_complete || !mpPlayer)
         return;
-    mPlaybackState = playbackState;
-    switch (mPlaybackState) {
+    switch (playbackState) {
     case PlayingState:
         if (mpPlayer->isPaused()) {
             mpPlayer->pause(false);
@@ -487,15 +516,19 @@ void QmlAVPlayer::setPlaybackState(PlaybackState playbackState)
                 if (!vcopt.isEmpty())
                     mpPlayer->setOptionsForVideoCodec(vcopt);
             }
+            m_loading = true;
             mpPlayer->play();
         }
         break;
     case PausedState:
         mpPlayer->pause(true);
+        mPlaybackState = PausedState;
         break;
     case StoppedState:
         mpPlayer->stop();
         mpPlayer->unload();
+        m_loading = false;
+        mPlaybackState = StoppedState;
         break;
     default:
         break;
@@ -524,14 +557,18 @@ AVPlayer* QmlAVPlayer::player()
 
 void QmlAVPlayer::play(const QUrl &url)
 {
-    if (mSource == url)
+    if (mSource == url && (playbackState() != StoppedState || m_loading))
         return;
     setSource(url);
-    play();
+    if (!autoPlay())
+        play();
 }
 
 void QmlAVPlayer::play()
 {
+    // if not autoPlay, maybe a different source was set and play() was not called
+    if (isAutoLoad() && (playbackState() != StoppedState || m_loading))
+        return;
     setPlaybackState(PlayingState);
 }
 
@@ -593,6 +630,8 @@ void QmlAVPlayer::_q_error(const AVError &e)
         mError = AccessDenied;
     //else
       //  err = ServiceMissing;
+    if (ec != AVError::NoError)
+        m_loading = false;
     emit error(mError, mErrorString);
     emit errorChanged();
 }
@@ -616,6 +655,7 @@ void QmlAVPlayer::_q_paused(bool p)
 
 void QmlAVPlayer::_q_started()
 {
+    m_loading = false;
     mPlaybackState = PlayingState;
     applyChannelLayout();
     // applyChannelLayout() first because it may reopen audio device

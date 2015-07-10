@@ -130,17 +130,18 @@ void AVDecoder::flush()
  * do nothing if equal
  * close the old one. the codec context can not be shared in more than 1 decoder.
  */
-void AVDecoder::setCodecContext(AVCodecContext *codecCtx)
+void AVDecoder::setCodecContext(void *codecCtx)
 {
     DPTR_D(AVDecoder);
-    if (d.codec_ctx == codecCtx)
+    AVCodecContext *ctx = (AVCodecContext*)codecCtx;
+    if (d.codec_ctx == ctx)
         return;
     if (isOpen()) {
         qWarning("Can not copy codec properties when it's open");
         close(); //
     }
     d.is_open = false;
-    if (!codecCtx) {
+    if (!ctx) {
         avcodec_free_context(&d.codec_ctx);
         d.codec_ctx = 0;
         return;
@@ -151,11 +152,11 @@ void AVDecoder::setCodecContext(AVCodecContext *codecCtx)
         qWarning("avcodec_alloc_context3 failed");
         return;
     }
-    AV_ENSURE_OK(avcodec_copy_context(d.codec_ctx, codecCtx));
+    AV_ENSURE_OK(avcodec_copy_context(d.codec_ctx, ctx));
 }
 
 //TODO: reset other parameters?
-AVCodecContext* AVDecoder::codecContext() const
+void* AVDecoder::codecContext() const
 {
     return d_func().codec_ctx;
 }
@@ -215,13 +216,11 @@ void AVDecoder::setOptions(const QVariantHash &dict)
         return;
     if (name() == "avcodec")
         return;
-    QVariant opt;
+    QVariant opt(dict);
     if (dict.contains(name()))
         opt = dict.value(name());
     else if (dict.contains(name().toLower()))
         opt = dict.value(name().toLower());
-    else
-        return; // TODO: set property if no name() key found?
     Internal::setOptionsForQObject(opt, this);
 }
 
@@ -238,16 +237,13 @@ void AVDecoderPrivate::applyOptionsForDict()
     }
     if (options.isEmpty())
         return;
-    qDebug("set AVCodecContext dict:");
     // TODO: use QVariantMap only
-    QVariant opt(options);
-    if (options.contains("avcodec"))
-        opt = options.value("avcodec");
+    if (!options.contains("avcodec"))
+        return;
+     qDebug("set AVCodecContext dict:");
     // workaround for VideoDecoderFFmpeg. now it does not call av_opt_set_xxx, so set here in dict
     // TODO: wrong if opt is empty
-    //if (dict.contains("FFmpeg"))
-    //    avcodec_dict.unite(dict.value("FFmpeg").toHash());
-    Internal::setOptionsToDict(opt, &dict);
+    Internal::setOptionsToDict(options.value("avcodec"), &dict);
 }
 
 void AVDecoderPrivate::applyOptionsForContext()
@@ -259,14 +255,11 @@ void AVDecoderPrivate::applyOptionsForContext()
         return;
     }
     // TODO: use QVariantMap only
-    QVariant opt(options);
-    if (options.contains("avcodec"))
-        opt = options.value("avcodec");
+    if (!options.contains("avcodec"))
+        return;
     // workaround for VideoDecoderFFmpeg. now it does not call av_opt_set_xxx, so set here in dict
     // TODO: wrong if opt is empty
-    //if (dict.contains("FFmpeg"))
-    //    avcodec_dict.unite(dict.value("FFmpeg").toHash());
-    Internal::setOptionsToFFmpegObj(opt, codec_ctx);
+    Internal::setOptionsToFFmpegObj(options.value("avcodec"), codec_ctx);
 }
 
 } //namespace QtAV

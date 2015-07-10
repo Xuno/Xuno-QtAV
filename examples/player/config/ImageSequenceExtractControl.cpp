@@ -71,20 +71,20 @@ ImgSeqExtractControl::ImgSeqExtractControl(QWidget *parent) :
 
     hlStart_6->addWidget(ImageSequenceTotalFrame);
 
-    mPlayPixmap = QPixmap(":/theme/button-play-pause.png");
-    int w = mPlayPixmap.width(), h = mPlayPixmap.height();
-    mPausePixmap = mPlayPixmap.copy(QRect(w/2, 0, w/2, h));
-    mPlayPixmap = mPlayPixmap.copy(QRect(0, 0, w/2, h));
-    qDebug("mPlayPixmap %d x %d", mPlayPixmap.width(), mPlayPixmap.height());
-    mpPlayPauseBtn = new Button(verticalLayoutWidget);
+//    mPlayPixmap = QPixmap(":/theme/button-play-pause.png");
+//    int w = mPlayPixmap.width(), h = mPlayPixmap.height();
+//    mPausePixmap = mPlayPixmap.copy(QRect(w/2, 0, w/2, h));
+//    mPlayPixmap = mPlayPixmap.copy(QRect(0, 0, w/2, h));
+//    qDebug("mPlayPixmap %d x %d", mPlayPixmap.width(), mPlayPixmap.height());
+    mpPlayPauseBtn = new QToolButton(verticalLayoutWidget);
     mpPlayPauseBtn->setObjectName(QStringLiteral("mpPlayPauseBtn"));
-    int a = qMin(w/2, h);
-    const int kMaxButtonIconWidth = 20;
-    const int kMaxButtonIconMargin = kMaxButtonIconWidth/3;
-    a = qMin(a, kMaxButtonIconWidth);
-    mpPlayPauseBtn->setIconWithSates(mPlayPixmap);
-    mpPlayPauseBtn->setIconSize(QSize(a, a/2));
-    mpPlayPauseBtn->setMaximumSize(a+kMaxButtonIconMargin+2, a+kMaxButtonIconMargin);
+//    int a = qMin(w/2, h);
+//    const int kMaxButtonIconWidth = 20;
+//    const int kMaxButtonIconMargin = kMaxButtonIconWidth/3;
+//    a = qMin(a, kMaxButtonIconWidth);
+    mpPlayPauseBtn->setIcon(QIcon(":/theme/dark/play.svg"));
+    //mpPlayPauseBtn->setIconSize(QSize(a, a/2));
+//    mpPlayPauseBtn->setMaximumSize(a+kMaxButtonIconMargin+2, a+kMaxButtonIconMargin);
     //connect(mpPlayPauseBtn, SIGNAL(clicked()), SLOT(on_mpPlayPauseBtn_clicked()));
 
     hlStart_6->addWidget(mpPlayPauseBtn);

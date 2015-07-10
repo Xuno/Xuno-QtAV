@@ -47,9 +47,10 @@ class Q_AV_EXPORT SubtitleFilter : public VideoFilter, public SubtitleAPIProxy
     Q_PROPERTY(QStringList suffixes READ suffixes WRITE setSuffixes NOTIFY suffixesChanged)
     Q_PROPERTY(QStringList supportedSuffixes READ supportedSuffixes NOTIFY supportedSuffixesChanged)
     Q_PROPERTY(bool canRender READ canRender NOTIFY canRenderChanged)
+    Q_PROPERTY(qreal delay READ delay WRITE setDelay NOTIFY delayChanged)
 
     Q_PROPERTY(bool autoLoad READ autoLoad WRITE setAutoLoad NOTIFY autoLoadChanged)
-    Q_PROPERTY(QString file READ file WRITE setFile)
+    Q_PROPERTY(QString file READ file WRITE setFile NOTIFY fileChanged)
     Q_PROPERTY(QRectF rect READ rect WRITE setRect NOTIFY rectChanged)
     Q_PROPERTY(QFont font READ font WRITE setFont NOTIFY fontChanged)
     Q_PROPERTY(QColor color READ color WRITE setColor NOTIFY colorChanged)
@@ -90,6 +91,7 @@ signals:
     void colorChanged();
     void autoLoadChanged(bool value);
 signals:
+    void fileChanged();
     void canRenderChanged();
     void loaded(const QString& path);
 
@@ -102,6 +104,7 @@ signals:
     void suffixesChanged();
     void supportedSuffixesChanged();
     void engineChanged();
+    void delayChanged();
 
 protected:
     virtual void process(Statistics* statistics, VideoFrame* frame);

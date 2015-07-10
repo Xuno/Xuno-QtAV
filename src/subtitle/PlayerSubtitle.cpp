@@ -86,7 +86,10 @@ void PlayerSubtitle::setPlayer(AVPlayer *player)
 
 void PlayerSubtitle::setFile(const QString &file)
 {
+    if (m_file != file)
+        Q_EMIT fileChanged();
     // always load
+    // file was set but now playing with fuzzy match. if file is set again to the same value, subtitle must load that file
     m_file = file;
     if (!m_enabled)
         return;
@@ -158,7 +161,7 @@ void PlayerSubtitle::onPlayerStart()
     return;
 }
 
-void PlayerSubtitle::onEnableChanged(bool value)
+void PlayerSubtitle::onEnabledChanged(bool value)
 {
     m_enabled = value;
     if (value) {

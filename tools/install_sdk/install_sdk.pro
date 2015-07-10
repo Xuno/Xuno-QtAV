@@ -51,7 +51,9 @@ win32 {
 } else {
   LIBSUFFIX = so
 }
-
+DEBUG_SUF=
+mac: DEBUG_SUF=_debug
+win32: DEBUG_SUF=d
 defineTest(createForModule) {
   MODULE_NAME = $$1
   MODULE_FULL_NAME = Qt$$MODULE_NAME
@@ -60,32 +62,35 @@ defineTest(createForModule) {
   MODULE_DEFINES = QT_$$upper($${MODULE})_LIB
 
 ORIG_LIB = $${LIBPREFIX}$$qtLibName($$MODULE_FULL_NAME, $$QTAV_MAJOR_VERSION).$${LIBSUFFIX}
+ORIG_LIB_D = $${LIBPREFIX}$$qtLibName($$MODULE_FULL_NAME$${DEBUG_SUF}, $$QTAV_MAJOR_VERSION).$${LIBSUFFIX}
 greaterThan(QT_MAJOR_VERSION, 4) {
   MODULE_PRF_FILE = $$OUT_PWD/mkspecs/features/$${MODULE}.prf
   NEW_LIB = $${LIBPREFIX}Qt$${QT_MAJOR_VERSION}$${MODULE_NAME}.$${LIBSUFFIX}
+  NEW_LIB_D = $${LIBPREFIX}Qt$${QT_MAJOR_VERSION}$${MODULE_NAME}$${DEBUG_SUF}.$${LIBSUFFIX}
   MKSPECS_DIR = $$[QT_INSTALL_BINS]/../mkspecs
 } else {
   MODULE_PRF_FILE = $$PWD/qt4/$${MODULE}.prf
   NEW_LIB = $${ORIG_LIB}
+  NEW_LIB_D = $${ORIG_LIB_D}
   MKSPECS_DIR=$$[QMAKE_MKSPECS]
 }
 
 # copy files to a dir need '/' at the end
 mac_framework {
   sdk_install.commands = $$quote($$COPY_DIR $$system_path($$PROJECT_LIBDIR/$${MODULE_FULL_NAME}.framework) $$system_path($$[QT_INSTALL_LIBS]))
+  sdk_install.commands += $$quote($$QMAKE_DEL_FILE $$system_path($$[QT_INSTALL_LIBS]/$${MODULE_FULL_NAME}.framework/*.prl))
 } else {
   sdk_install.commands = $$quote($$MKDIR $$system_path($$[QT_INSTALL_HEADERS]/$${MODULE_FULL_NAME}/))
   sdk_install.commands += $$quote($$COPY $$system_path($$PROJECT_LIBDIR/*Qt*AV*) $$system_path($$[QT_INSTALL_LIBS]/))
   sdk_install.commands += $$quote($$COPY $$system_path($$PROJECT_LIBDIR/$$ORIG_LIB) $$system_path($$[QT_INSTALL_LIBS]/$$NEW_LIB))
+  sdk_install.commands += $$quote($$COPY $$system_path($$PROJECT_LIBDIR/$$ORIG_LIB_D) $$system_path($$[QT_INSTALL_LIBS]/$$NEW_LIB_D))
+  sdk_install.commands += $$quote($$QMAKE_DEL_FILE $$system_path($$[QT_INSTALL_LIBS]/*Qt*AV*.prl))
 }
 sdk_install.commands += $$quote($$COPY $$system_path($$MODULE_PRF_FILE) $$system_path($$MKSPECS_DIR/features/$${MODULE}.prf))
 greaterThan(QT_MAJOR_VERSION, 4) {
-  #sdk_install.commands += $$quote($$COPY_DIR $$system_path($$PROJECTROOT/qml/QmlAV) $$system_path($$[QT_INSTALL_HEADERS]/QmlAV))
   sdk_install.commands += $$quote($$COPY $$system_path($$OUT_PWD/mkspecs/modules/qt_lib_$${MODULE}*.pri) $$system_path($$MKSPECS_DIR/modules/))
 }
 win32: sdk_install.commands += $$quote($$MOVE $$system_path($$[QT_INSTALL_LIBS]/Qt*AV*.dll) $$system_path($$[QT_INSTALL_BINS]/))
-## copy libcommon.so requred by QMLPlayer and player
-android: sdk_install.commands += $$quote($$COPY $$system_path($$PROJECT_LIBDIR/libcommon.so) $$system_path($$[QT_INSTALL_LIBS]/))
 
 mac_framework {
   sdk_uninstall.commands = $$quote($$RM_DIR $$system_path($$[QT_INSTALL_LIBS]/$${MODULE_FULL_NAME}.framework))
@@ -96,7 +101,6 @@ sdk_uninstall.commands += $$quote($$QMAKE_DEL_FILE $$system_path($$[QT_INSTALL_L
 sdk_uninstall.commands += $$quote($$RM_DIR $$system_path($$[QT_INSTALL_HEADERS]/$${MODULE_FULL_NAME}))
 sdk_uninstall.commands += $$quote($$QMAKE_DEL_FILE $$system_path($$MKSPECS_DIR/features/$${MODULE}.prf))
 greaterThan(QT_MAJOR_VERSION, 4) {
-#  sdk_uninstall.commands += $$quote($$RM_DIR $$system_path($$[QT_INSTALL_HEADERS]/QmlAV))
   sdk_uninstall.commands += $$quote($$QMAKE_DEL_FILE $$system_path($$MKSPECS_DIR/modules/qt_lib_$${MODULE}*.pri))
 }
 win32: sdk_uninstall.commands += $$quote($$QMAKE_DEL_FILE $$system_path($$[QT_INSTALL_BINS]/Qt*AV*.dll))
@@ -336,7 +340,7 @@ message("creating script for module Qt$$module ...")
     sdk_h_install.commands += $$quote($$COPY $$system_path($$PROJECTROOT/widgets/QtAVWidgets/QtAVWidgets) $$system_path($$[QT_INSTALL_HEADERS]/QtAVWidgets/))
   }
   sdk_h_install.commands += $$quote($$MKDIR $$system_path($$[QT_INSTALL_HEADERS]/QtAV/$$VERSION/QtAV/))
-  win32 {
+  contains(QMAKE_HOST.os,Windows) {
     sdk_h_install.commands += $$quote($$COPY_DIR $$system_path($$PROJECTROOT/src/QtAV/private) $$system_path($$[QT_INSTALL_HEADERS]/QtAV/private))
     sdk_h_install.commands += $$quote($$COPY_DIR $$system_path($$PROJECTROOT/src/QtAV/private) $$system_path($$[QT_INSTALL_HEADERS]/QtAV/$$VERSION/QtAV/private))
   } else {
@@ -349,7 +353,7 @@ message("creating script for module Qt$$module ...")
 greaterThan(QT_MAJOR_VERSION, 4) {
   # qtHaveModule does not exist in Qt5.0
   isEqual(QT_MINOR_VERSION, 0)|qtHaveModule(quick) {
-    win32 {
+    contains(QMAKE_HOST.os,Windows) {
       sdk_qml_install.commands = $$quote($$COPY_DIR $$system_path($$BUILD_DIR/bin/QtAV) $$system_path($$[QT_INSTALL_QML]/QtAV))
     } else {
       sdk_qml_install.commands = $$quote($$COPY_DIR $$system_path($$BUILD_DIR/bin/QtAV) $$system_path($$[QT_INSTALL_QML]))

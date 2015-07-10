@@ -28,6 +28,8 @@
 #include <QtGui/QOpenGLContext>
 #include <QtGui/QOpenGLFunctions>
 #elif defined(QT_OPENGL_LIB)
+#include <QtOpenGL/QGLContext>
+#define QOpenGLContext QGLContext
 #include <qgl.h>
 #else //used by vaapi even qtopengl module is disabled
 #if defined(QT_OPENGL_ES_2)
@@ -89,6 +91,8 @@
 
 namespace QtAV {
 namespace OpenGLHelper {
+
+bool isOpenGLES();
 /*!
  * \brief hasExtension
  * Current OpenGL context must be valid.

@@ -18,7 +18,6 @@ genRC($$TARGET)
 
 SOURCES += main.cpp \
     MainWindow.cpp \
-    Button.cpp \
     ClickableMenu.cpp \
     StatisticsView.cpp \
     Slider.cpp \
@@ -48,7 +47,6 @@ SOURCES += main.cpp \
 
 HEADERS += \
     MainWindow.h \
-    Button.h \
     ClickableMenu.h \
     StatisticsView.h \
     Slider.h \
@@ -100,12 +98,9 @@ tv.files = res/tv.ini
 target.path = $$[QT_INSTALL_BINS]
 include($$PROJECTROOT/deploy.pri)
 
-RESOURCES += \
-    res/player.qrc \
-    theme.qrc \
-    ico/ico.qrc
-
 FORMS += \
     config/configwebmemu.ui
 
-DISTFILES +=
+RESOURCES += res/player.qrc
+#    theme.qrc
+

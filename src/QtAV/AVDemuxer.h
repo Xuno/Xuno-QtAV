@@ -55,7 +55,8 @@ public:
     QString fileName() const;
     QIODevice* ioDevice() const;
     /// not null for QIODevice, custom protocols
-    MediaIO* input() const;
+    MediaIO* mediaIO() const;
+    QTAV_DEPRECATED MediaIO* input() const;
     /*!
      * \brief setMedia
      * \return whether the media source is changed
@@ -100,8 +101,20 @@ public:
     SeekUnit seekUnit() const;
     void setSeekType(SeekType target);
     SeekType seekType() const;
+    /*!
+     * \brief seek
+     * seek to a given position. Only support timestamp seek now.
+     * Experiment: if pos is out of range (>duration()), do nothing unless a seekable and variableSize MediaIO is used.
+     * \return false if fail
+     */
     bool seek(qint64 pos); //pos: ms
-    void seek(qreal q); //q: [0,1]. TODO: what if duration() is not valid?
+    /*!
+     * \brief seek
+     * Percentage seek. duration() must be >0LL
+     * \param q [0, 1]
+     * TODO: what if duration() is not valid but size is known?
+     */
+    bool seek(qreal q);
     AVFormatContext* formatContext();
     QString formatName() const;
     QString formatLongName() const;

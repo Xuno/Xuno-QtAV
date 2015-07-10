@@ -23,6 +23,7 @@
 #define QAV_PACKET_H
 
 #include <QtCore/QByteArray>
+#include <QtCore/QMetaType>
 #include <QtCore/QSharedData>
 #include <QtAV/QtAV_Global.h>
 
@@ -71,9 +72,9 @@ private:
 
 bool Packet::isValid() const
 {
-    return !isCorrupt && !data.isNull() && pts >= 0 && duration >= 0; //!data.isEmpty()?
+    return !isCorrupt && !data.isEmpty() && pts >= 0 && duration >= 0; //!data.isEmpty()?
 }
 
 } //namespace QtAV
-
+Q_DECLARE_METATYPE(QtAV::Packet)
 #endif // QAV_PACKET_H

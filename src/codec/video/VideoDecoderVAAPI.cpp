@@ -25,7 +25,6 @@
 #include <list>
 #include <QtCore/QList>
 #include <QtCore/QMetaEnum>
-#include <QtCore/QSharedPointer>
 #include <QtCore/QStringList>
 extern "C" {
 #include <libavcodec/vaapi.h>
@@ -33,11 +32,8 @@ extern "C" {
 #include <fcntl.h> //open()
 #include <unistd.h> //close()
 #include "QtAV/Packet.h"
-#include "QtAV/SurfaceInterop.h"
 #include "QtAV/private/AVCompat.h"
-#include "utils/GPUMemCopy.h"
 #include "QtAV/private/prepost.h"
-#include "vaapi/vaapi_helper.h"
 #include "vaapi/SurfaceInteropVAAPI.h"
 #include "utils/Logger.h"
 
@@ -163,12 +159,17 @@ public:
     VideoDecoderVAAPIPrivate()
         : support_4k(true)
     {
-        if (VAAPI_X11::isLoaded())
-            display_type = VideoDecoderVAAPI::X11;
         if (VAAPI_DRM::isLoaded())
             display_type = VideoDecoderVAAPI::DRM;
         if (VAAPI_GLX::isLoaded())
             display_type = VideoDecoderVAAPI::GLX;
+        if (VAAPI_X11::isLoaded())
+            display_type = VideoDecoderVAAPI::X11;
+        if (display_type == VideoDecoderVAAPI::DRM)
+            copy_mode = VideoDecoderFFmpegHW::OptimizedCopy;
+        else
+            copy_mode = VideoDecoderFFmpegHW::ZeroCopy;
+
         drm_fd = -1;
         display_x11 = 0;
         config_id = VA_INVALID_ID;
@@ -184,7 +185,6 @@ public:
         nb_surfaces = 0;
         disable_derive = true;
     }
-    ~VideoDecoderVAAPIPrivate() {}
     virtual bool open();
     virtual void close();
     bool createSurfaces(int count, void **hwctx, int w, int h);
@@ -220,14 +220,14 @@ public:
     bool supports_derive;
 
     QString vendor;
-    VideoSurfaceInteropPtr surface_interop; //may be still used in video frames when decoder is destroyed
+    InteropResourcePtr interop_res; //may be still used in video frames when decoder is destroyed
 };
 
 
 VideoDecoderVAAPI::VideoDecoderVAAPI()
     : VideoDecoderFFmpegHW(*new VideoDecoderVAAPIPrivate())
 {
-    setDisplayPriority(QStringList() << "GLX" << "X11" << "DRM");
+    setDisplayPriority(QStringList() << "X11" << "GLX" <<  "DRM");
     // dynamic properties about static property details. used by UI
     // format: detail_property
     setProperty("detail_surfaces", tr("Decoding surfaces.") + " " + tr("0: auto"));
@@ -262,6 +262,11 @@ void VideoDecoderVAAPI::setSurfaces(int num)
     DPTR_D(VideoDecoderVAAPI);
     d.nb_surfaces = num;
     d.surface_auto = num <= 0;
+
+    const int kMaxSurfaces = 32;
+    if (num > kMaxSurfaces) {
+        qWarning("VAAPI- Too many surfaces. requested: %d, maximun: %d", num, kMaxSurfaces);
+    }
 }
 
 int VideoDecoderVAAPI::surfaces() const
@@ -282,6 +287,7 @@ void VideoDecoderVAAPI::setDisplay(DisplayType disp)
     d.display_type = disp;
 }
 
+extern ColorSpace colorSpaceFromFFmpeg(AVColorSpace cs);
 VideoFrame VideoDecoderVAAPI::frame()
 {
     DPTR_D(VideoDecoderVAAPI);
@@ -289,7 +295,7 @@ VideoFrame VideoDecoderVAAPI::frame()
         return VideoFrame();
     VASurfaceID surface_id = (VASurfaceID)(uintptr_t)d.frame->data[3];
     VAStatus status = VA_STATUS_SUCCESS;
-    if (display() == GLX) {
+    if (display() == GLX || (copyMode() == ZeroCopy && display() == X11)) {
         surface_ptr p;
         std::list<surface_ptr>::iterator it = d.surfaces_used.begin();
         for (; it != d.surfaces_used.end() && !p; ++it) {
@@ -310,11 +316,21 @@ VideoFrame VideoDecoderVAAPI::frame()
             qWarning("VAAPI - Unable to find surface");
             return VideoFrame();
         }
-        ((SurfaceInteropVAAPI*)d.surface_interop.data())->setSurface(p);
+        SurfaceInteropVAAPI *interop = new SurfaceInteropVAAPI(d.interop_res);
+        interop->setSurface(p, d.width, d.height);
+
         VideoFrame f(d.width, d.height, VideoFormat::Format_RGB32); //p->width()
         f.setBytesPerLine(d.width*4); //used by gl to compute texture size
-        f.setMetaData("surface_interop", QVariant::fromValue(d.surface_interop));
+        f.setMetaData("surface_interop", QVariant::fromValue(VideoSurfaceInteropPtr(interop)));
         f.setTimestamp(double(d.frame->pkt_pts)/1000.0);
+
+        ColorSpace cs = colorSpaceFromFFmpeg(av_frame_get_colorspace(d.frame));
+        if (cs != ColorSpace_Unknow)
+            cs = colorSpaceFromFFmpeg(d.codec_ctx->colorspace);
+        if (cs == ColorSpace_BT601)
+            p->setColorSpace(VA_SRC_BT601);
+        else
+            p->setColorSpace(VA_SRC_BT709);
         return f;
     }
 #if VA_CHECK_VERSION(0,31,0)
@@ -404,6 +420,8 @@ QStringList VideoDecoderVAAPI::displayPriority() const
 bool VideoDecoderVAAPIPrivate::open()
 {
     const codec_profile_t* pe = findProfileEntry(codec_ctx->codec_id, codec_ctx->profile);
+    // TODO: allow wrong profile
+    // FIXME: sometimes get wrong profile (switch copyMode)
     if (!pe) {
         qWarning("codec(%s) or profile(%s) is not supported", avcodec_get_name(codec_ctx->codec_id), getProfileName(codec_ctx->codec_id, codec_ctx->profile));
         return false;
@@ -530,18 +548,20 @@ bool VideoDecoderVAAPIPrivate::open()
     //vaCreateConfig(display, pe->va_profile, VAEntrypointVLD, NULL, 0, &config_id)
     VA_ENSURE_TRUE(vaCreateConfig(disp, pe->va_profile, VAEntrypointVLD, &attrib, 1, &config_id), false);
     supports_derive = false;
-    surface_interop = VideoSurfaceInteropPtr(new SurfaceInteropVAAPI());
+    if (display_type == VideoDecoderVAAPI::GLX)
+        interop_res = InteropResourcePtr(new GLXInteropResource());
+    else if (display_type == VideoDecoderVAAPI::X11)
+        interop_res = InteropResourcePtr(new X11InteropResource());
     return true;
 }
 
 bool VideoDecoderVAAPIPrivate::createSurfaces(int count, void **pp_hw_ctx, int w, int h)
 {
-    Q_ASSERT(w > 0 && h > 0);
-    const int kMaxSurfaces = 32;
-    if (count > kMaxSurfaces) {
-        qWarning("VAAPI- Too many surfaces. requested: %d, maximun: %d", count, kMaxSurfaces);
+    if (!display) {
+        qWarning("no va display");
         return false;
     }
+    Q_ASSERT(w > 0 && h > 0);
     const int old_size = surfaces.size();
     const bool size_changed = (surface_width != FFALIGN(w, 16) || surface_height != FFALIGN(h, 16));
     if (count <= old_size && !size_changed)
@@ -551,7 +571,12 @@ bool VideoDecoderVAAPIPrivate::createSurfaces(int count, void **pp_hw_ctx, int w
     context_id = VA_INVALID_ID;
     surface_width = FFALIGN(w, 16);
     surface_height = FFALIGN(h, 16);
-    VA_ENSURE_TRUE(vaCreateSurfaces(display->get(), VA_RT_FORMAT_YUV420, width, height,  surfaces.data() + old_size, count - old_size, NULL, 0), false);
+    VAStatus status = VA_STATUS_SUCCESS;
+    status = vaCreateSurfaces(display->get(), VA_RT_FORMAT_YUV420, surface_width, surface_height,  surfaces.data() + old_size, count - old_size, NULL, 0); //VA_ENSURE_OK: travis-ci macro mismatch
+    if (status != VA_STATUS_SUCCESS) {
+        qWarning("vaCreateSurfaces error (%#x): %s", status, vaErrorStr(status));
+        return false;
+    }
     for (int i = old_size; i < surfaces.size(); ++i) {
         surfaces_free.push_back(surface_ptr(new surface_t(width, height, surfaces[i], display)));
     }
@@ -559,15 +584,23 @@ bool VideoDecoderVAAPIPrivate::createSurfaces(int count, void **pp_hw_ctx, int w
     if (context_id && context_id != VA_INVALID_ID)
         VAWARN(vaDestroyContext(display->get(), context_id));
     context_id = VA_INVALID_ID;
-    VAStatus status = VA_STATUS_SUCCESS;
     if ((status = vaCreateContext(display->get(), config_id, width, height, VA_PROGRESSIVE, surfaces.data(), surfaces.size(), &context_id)) != VA_STATUS_SUCCESS) {
-        qWarning("vaCreateContext(VADisplay:%p, VAConfigID:%#x, %d, %d, VA_PROGRESSIVE, VASurfaceID*:%p, surfaces:%d, VAContextID*:%p) == %#x", display->get(), config_id, width, height, surfaces.constData(), surfaces.size(), &context_id, status);
+        qWarning("vaCreateContext(VADisplay:%p, VAConfigID:%#x, %d, %d, VA_PROGRESSIVE, VASurfaceID*:%p, surfaces:%d, VAContextID*:%p) == %#x: %s", display->get(), config_id, width, height, surfaces.constData(), surfaces.size(), &context_id, status, vaErrorStr(status));
         context_id = VA_INVALID_ID;
         destroySurfaces();
         return false;
     }
     if (!size_changed)
         return true;
+    /* Setup the ffmpeg hardware context */
+    memset(&hw_ctx, 0, sizeof(hw_ctx));
+    hw_ctx.display = display->get();
+    hw_ctx.config_id = config_id;
+    hw_ctx.context_id = context_id;
+    if (display_type == VideoDecoderVAAPI::GLX || (display_type == VideoDecoderVAAPI::X11 && copy_mode == VideoDecoderFFmpegHW::ZeroCopy)) {
+        *pp_hw_ctx = &hw_ctx;
+        return true;
+    }
     // TODO: move to other place?
     /* Find and create a supported image chroma */
     int i_fmt_count = vaMaxNumImageFormats(display->get());
@@ -624,10 +657,6 @@ bool VideoDecoderVAAPIPrivate::createSurfaces(int count, void **pp_hw_ctx, int w
     initUSWC(surface_width);
     /* Setup the ffmpeg hardware context */
     *pp_hw_ctx = &hw_ctx;
-    memset(&hw_ctx, 0, sizeof(hw_ctx));
-    hw_ctx.display = display->get();
-    hw_ctx.config_id = config_id;
-    hw_ctx.context_id = context_id;
     return true;
 }
 
@@ -651,6 +680,10 @@ void VideoDecoderVAAPIPrivate::destroySurfaces()
 
 bool VideoDecoderVAAPIPrivate::setup(AVCodecContext *avctx)
 {
+    if (!display) {
+        qWarning("no va display");
+        return false;
+    }
     const int w = codedWidth(avctx);
     const int h = codedHeight(avctx);
     if (surface_width == FFALIGN(w, 16) && surface_height == FFALIGN(h, 16)) {
@@ -662,7 +695,12 @@ bool VideoDecoderVAAPIPrivate::setup(AVCodecContext *avctx)
     height = avctx->height;
     if (surface_width || surface_height)
         destroySurfaces();
-    return createSurfaces(nb_surfaces, &avctx->hwaccel_context, w, h);
+
+    if (!createSurfaces(nb_surfaces, &avctx->hwaccel_context, w, h)) {
+        destroySurfaces();
+        return false;
+    }
+    return true;
 }
 
 void VideoDecoderVAAPIPrivate::close()
@@ -707,8 +745,18 @@ bool VideoDecoderVAAPIPrivate::getBuffer(void **opaque, uint8_t **data)
         if (it == surfaces_free.end()) {
             if (!surfaces_free.empty())
                 qWarning("VAAPI - renderer still using all freed up surfaces by decoder. unable to find free surface, trying to allocate a new one");
+
+            const int kMaxSurfaces = 32;
+            if (surfaces.size() + 1 > kMaxSurfaces) {
+                qWarning("VAAPI- Too many surfaces. requested: %d, maximun: %d", surfaces.size() + 1, kMaxSurfaces);
+            }
             // Set itarator position to the newly allocated surface (end-1)
-            createSurfaces(surfaces.size() + 1, &codec_ctx->hwaccel_context, width, height);
+            const int old_size = surfaces.size();
+            if (!createSurfaces(old_size + 1, &codec_ctx->hwaccel_context, width, height)) {
+                // destroy the new created surface. Surfaces can only be destroyed after the context associated has been destroyed?
+                VAWARN(vaDestroySurfaces(display->get(), surfaces.data() + old_size, 1));
+                surfaces.resize(old_size);
+            }
             it = surfaces_free.end();
             --it;
         }

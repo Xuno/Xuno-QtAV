@@ -104,8 +104,6 @@ public:
     QVariant current_source, pendding_source;
     bool loaded; // for current source
     bool relative_time_mode;
-    // TODO: remove
-    AVFormatContext	*fmt_ctx; //changed when reading a packet
     qint64 media_start_pts; // read from media stream
     qint64 media_end;
     /*
@@ -149,7 +147,6 @@ public:
 
     bool seeking;
     SeekType seek_type;
-    qint64 seek_target; // relative time if relativeTimeMode is true
     qint64 interrupt_timeout;
 
     qreal force_fps;
@@ -157,6 +154,7 @@ public:
     // <0: auto compute internally, |notify_interval| is the real interval
     int notify_interval;
     MediaStatus status; // status changes can be from demuxer or demux thread
+    QMutex load_mutex;
 };
 
 } //namespace QtAV

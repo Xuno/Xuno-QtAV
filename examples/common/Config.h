@@ -52,19 +52,29 @@ class COMMON_EXPORT Config : public QObject
     Q_PROPERTY(QColor subtitleOutlineColor READ subtitleOutlineColor WRITE setSubtitleOutlineColor NOTIFY subtitleOutlineColorChanged)
     Q_PROPERTY(bool subtitleOutline READ subtitleOutline WRITE setSubtitleOutline NOTIFY subtitleOutlineChanged)
     Q_PROPERTY(int subtitleBottomMargin READ subtitleBottomMargin WRITE setSubtitleBottomMargin NOTIFY subtitleBottomMarginChanged)
+    Q_PROPERTY(qreal subtitleDelay READ subtitleDelay WRITE setSubtitleDelay NOTIFY subtitleDelayChanged)
     Q_PROPERTY(bool previewEnabled READ previewEnabled WRITE setPreviewEnabled NOTIFY previewEnabledChanged)
     Q_PROPERTY(QMap WebLinks READ WebLinks WRITE setWebLinks NOTIFY weblinksChanged)
     Q_PROPERTY(int previewWidth READ previewWidth WRITE setPreviewWidth NOTIFY previewWidthChanged)
     Q_PROPERTY(int previewHeight READ previewHeight WRITE setPreviewHeight NOTIFY previewHeightChanged)
-    Q_PROPERTY(bool ANGLE READ isANGLE WRITE setANGLE NOTIFY ANGLEChanged)
+    Q_PROPERTY(OpenGLType openGLType READ openGLType WRITE setOpenGLType NOTIFY openGLTypeChanged)
+    Q_PROPERTY(QString ANGLEPlatform READ getANGLEPlatform WRITE setANGLEPlatform NOTIFY ANGLEPlatformChanged)
     Q_PROPERTY(bool avformatOptionsEnabled READ avformatOptionsEnabled WRITE setAvformatOptionsEnabled NOTIFY avformatOptionsEnabledChanged)
     Q_PROPERTY(bool avformatOptionsEnabledI READ avformatOptionsEnabledI WRITE setAvformatOptionsEnabledI NOTIFY avformatOptionsEnabledChangedI)
     Q_PROPERTY(qreal timeout READ timeout WRITE setTimeout NOTIFY timeoutChanged)
     Q_PROPERTY(int bufferValue READ bufferValue WRITE setBufferValue NOTIFY bufferValueChanged)
     Q_PROPERTY(int bufferValueI READ bufferValueI WRITE setBufferValueI NOTIFY bufferValueChangedI)
     Q_PROPERTY(bool forceVideoClockI READ forceVideoClockI WRITE setForceVideoClockI NOTIFY forceVideoClockChangedI)
+    Q_ENUMS(OpenGLType)
 
 public:
+    enum OpenGLType { // currently only for windows
+        Auto,
+        Desktop,
+        OpenGLES,
+        Software
+    };
+
     static Config& instance();
 
     Q_INVOKABLE bool reset();
@@ -116,6 +126,9 @@ public:
     int subtitleBottomMargin() const;
     Config& setSubtitleBottomMargin(int value);
 
+    qreal subtitleDelay() const;
+    Config& setSubtitleDelay(qreal value);
+
     bool previewEnabled() const;
     Config& setPreviewEnabled(bool value);
     int previewWidth() const;
@@ -158,10 +171,17 @@ public:
     bool avfilterAudioEnable() const;
     Config& avfilterAudioEnable(bool e);
 
+
     QMap<QString,QVariant> WebLinks() const;
     Config& setWebLinks(const QMap<QString, QVariant> &value);
-    bool isANGLE() const; // false: auto
-    Config& setANGLE(bool value);
+
+    // can be "Desktop", "OpenGLES", "Software"
+    OpenGLType openGLType() const;
+    Config& setOpenGLType(OpenGLType value);
+
+    QString getANGLEPlatform() const;
+    Config& setANGLEPlatform(const QString &value);
+
 
     // ms >0. default 30000ms
     qreal timeout() const;
@@ -200,11 +220,13 @@ public:
     Q_SIGNAL void subtitleOutlineChanged();
     Q_SIGNAL void subtitleOutlineColorChanged();
     Q_SIGNAL void subtitleBottomMarginChanged();
+    Q_SIGNAL void subtitleDelayChanged();
     Q_SIGNAL void previewEnabledChanged();
     Q_SIGNAL void weblinksChanged();
     Q_SIGNAL void previewWidthChanged();
     Q_SIGNAL void previewHeightChanged();
-    Q_SIGNAL void ANGLEChanged();
+    Q_SIGNAL void openGLTypeChanged();
+    Q_SIGNAL void ANGLEPlatformChanged();
     Q_SIGNAL void avformatOptionsEnabledChanged();
     Q_SIGNAL void avformatOptionsEnabledChangedI();
     Q_SIGNAL void bufferValueChanged();

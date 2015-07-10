@@ -27,7 +27,7 @@
 #include <QProcessEnvironment>
 #include <QDesktopServices>
 #include <QMessageBox>
-#include "Button.h"
+//#include <QButtons>
 #include <QProcess>
 #include <QProgressBar>
 #include <QTimer>
@@ -114,7 +114,7 @@ private:
     QPushButton *buttonExtractFrames;
     QPixmap mPlayPixmap;
     QPixmap mPausePixmap;
-    Button *mpPlayPauseBtn;
+    QToolButton *mpPlayPauseBtn;
 
     QCheckBox *cbOutputFileSizeUse;
     QCheckBox *cbOutputFileDepthUse;

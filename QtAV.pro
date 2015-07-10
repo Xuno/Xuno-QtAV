@@ -39,8 +39,8 @@ OTHER_FILES += \
 EssentialDepends = avutil avcodec avformat swscale
 OptionalDepends = \
     swresample \
-    avresample \
     avdevice
+#    avresample \
 # QtOpenGL module. In Qt5 we can disable it and still have opengl support
 !no-gl:!no-widgets {
   greaterThan(QT_MAJOR_VERSION, 4):qtHaveModule(opengl):!config_gl {
@@ -54,19 +54,20 @@ OptionalDepends = \
 ## sse2 sse4_1 may be defined in Qt5 qmodule.pri but is not included. Qt4 defines sse and sse2
 !no-sse4_1:!sse4_1: OptionalDepends *= sse4_1
 # no-xxx can set in $$PWD/user.conf
-!no-dsound: win32: OptionalDepends *= dsound
 !no-openal: OptionalDepends *= openal
-!no-pulseaudio: OptionalDepends *= pulseaudio
 !no-portaudio: OptionalDepends *= portaudio
-!no-direct2d:!no-widgets: OptionalDepends *= direct2d
-!no-gdiplus:!no-widgets: OptionalDepends *= gdiplus
-# why win32 is false?
-!no-dxva: OptionalDepends *= dxva
 !no-libass: OptionalDepends *= libass
+win32 {
+  !no-dsound: win32: OptionalDepends *= dsound
+  !no-direct2d:!no-widgets: OptionalDepends *= direct2d
+  !no-gdiplus:!no-widgets: OptionalDepends *= gdiplus
+  !no-dxva: OptionalDepends *= dxva
+}
 unix {
-    !no-xv:!no-widgets: OptionalDepends *= xv
-    !no-vaapi: OptionalDepends *= vaapi
-    !no-cedarv: OptionalDepends *= libcedarv
+  !no-pulseaudio: OptionalDepends *= pulseaudio
+  !no-xv:!no-widgets: OptionalDepends *= xv
+  !no-vaapi: OptionalDepends *= vaapi
+  !no-cedarv: OptionalDepends *= libcedarv
 }
 
 runConfigTests()

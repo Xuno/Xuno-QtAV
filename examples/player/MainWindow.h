@@ -28,6 +28,7 @@
 #include "config/ImageSequenceExtractControl.h"
 
 class QWidgetAction;
+class QToolButton;
 namespace QtAV {
 class AudioOutput;
 class AVError;
@@ -114,7 +115,6 @@ private slots:
     void onStopPlay();
     void onPaused(bool p);
     void onSpeedChange(qreal speed);
-    void seekToMSec(int msec);
     void seek();
     void seek(qint64 msec);
     void seek(QTime time);
@@ -208,11 +208,12 @@ private:
     QLabel *mpTitle;
     QLabel *mpSpeed;
     Slider *mpTimeSlider, *mpVolumeSlider;
-    Button *mpVolumeBtn;
-    Button *mpPlayPauseBtn, *mpStopBtn, *mpForwardBtn, *mpBackwardBtn;
-    Button *mpOpenBtn;
-    Button *mpWebBtn, *mpFullScreenBtn;
-    Button *mpInfoBtn, *mpMenuBtn, *mpSetupBtn, *mpCaptureBtn;
+    QToolButton *mpWebBtn, *mpFullScreenBtn;
+    QToolButton *mpVolumeBtn;
+    QToolButton *mpPlayPauseBtn;
+    QToolButton *mpStopBtn, *mpForwardBtn, *mpBackwardBtn;
+    QToolButton *mpOpenBtn;
+    QToolButton *mpInfoBtn, *mpMenuBtn, *mpSetupBtn, *mpCaptureBtn;
     QMenu *mpMenu;
     QAction *mpVOAction, *mpARAction; //remove mpVOAction if vo.id() is supported
     QAction *mpRepeatEnableAction;
@@ -235,8 +236,6 @@ private:
     QtAV::LibAVFilterAudio *mpAudioFilter;
     QString mFile;
     QString mTitle;
-    QPixmap mPlayPixmap;
-    QPixmap mPausePixmap;
 
     QLabel *mpPreview;
 

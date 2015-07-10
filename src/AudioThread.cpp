@@ -84,7 +84,7 @@ void AudioThread::run()
     //TODO: bool need_sync in private class
     bool is_external_clock = d.clock->clockType() == AVClock::ExternalClock;
     Packet pkt;
-    while (!d.stop) {
+    while (true) {
         processNextTask();
         //TODO: why put it at the end of loop then playNextFrame() not work?
         if (tryPause()) { //DO NOT continue, or playNextFrame() will fail
@@ -94,23 +94,25 @@ void AudioThread::run()
             if (isPaused())
                 continue;
         }
-        if (!pkt.isValid()) {
+        if (!pkt.isValid() && !pkt.isEOF()) { // can't seek back if eof packet is read
             pkt = d.packets.take(); //wait to dequeue
         }
         if (pkt.isEOF()) {
-            d.stop = true;
-            qDebug("audio thread gets an eof packet. exit.");
-            break;
+            qDebug("audio thread gets an eof packet.");
+        } else {
+            if (d.stop) // user stop
+                break;
+            if (!pkt.isValid()) {
+                qDebug("Invalid packet! flush audio codec context!!!!!!!! audio queue size=%d", d.packets.size());
+                QMutexLocker locker(&d.mutex);
+                Q_UNUSED(locker);
+                if (d.dec) //maybe set to null in setDecoder()
+                    d.dec->flush();
+                d.render_pts0 = pkt.pts;
+                continue;
+            }
         }
-        if (!pkt.isValid()) {
-            qDebug("Invalid packet! flush audio codec context!!!!!!!! audio queue size=%d", d.packets.size());
-            QMutexLocker locker(&d.mutex);
-            Q_UNUSED(locker);
-            if (d.dec) //maybe set to null in setDecoder()
-                d.dec->flush();
-            d.render_pts0 = pkt.pts;
-            continue;
-        }
+
         qreal dts = pkt.dts; //FIXME: pts and dts
         // no key frame for audio. so if pts reaches, try decode and skip render if got frame pts does not reach
         bool skip_render = pkt.pts < d.render_pts0;
@@ -154,10 +156,7 @@ void AudioThread::run()
                     continue;
                 }
             }
-        } else {
-            d.clock->updateValue(pkt.pts);
         }
-
         /* lock here to ensure decoder and ao can complete current work before they are changed
          * current packet maybe not supported by new decoder
          */
@@ -210,6 +209,10 @@ void AudioThread::run()
         }
         if (!dec->decode(pkt)) {
             qWarning("Decode audio failed. undecoded: %d", dec->undecodedSize());
+            if (pkt.isEOF()) {
+                qDebug("audio decode eof done");
+                break;
+            }
             qreal dt = dts - d.last_pts;
             if (dt > 0.5 || dt < 0) {
                 dt = 0;
@@ -221,29 +224,32 @@ void AudioThread::run()
             d.last_pts = d.clock->value(); //not pkt.pts! the delay is updated!
             continue;
         }
+        // reduce here to ensure to decode the rest data in the next loop
+        if (!pkt.isEOF())
+            pkt.data = QByteArray::fromRawData(pkt.data.constData() + pkt.data.size() - dec->undecodedSize(), dec->undecodedSize());
 #if USE_AUDIO_FRAME
         AudioFrame frame(dec->frame());
-        if (frame) {
-            if (d.render_pts0 >= 0.0) { // seeking
-                if (frame.timestamp() < d.render_pts0) {
-                    qDebug("skip audio rendering: %f-%f", frame.timestamp(), d.render_pts0);
-                    d.clock->updateValue(frame.timestamp());
-                    pkt = Packet();
-                    continue;
-                }
-                d.render_pts0 = -1.0;
-                Q_EMIT seekFinished(qint64(frame.timestamp()*1000.0));
+        if (!frame)
+            continue;
+        if (frame.timestamp() <= 0)
+            frame.setTimestamp(pkt.pts); // pkt.pts is wrong. >= real timestamp
+        if (d.render_pts0 >= 0.0) { // seeking
+            if (frame.timestamp() < d.render_pts0) {
+                qDebug("skip audio rendering: %f-%f", frame.timestamp(), d.render_pts0);
+                d.clock->updateValue(frame.timestamp());
+                continue;
             }
-            if (has_ao) {
-                applyFilters(frame);
-                frame.setAudioResampler(dec->resampler()); //!!!
-                // FIXME: resample is required for audio frames from ffmpeg
-                //if (ao->audioFormat() != frame.format()) {
-                    frame = frame.to(ao->audioFormat());
-                //}
-            }
-        } // no continue if frame is invalid. decoder may need more data to get a frame
-
+            d.render_pts0 = -1.0;
+            Q_EMIT seekFinished(qint64(frame.timestamp()*1000.0));
+        }
+        if (has_ao) {
+            applyFilters(frame);
+            frame.setAudioResampler(dec->resampler()); //!!!
+            // FIXME: resample ONCE is required for audio frames from ffmpeg
+            //if (ao->audioFormat() != frame.format()) {
+                frame = frame.to(ao->audioFormat());
+            //}
+        }
         QByteArray decoded(frame.data());
 #else
         QByteArray decoded(dec->data());
@@ -265,7 +271,7 @@ void AudioThread::run()
             const qreal chunk_delay = (qreal)chunk/(qreal)byte_rate;
             pkt.pts += chunk_delay;
             pkt.dts += chunk_delay;
-            if (has_ao) {
+            if (has_ao && ao->isOpen()) {
                 QByteArray decodedChunk = QByteArray::fromRawData(decoded.constData() + decodedPos, chunk);
                 ao->play(decodedChunk, pkt.pts);
                 d.clock->updateValue(ao->timestamp());
@@ -276,11 +282,6 @@ void AudioThread::run()
              * the advantage is if no audio device, the play speed is ok too
              * So is portaudio blocking the thread when playing?
              */
-                static bool sWarn_no_ao = true; //FIXME: no warning when replay. warn only once
-                if (sWarn_no_ao) {
-                    qDebug("Audio output not available! msleep(%lu)", (unsigned long)((qreal)chunk/(qreal)byte_rate * 1000));
-                    sWarn_no_ao = false;
-                }
                 //TODO: avoid acummulative error. External clock?
                 msleep((unsigned long)(chunk_delay * 1000.0));
             }
@@ -289,13 +290,6 @@ void AudioThread::run()
         }
         if (has_ao)
             emit frameDelivered();
-        int undecoded = dec->undecodedSize();
-        if (undecoded > 0) {
-            pkt.data.remove(0, pkt.data.size() - undecoded);
-        } else {
-            pkt = Packet();
-        }
-
         d.last_pts = d.clock->value(); //not pkt.pts! the delay is updated!
     }
     d.packets.clear();

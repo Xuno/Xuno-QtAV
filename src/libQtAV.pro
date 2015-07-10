@@ -4,6 +4,10 @@ TARGET = QtAV
 QT += core gui
 #CONFIG *= ltcg
 greaterThan(QT_MAJOR_VERSION, 4) {
+  lessThan(QT_MINOR_VERSION, 5):!no_gui_private {
+    QT *= gui-private #dxva+egl
+    DEFINES *= QTAV_HAVE_GUI_PRIVATE=1
+  }
   CONFIG *= config_opengl
   greaterThan(QT_MINOR_VERSION, 3) {
     CONFIG *= config_openglwindow
@@ -29,7 +33,7 @@ sse2|config_sse2|contains(TARGET_ARCH_SUB, sse2): CONFIG *= sse2 config_simd
 PROJECTROOT = $$PWD/..
 !include(libQtAV.pri): error("could not find libQtAV.pri")
 preparePaths($$OUT_PWD/../out)
-exists($$PROJECTROOT/contrib/libchardet/libchardet.pri) {
+!no_libchardet:exists($$PROJECTROOT/contrib/libchardet/libchardet.pri) {
   include($$PROJECTROOT/contrib/libchardet/libchardet.pri)
   DEFINES += QTAV_HAVE_CHARDET=1 BUILD_CHARDET_STATIC
 } else {
@@ -38,7 +42,6 @@ exists($$PROJECTROOT/contrib/libchardet/libchardet.pri) {
 exists($$PROJECTROOT/contrib/capi/capi.pri) {
   include($$PROJECTROOT/contrib/capi/capi.pri)
   CONFIG *= capi
-  DEFINES += QTAV_HAVE_CAPI=1 BUILD_CAPI_STATIC
 } else {
   warning("contrib/capi is missing. run 'git submodule update --init' first")
 }
@@ -83,7 +86,8 @@ sse2 {
 
 *msvc* {
 #link FFmpeg and portaudio which are built by gcc need /SAFESEH:NO
-    #QMAKE_LFLAGS += /SAFESEH:NO
+    debug: QMAKE_LFLAGS += /SAFESEH:NO
+    QMAKE_LFLAGS *= /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libcmtd.lib #for msbuild vs2013
     INCLUDEPATH += compat/msvc
 }
 #UINT64_C: C99 math features, need -D__STDC_CONSTANT_MACROS in CXXFLAGS
@@ -98,16 +102,16 @@ config_swresample {
     LIBS += -lswresample
 }
 config_avresample {
-    DEFINES += QTAV_HAVE_AVRESAMPLE=1
-    SOURCES += AudioResamplerLibav.cpp
-    LIBS += -lavresample
+#    DEFINES += QTAV_HAVE_AVRESAMPLE=1
+#    SOURCES += AudioResamplerLibav.cpp
+#    LIBS += -lavresample
 }
 config_avdevice { #may depends on avfilter
     DEFINES += QTAV_HAVE_AVDEVICE=1
     LIBS *= -lavdevice
     static_ffmpeg {
       win32 {
-        LIBS *= -lgdi32 -loleaut32
+        LIBS *= -lgdi32 -loleaut32 -lshlwapi #shlwapi: desktop >= xp only
       } else:mac:!ios { # static ffmpeg
         LIBS += -framework Foundation -framework QTKit -framework CoreMedia -framework QuartzCore -framework CoreGraphics \
                 -framework AVFoundation
@@ -194,7 +198,9 @@ include(../depends/dllapi/src/libdllapi.pri)
 }
 config_dxva {
     DEFINES *= QTAV_HAVE_DXVA=1
-    SOURCES += codec/video/VideoDecoderDXVA.cpp
+    HEADERS += codec/video/SurfaceInteropDXVA.h
+    SOURCES += codec/video/VideoDecoderDXVA.cpp \
+               codec/video/SurfaceInteropDXVA.cpp
     LIBS += -lole32
 }
 config_vaapi* {
@@ -206,7 +212,7 @@ config_vaapi* {
 config_libcedarv {
     DEFINES *= QTAV_HAVE_CEDARV=1
     QMAKE_CXXFLAGS *= -march=armv7-a
-    SOURCES += codec/video/VideoDecoderCedarv.cpp
+    NEON_SOURCES += codec/video/VideoDecoderCedarv.cpp
     !config_simd: CONFIG *= simd #addSimdCompiler xxx_ASM
     CONFIG += no_clang_integrated_as #see qtbase/src/gui/painting/painting.pri. add -fno-integrated-as from simd.prf
     NEON_ASM += codec/video/tiled_yuv.S #from libvdpau-sunxi
@@ -253,7 +259,13 @@ config_libass {
   SOURCES *= subtitle/ass_api.cpp
   SOURCES *= subtitle/SubtitleProcessorLibASS.cpp
 }
-
+capi:win32 { # currently only used for windows
+contains(QT_CONFIG, dynamicgl)|contains(QT_CONFIG, opengles2) {
+  DEFINES += QTAV_HAVE_EGL_CAPI=1
+  HEADERS *= capi/egl_api.h
+  SOURCES *= capi/egl_api.cpp
+}
+}
 # mac is -FQTDIR we need -LQTDIR
 LIBS *= -L$$[QT_INSTALL_LIBS] -lavcodec -lavformat -lswscale -lavutil
 win32 {
@@ -265,7 +277,7 @@ win32 {
 glibc_compat: *linux*: LIBS += -lrt  # do not use clock_gettime in libc, GLIBC_2.17 is not available on old system
 static_ffmpeg {
 # libs needed by mac static ffmpeg. corefoundation: vda, avdevice
-  mac: LIBS += -liconv -lbz2 -lz -framework CoreFoundation
+  mac: LIBS += -liconv -lbz2 -lz -framework CoreFoundation  -Wl,-framework,Security
   win32: LIBS *= -lws2_32 -lstrmiids -lvfw32 -luuid
   !mac:*g++* {
     LIBS += -lz
@@ -290,9 +302,11 @@ SOURCES += \
     AudioFrame.cpp \
     AudioResampler.cpp \
     AudioResamplerTypes.cpp \
-    codec/AVDecoder.cpp \
     codec/audio/AudioDecoder.cpp \
     codec/audio/AudioDecoderFFmpeg.cpp \
+    codec/audio/AudioEncoder.cpp \
+    codec/audio/AudioEncoderFFmpeg.cpp \
+    codec/AVDecoder.cpp \
     codec/AVEncoder.cpp \
     AVMuxer.cpp \
     AVDemuxer.cpp \
@@ -304,6 +318,7 @@ SOURCES += \
     filter/FilterManager.cpp \
     filter/LibAVFilter.cpp \
     filter/SubtitleFilter.cpp \
+    filter/EncodeFilter.cpp \
     ImageConverter.cpp \
     ImageConverterFF.cpp \
     Packet.cpp \
@@ -311,6 +326,7 @@ SOURCES += \
     AVError.cpp \
     AVPlayer.cpp \
     AVPlayerPrivate.cpp \
+    AVTranscoder.cpp \
     AVClock.cpp \
     VideoCapture.cpp \
     VideoFormat.cpp \
@@ -345,6 +361,7 @@ SDK_HEADERS *= \
     QtAV/AudioResampler.h \
     QtAV/AudioResamplerTypes.h \
     QtAV/AudioDecoder.h \
+    QtAV/AudioEncoder.h \
     QtAV/AudioFormat.h \
     QtAV/AudioFrame.h \
     QtAV/AudioOutput.h \
@@ -356,11 +373,13 @@ SDK_HEADERS *= \
     QtAV/Filter.h \
     QtAV/FilterContext.h \
     QtAV/LibAVFilter.h \
+    QtAV/EncodeFilter.h \
     QtAV/Frame.h \
     QtAV/QPainterRenderer.h \
     QtAV/Packet.h \
     QtAV/AVError.h \
     QtAV/AVPlayer.h \
+    QtAV/AVTranscoder.h \
     QtAV/VideoCapture.h \
     QtAV/VideoRenderer.h \
     QtAV/VideoRendererTypes.h \

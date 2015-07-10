@@ -17,6 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
+// scroll area code is from Xuno: https://github.com/Xuno/Xuno-QtAV/blob/master/examples/player/config/DecoderConfigPage.cpp
 
 #include "DecoderConfigPage.h"
 #include "common/Config.h"
@@ -28,6 +29,7 @@
 #include <QLayout>
 #include <QLabel>
 #include <QCheckBox>
+#include <QScrollArea>
 #include <QSpacerItem>
 
 #include <QtAV/VideoDecoderTypes.h>
@@ -175,9 +177,6 @@ DecoderConfigPage::DecoderConfigPage(QWidget *parent) :
     QVBoxLayout *vb = new QVBoxLayout;
     vb->setSpacing(0);
 
-    //QFrame *frame = new QFrame(scrollAreaWidgetContents);
-    //frame->setFrameShape(QFrame::HLine);
-    //vb->addWidget(frame);
     vb->addWidget(new QLabel(tr("Decoder") + " " + tr("Priorities") + " (" + tr("reopen is required") + ")"));
 
     sPriorityUi = idsFromNames(Config::instance().decoderPriorityNames());

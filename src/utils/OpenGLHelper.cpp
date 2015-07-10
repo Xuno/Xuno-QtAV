@@ -26,19 +26,35 @@
 #if QT_VERSION >= QT_VERSION_CHECK(4, 8, 0)
 #include <QtOpenGL/QGLFunctions>
 #endif
-#include <QtOpenGL/QGLContext>
-#define QOpenGLContext QGLContext
 #endif
 #include "utils/Logger.h"
 
 namespace QtAV {
 namespace OpenGLHelper {
 
+bool isOpenGLES()
+{
+#ifdef QT_OPENGL_DYNAMIC
+    QOpenGLContext *ctx = QOpenGLContext::currentContext();
+    // desktop can create es compatible context
+    return qApp->testAttribute(Qt::AA_UseOpenGLES) || (ctx ? ctx->isOpenGLES() : QOpenGLContext::openGLModuleType() != QOpenGLContext::LibGL); //
+#endif //QT_OPENGL_DYNAMIC
+#ifdef QT_OPENGL_ES_2
+    return true;
+#endif //QT_OPENGL_ES_2
+#if defined(QT_OPENGL_ES_2_ANGLE_STATIC) || defined(QT_OPENGL_ES_2_ANGLE)
+    return true;
+#endif //QT_OPENGL_ES_2_ANGLE_STATIC
+    return false;
+}
+
 bool hasExtension(const char *exts[])
 {
     const QOpenGLContext *ctx = QOpenGLContext::currentContext();
-    if (!ctx)
+    if (!ctx) {
+        qWarning("no gl context for hasExtension");
         return false;
+    }
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
     const char *ext = (const char*)glGetString(GL_EXTENSIONS);
     if (!ext)
@@ -150,17 +166,8 @@ bool videoFormatToGL(const VideoFormat& fmt, GLint* internal_format, GLenum* dat
         {VideoFormat::Format_Invalid, 0, 0, 0}
     };
     const fmt_entry *pixfmt_gl_entry = pixfmt_to_gl;
-#ifdef QT_OPENGL_DYNAMIC
-    QOpenGLContext *ctx = QOpenGLContext::currentContext();
-    // desktop can create es compatible context
-    const bool isES = qApp->testAttribute(Qt::AA_UseOpenGLES) || (ctx ? ctx->isOpenGLES() : QOpenGLContext::openGLModuleType() != QOpenGLContext::LibGL); //
-    if (isES)
+    if (OpenGLHelper::isOpenGLES())
         pixfmt_gl_entry = pixfmt_to_gles;
-#else
-# ifdef QT_OPENGL_ES_2
-    pixfmt_gl_entry = pixfmt_to_gles;
-# endif //QT_OPENGL_ES_2
-#endif //QT_OPENGL_DYNAMIC
     // Very special formats, for which OpenGL happens to have direct support
     static const fmt_entry pixfmt_gl_entry_common[] = {
         // TODO: review rgb formats & yuv packed to upload correct rgba

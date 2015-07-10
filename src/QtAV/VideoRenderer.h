@@ -202,6 +202,7 @@ protected:
     virtual void drawBackground();
     virtual bool needDrawFrame() const; //TODO: no virtual func. it's a solution for temporary
     //draw the current frame using the current paint engine. called by paintEvent()
+    // TODO: parameter VideoFrame
     virtual void drawFrame() = 0; //You MUST reimplement this to display a frame. Other draw functions are not essential
     /*!
      * This function is called whenever resizeRenderer() is called or aspect ratio is changed?
@@ -213,6 +214,7 @@ protected:
      */
     virtual void resizeFrame(int width, int height);
     virtual void handlePaintEvent(); //has default. User don't have to implement it
+    void updateUi(); // schedual an UpdateRequest event on ui thread
 
 private: //used by VideoOutput class
     /*!
@@ -241,7 +243,6 @@ private: //used by VideoOutput class
     virtual bool onSetSaturation(qreal saturation);
     virtual bool onSetGammaRGB(qreal gammaRGB);
     virtual bool onSetFilterSharp(qreal filterSharp);
-    void updateUi();
 private:
     friend class VideoOutput;
     //the size of decoded frame. get called in receiveFrame(). internal use only

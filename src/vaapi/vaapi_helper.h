@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -33,7 +33,9 @@
 #elif defined(QT_OPENGL_LIB)
 #include <qgl.h>
 #else
+#if !defined(QT_OPENGL_ES_2)
 #include <GL/gl.h>
+#endif //!defined(QT_OPENGL_ES_2)
 #endif
 #include "utils/SharedPtr.h"
 
@@ -57,7 +59,7 @@ namespace QtAV {
 do { \
   VAStatus res = a; \
   if(res != VA_STATUS_SUCCESS) \
-    qWarning("VA-API error@%d. " #a ": %#x %s", __LINE__, res, vaErrorStr(res)); \
+    qWarning("VA-API error %s@%d. " #a ": %#x %s", __FILE__, __LINE__, res, vaErrorStr(res)); \
 } while(0);
 
 namespace vaapi {
@@ -117,16 +119,33 @@ private:
 };
 class VAAPI_X11 : public dll_helper {
 public:
+    typedef unsigned long Drawable;
     typedef VADisplay vaGetDisplay_t(Display *);
+    typedef VAStatus vaPutSurface_t(VADisplay, VASurfaceID,	Drawable,
+                                   short, short, unsigned short,  unsigned short,
+                                   short, short, unsigned short, unsigned short,
+                                   VARectangle *, unsigned int,  unsigned int);
     VAAPI_X11(): dll_helper("va-x11",1) {
         fp_vaGetDisplay = (vaGetDisplay_t*)resolve("vaGetDisplay");
+        fp_vaPutSurface = (vaPutSurface_t*)resolve("vaPutSurface");
     }
     VADisplay vaGetDisplay(Display *dpy) {
         assert(fp_vaGetDisplay);
         return fp_vaGetDisplay(dpy);
     }
+    VAStatus vaPutSurface (VADisplay dpy, VASurfaceID surface,	Drawable draw, /* X Drawable */
+        short srcx, short srcy, unsigned short srcw,  unsigned short srch,
+        short destx, short desty, unsigned short destw, unsigned short desth,
+        VARectangle *cliprects, /* client supplied destination clip list */
+        unsigned int number_cliprects, /* number of clip rects in the clip list */
+        unsigned int flags /* PutSurface flags */
+    ) {
+        assert(fp_vaPutSurface);
+        return fp_vaPutSurface(dpy, surface, draw, srcx, srcy, srcw, srch, destx, desty, destw, desth, cliprects, number_cliprects, flags);
+    }
 private:
     vaGetDisplay_t* fp_vaGetDisplay;
+    vaPutSurface_t* fp_vaPutSurface;
 };
 class VAAPI_GLX : public dll_helper {
 public:
@@ -188,6 +207,7 @@ public:
             return;
         qDebug("vaapi: destroy display %p", m_display);
         VAWARN(vaTerminate(m_display)); //FIXME: what about thread?
+        m_display = 0;
     }
     operator VADisplay() const { return m_display;}
     VADisplay get() const {return m_display;}
@@ -203,6 +223,7 @@ public:
         , m_display(display)
         , m_width(w)
         , m_height(h)
+        , color_space(VA_SRC_BT709)
     {}
     ~surface_t() {
         //qDebug("VAAPI - destroying surface 0x%x", (int)m_id);
@@ -213,43 +234,42 @@ public:
     VASurfaceID get() const { return m_id;}
     int width() const { return m_width;}
     int height() const { return m_height;}
-    VADisplay display() const { return m_display->get();}
+    void setColorSpace(int cs = VA_SRC_BT709) { color_space = cs;}
+    int colorSpace() const { return color_space;}
+    display_ptr display() const { return m_display;}
+    VADisplay vadisplay() const { return m_display->get();}
 private:
     VASurfaceID m_id;
     display_ptr m_display;
     int m_width, m_height;
+    int color_space;
 };
 typedef SharedPtr<surface_t> surface_ptr;
 
 class surface_glx_t : public VAAPI_GLX {
 public:
-    surface_glx_t() : m_glx(0) {}
-    void set(const surface_ptr& surface) { m_surface = surface;}
+    surface_glx_t(const display_ptr& dpy) : m_dpy(dpy), m_glx(0) {}
+    ~surface_glx_t() {destroy();}
     bool create(GLuint tex) {
         destroy();
-        VA_ENSURE_TRUE(vaCreateSurfaceGLX(display(), GL_TEXTURE_2D, tex, &m_glx), false);
+        VA_ENSURE_TRUE(vaCreateSurfaceGLX(m_dpy->get(), GL_TEXTURE_2D, tex, &m_glx), false);
         return true;
     }
     bool destroy() {
         if (!m_glx)
             return true;
-        VA_ENSURE_TRUE(vaDestroySurfaceGLX(display(), m_glx), false);
+        VA_ENSURE_TRUE(vaDestroySurfaceGLX(m_dpy->get(), m_glx), false);
+        m_glx = 0;
         return true;
     }
-    bool copy() {
+    bool copy(const surface_ptr& surface) {
         if (!m_glx)
             return false;
-        VA_ENSURE_TRUE(vaCopySurfaceGLX(display(), m_glx, m_surface->get(), VA_FRAME_PICTURE | VA_SRC_BT709), false);
+        VA_ENSURE_TRUE(vaCopySurfaceGLX(m_dpy->get(), m_glx, surface->get(), VA_FRAME_PICTURE | surface->colorSpace()), false);
         return true;
     }
-    void sync() {
-        VAWARN(vaSyncSurface(display(), m_surface->get()));
-    }
-    VADisplay display() const { return m_surface->display();}
-    surface_t* surface() { return m_surface.get();}
-    void* glxSurface() { return m_glx;}
 private:
-    surface_ptr m_surface;
+    display_ptr m_dpy;
     void* m_glx;
 };
 typedef QSharedPointer<surface_glx_t> surface_glx_ptr; //store in a vector

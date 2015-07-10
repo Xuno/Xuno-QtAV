@@ -47,11 +47,6 @@ public:
       , capture(0)
       , filter_context(0)
     {
-        QVariantHash opt;
-        opt["skip_frame"] = 8; // 8 for "avcodec", "NoRef" for "FFmpeg". see AVDiscard
-        dec_opt_framedrop["avcodec"] = opt;
-        opt["skip_frame"] = 0; // 0 for "avcodec", "Default" for "FFmpeg". see AVDiscard
-        dec_opt_normal["avcodec"] = opt; // avcodec need correct string or value in libavcodec
     }
     ~VideoThreadPrivate() {
         //not neccesary context is managed by filters.
@@ -68,11 +63,7 @@ public:
     VideoCapture *capture;
     VideoFilterContext *filter_context;//TODO: use own smart ptr. QSharedPointer "=" is ugly
     VideoFrame displayed_frame;
-    static QVariantHash dec_opt_framedrop, dec_opt_normal;
 };
-
-QVariantHash VideoThreadPrivate::dec_opt_framedrop;
-QVariantHash VideoThreadPrivate::dec_opt_normal;
 
 VideoThread::VideoThread(QObject *parent) :
     AVThread(*new VideoThreadPrivate(), parent)
@@ -188,25 +179,6 @@ void VideoThread::setEQ(int b, int c, int s)
     }
 }
 
-void VideoThread::scheduleFrameDrop(bool value)
-{
-    class FrameDropTask : public QRunnable {
-        AVDecoder *decoder;
-        bool drop;
-    public:
-        FrameDropTask(AVDecoder *dec, bool value) : decoder(dec), drop(value) {}
-        void run() Q_DECL_OVERRIDE {
-            if (!decoder)
-                return;
-            if (drop)
-                decoder->setOptions(VideoThreadPrivate::dec_opt_framedrop);
-            else
-                decoder->setOptions(VideoThreadPrivate::dec_opt_normal);
-        }
-    };
-    scheduleTask(new FrameDropTask(decoder(), value));
-}
-
 void VideoThread::applyFilters(VideoFrame &frame)
 {
     DPTR_D(VideoThread);
@@ -310,7 +282,8 @@ void VideoThread::run()
     bool sync_video = d.clock->clockType() == AVClock::VideoClock; // no frame drop
     const qint64 start_time = QDateTime::currentMSecsSinceEpoch();
     bool skip_render = false; // keep true if decoded frame does not reach desired time
-    while (!d.stop) {
+    qreal v_a = 0;
+    while (true) {
         processNextTask();
         //TODO: why put it at the end of loop then playNextFrame() not work?
         //processNextTask tryPause(timeout) and  and continue outter loop
@@ -320,23 +293,26 @@ void VideoThread::run()
             if (isPaused())
                 continue; //timeout. process pending tasks
         }
-        if(!pkt.isValid()) {
+        if(!pkt.isValid() && !pkt.isEOF()) { // can't seek back if eof packet is read
             pkt = d.packets.take(); //wait to dequeue
         }
         if (pkt.isEOF()) {
-            d.stop = true;
-            qDebug("video thread gets an eof packet. exit.");
-            break;
-        }
-        //qDebug() << pkt.position << " pts:" <<pkt.pts;
-        //Compare to the clock
-        if (!pkt.isValid()) {
-            // may be we should check other information. invalid packet can come from
-            wait_key_frame = true;
-            qDebug("Invalid packet! flush video codec context!!!!!!!!!! video packet queue size: %d", d.packets.size());
-            dec->flush();
-            d.render_pts0 = pkt.pts;
-            continue;
+            d.render_pts0 = -1;
+            wait_key_frame = false;
+            qDebug("video thread gets an eof packet.");
+        } else {
+            if (d.stop) // user stop
+                break;
+            //qDebug() << pkt.position << " pts:" <<pkt.pts;
+            //Compare to the clock
+            if (!pkt.isValid()) {
+                // may be we should check other information. invalid packet can come from
+                wait_key_frame = true;
+                qDebug("Invalid packet! flush video codec context!!!!!!!!!! video packet queue size: %d", d.packets.size());
+                dec->flush();
+                d.render_pts0 = pkt.pts;
+                continue;
+            }
         }
         if (d.clock->clockType() == AVClock::AudioClock) {
             sync_audio = true;
@@ -350,7 +326,9 @@ void VideoThread::run()
         }
         const qreal dts = pkt.dts; //FIXME: pts and dts
         // TODO: delta ref time
-        qreal diff = dts - d.clock->value();
+        qreal diff = dts - d.clock->value() + v_a;
+        if (pkt.isEOF())
+            diff = qMin<qreal>(1.0, qMax<qreal>(d.delay, 1.0/d.statistics->video_only.currentDisplayFPS()));
         if (diff < 0 && sync_video)
             diff = 0; // this ensures no frame drop
         if (diff > kSyncThreshold) {
@@ -377,7 +355,7 @@ void VideoThread::run()
                     continue;
                 } else {
                     nb_dec_slow++;
-                    qDebug("frame slow count: %d. a-v: %.3f", nb_dec_slow, diff);
+                    qDebug("frame slow count: %d. v-a: %.3f", nb_dec_slow, diff);
                 }
             }
         } else {
@@ -398,7 +376,8 @@ void VideoThread::run()
             diff = 0; // TODO: here?
         if (!sync_audio && diff > 0) {
             // wait to dts reaches
-            waitAndCheck(diff*1000UL, dts); // TODO: count decoding and filter time
+            if (d.force_fps < 0.0 && diff < 2.0)
+                waitAndCheck(diff*1000UL, dts); // TODO: count decoding and filter time
             diff = 0; // TODO: can not change delay!
         }
         // update here after wait
@@ -427,7 +406,7 @@ void VideoThread::run()
                 }
             } else {
                 const double s = qMin<qreal>(0.01*(nb_dec_fast>>1), diff);
-                qWarning("video too fast!!! sleep %.2f s, nb fast: %d", s, nb_dec_fast);
+                qWarning("video too fast!!! sleep %.2f s, nb fast: %d, v_a: %.4f", s, nb_dec_fast, v_a);
                 waitAndCheck(s*1000UL, dts);
                 diff = 0;
             }
@@ -471,33 +450,31 @@ void VideoThread::run()
         if (dec_opt != dec_opt_old)
             dec->setOptions(*dec_opt);
         if (!dec->decode(pkt)) {
+            qWarning("Decode video failed. undecoded: %d", dec->undecodedSize());
+            if (pkt.isEOF()) {
+                qDebug("decode eof done");
+                break;
+            }
             pkt = Packet();
             continue;
-        } else {
-            int undecoded = dec->undecodedSize();
-            if (undecoded > 0) {
-                qDebug("undecoded size: %d", undecoded);
-                const int remove = pkt.data.size() - undecoded;
-                if (remove > 0)
-                    pkt.data.remove(0, pkt.data.size() - undecoded);
-            } else {
-                pkt = Packet();
-            }
         }
+        // reduce here to ensure to decode the rest data in the next loop
+        if (!pkt.isEOF())
+            pkt.data = QByteArray::fromRawData(pkt.data.constData() + pkt.data.size() - dec->undecodedSize(), dec->undecodedSize());
         VideoFrame frame = dec->frame();
         if (!frame.isValid()) {
-            pkt = Packet(); //mark invalid to take next
-            qWarning() << "invalid video frame from decoder";
+            qWarning("invalid video frame from decoder. undecoded data size: %d", pkt.data.size());
             continue;
         }
-        if (frame.timestamp() == 0)
+        if (frame.timestamp() <= 0)
             frame.setTimestamp(pkt.pts); // pkt.pts is wrong. >= real timestamp
         const qreal pts = frame.timestamp();
         // seek finished because we can ensure no packet before seek decoded when render_pts0 is set
         //qDebug("pts0: %f, pts: %f", d.render_pts0, pts);
         if (d.render_pts0 >= 0.0) {
             if (pts < d.render_pts0) {
-                pkt = Packet();
+                if (!pkt.isEOF())
+                    pkt = Packet();
                 continue;
             }
             d.render_pts0 = -1;
@@ -556,6 +533,31 @@ void VideoThread::run()
         d.last_deliver_time = d.statistics->video_only.frameDisplayed(frame.timestamp());
         // TODO: store original frame. now the frame is filtered and maybe converted to renderer perferred format
         d.displayed_frame = frame;
+        if (d.clock->clockType() == AVClock::AudioClock) {
+            const qreal v_a_ = frame.timestamp() - d.clock->value();
+            if (!qFuzzyIsNull(v_a_)) {
+                if (v_a_ < -0.1) {
+                    if (v_a <= v_a_)
+                        v_a += -0.01;
+                    else
+                        v_a = (v_a_ +v_a)*0.5;
+                } else if (v_a_ < -0.002) {
+                    v_a += -0.001;
+                } else if (v_a_ < 0.002) {
+                } else if (v_a_ < 0.1) {
+                    v_a += 0.001;
+                } else {
+                    if (v_a >= v_a_)
+                        v_a += 0.01;
+                    else
+                        v_a = (v_a_ +v_a)*0.5;
+                }
+
+                if (v_a < -2 || v_a > 2)
+                   v_a /= 2.0;
+            }
+            //qDebug("v_a:%.4f, v_a_: %.4f", v_a, v_a_);
+        }
     }
     d.packets.clear();
     d.outputSet->sendVideoFrame(VideoFrame()); // TODO: let user decide what to display

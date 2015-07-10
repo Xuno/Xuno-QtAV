@@ -42,12 +42,12 @@ OpenGLWindowRenderer::OpenGLWindowRenderer(UpdateBehavior updateBehavior, QWindo
 
 void OpenGLWindowRenderer::onUpdate()
 {
-    update();
+    // MUST call update() on gui(main) thread that the window belongs to because update() will finally call startTimer
+    updateUi();
 }
 
 void OpenGLWindowRenderer::initializeGL()
 {
-    makeCurrent();
     onInitializeGL();
 }
 

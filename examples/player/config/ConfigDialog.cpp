@@ -119,6 +119,7 @@ void ConfigDialog::onApply()
     foreach (ConfigPageBase* page, mPages) {
         page->apply();
     }
+    Config::instance().save();
 }
 
 void ConfigDialog::onCancel()

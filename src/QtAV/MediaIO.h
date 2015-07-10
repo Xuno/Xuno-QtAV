@@ -29,6 +29,18 @@
 
 namespace QtAV {
 
+/*!
+ * \brief MediaIO
+ * Built-in io (use MediaIO::create(name), example: MediaIO *qio = MediaIO::create("QIODevice"))
+ * "QIODevice":
+ *   properties:
+ *     device - read/write. parameter: QIODevice*. example: io->setDevice(mydev)
+ * "QFile"
+ *   properties:
+ *     device - read only. example: io->device()
+ *   protocols: "", "qrc"
+ */
+
 typedef int MediaIOId;
 class MediaIO;
 FACTORY_DECLARE(MediaIO)
@@ -56,17 +68,22 @@ public:
      * \return Null if none of registered MediaIO supports the protocol
      */
     static MediaIO* createForProtocol(const QString& protocol);
+    /*!
+     * \brief createForUrl
+     * Create a MediaIO and setUrl(url) if protocol of url is supported.
+     * Example: MediaIO *qrc = MediaIO::createForUrl("qrc:/icon/test.mkv");
+     * \return MediaIO instance with url set. Null if protocol is not supported.
+     */
     static MediaIO* createForUrl(const QString& url);
 
-    MediaIO();
-    MediaIO(QObject *parent);
     virtual ~MediaIO();
     virtual QString name() const = 0;
     virtual void setUrl(const QString& url);
     QString url() const;
     /*!
      * \brief setAccessMode
-     * A MediaIO instance can be 1 mode, Read or Write. If !isWritable(), then set to Write will fail and mode does not change
+     * A MediaIO instance can be 1 mode, Read (default) or Write. If !isWritable(), then set to Write will fail and mode does not change
+     * Call it before any function!
      * \return false if set failed
      */
     bool setAccessMode(AccessMode value);
@@ -76,7 +93,15 @@ public:
     virtual const QStringList& protocols() const;
     virtual bool isSeekable() const = 0;
     virtual bool isWritable() const = 0;
+    /*!
+     * \brief read
+     * read at most maxSize bytes to data, and return the bytes were actually read
+     */
     virtual qint64 read(char *data, qint64 maxSize) = 0;
+    /*!
+     * \brief write
+     * write at most maxSize bytes from data, and return the bytes were actually written
+     */
     virtual qint64 write(const char* data, qint64 maxSize) = 0;
     /*!
      * \brief seek
@@ -97,16 +122,37 @@ public:
      * \return <=0 if not support
      */
     virtual qint64 size() const = 0;
+    /*!
+     * \brief isVariableSize
+     * Experiment: A hack for size() changes during playback.
+     * If true, containers that estimate duration from pts(or bit rate) will get an invalid duration. Thus no eof get
+     * when the size of playback start reaches. So playback will not stop.
+     * Demuxer seeking should work for this case.
+     */
+    virtual bool isVariableSize() const { return false;}
+    // The followings are for internal use. used by AVDemuxer, AVMuxer
     //struct AVIOContext; //anonymous struct in FFmpeg1.0.x
     void* avioContext(); //const?
     void release(); //TODO: how to remove it?
 protected:
     MediaIO(MediaIOPrivate& d, QObject* parent = 0);
+    /*!
+     * \brief onUrlChanged
+     * Here you can close old url, parse new url() and open it
+     */
     virtual void onUrlChanged();
     DPTR_DECLARE(MediaIO)
+//private: // must add QT+=av-private if default ctor is private
+    // base class, not direct create. only final class has public ctor is enough
+    // FIXME: it's required by Q_DECLARE_METATYPE (also copy ctor)
+    MediaIO(QObject* parent = 0);
 };
-Q_DECL_DEPRECATED typedef MediaIO AVInput; // for compatibility
+Q_DECL_DEPRECATED typedef MediaIO AVInput; // for source compatibility
 } //namespace QtAV
-//#include <QtCore/QMetaType>
-//Q_DECLARE_METATYPE(QtAV::MediaIO*)
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+#include <QtCore/QMetaType>
+Q_DECLARE_METATYPE(QtAV::MediaIO*)
+Q_DECLARE_METATYPE(QIODevice*)
+#endif
 #endif // QTAV_MediaIO_H

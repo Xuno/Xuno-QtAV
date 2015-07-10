@@ -46,10 +46,6 @@
 #include "QtAV/private/AVCompat.h"
 #include "utils/Logger.h"
 
-Q_DECLARE_METATYPE(QtAV::MediaIO*)
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-Q_DECLARE_METATYPE(QIODevice*)
-#endif
 #define EOF_ISSUE_SOLVED 0
 namespace QtAV {
 
@@ -78,7 +74,7 @@ AVPlayer::AVPlayer(QObject *parent) :
     //d->clock->setClockType(AVClock::ExternalClock);
     connect(&d->demuxer, SIGNAL(started()), masterClock(), SLOT(start()));
     connect(&d->demuxer, SIGNAL(error(QtAV::AVError)), this, SIGNAL(error(QtAV::AVError)));
-    connect(&d->demuxer, SIGNAL(mediaStatusChanged(QtAV::MediaStatus)), this, SLOT(updateMediaStatus(QtAV::MediaStatus)));
+    connect(&d->demuxer, SIGNAL(mediaStatusChanged(QtAV::MediaStatus)), this, SLOT(updateMediaStatus(QtAV::MediaStatus)), Qt::DirectConnection);
     connect(&d->demuxer, SIGNAL(loaded()), this, SIGNAL(loaded()));
     connect(&d->demuxer, SIGNAL(seekableChanged()), this, SIGNAL(seekableChanged()));
     d->read_thread = new AVDemuxThread(this);
@@ -88,7 +84,7 @@ AVPlayer::AVPlayer(QObject *parent) :
     connect(d->read_thread, SIGNAL(requestClockPause(bool)), masterClock(), SLOT(pause(bool)), Qt::DirectConnection);
     connect(d->read_thread, SIGNAL(mediaStatusChanged(QtAV::MediaStatus)), this, SLOT(updateMediaStatus(QtAV::MediaStatus)));
     connect(d->read_thread, SIGNAL(bufferProgressChanged(qreal)), this, SIGNAL(bufferProgressChanged(qreal)));
-    connect(d->read_thread, SIGNAL(seekFinished(qint64)), this, SIGNAL(seekFinished()), Qt::DirectConnection);
+    connect(d->read_thread, SIGNAL(seekFinished(qint64)), this, SLOT(onSeekFinished()), Qt::DirectConnection);
 
     d->vcapture = new VideoCapture(this);
 }
@@ -535,7 +531,7 @@ bool AVPlayer::load(const QString &path, bool reload)
 bool AVPlayer::load(bool reload)
 {
     // TODO: call unload if reload?
-    if (mediaStatus() == QtAV::LoadingMedia) //async loading
+    if (mediaStatus() == QtAV::LoadingMedia)
         return true;
     if (isLoaded()) {
         // release codec ctx. if not loaded, they are released by avformat. TODO: always let avformat release them?
@@ -562,6 +558,7 @@ bool AVPlayer::load(bool reload)
         reload = reload || !d->demuxer.isLoaded();
     }
     if (reload) {
+        d->status = LoadingMedia;
         if (isAsyncLoad()) {
             class LoadWorker : public QRunnable {
             public:
@@ -587,6 +584,8 @@ bool AVPlayer::load(bool reload)
 
 void AVPlayer::loadInternal()
 {
+    QMutexLocker lock(&d->load_mutex);
+    Q_UNUSED(lock);
     // release codec ctx
     //close decoders here to make sure open and close in the same thread if not async load
     if (isLoaded()) {
@@ -606,6 +605,7 @@ void AVPlayer::loadInternal()
         }
     }
     d->loaded = d->demuxer.load();
+    d->status = d->demuxer.mediaStatus();
     if (!d->loaded) {
         d->statistics.reset();
         qWarning("Load failed!");
@@ -617,7 +617,6 @@ void AVPlayer::loadInternal()
     Q_EMIT internalAudioTracksChanged(d->audio_tracks);
     Q_EMIT durationChanged(duration());
     // setup parameters from loaded media
-    d->fmt_ctx = d->demuxer.formatContext();
     d->media_start_pts = d->demuxer.startTime();
     // TODO: what about other proctols? some vob duration() == 0
     if (duration() > 0)
@@ -637,29 +636,10 @@ void AVPlayer::loadInternal()
 
 void AVPlayer::unload()
 {
-    // what about threads just start and going to use the decoder(thread not start when stop())
-    if (isPlaying()) {
-        qWarning("call unload() after stopped() is emitted!");
-        return;
-    }
-    if (mediaStatus() != LoadingMedia) {
-        unloadInternal();
-        //QTimer::singleShot(0, this, SLOT(unloadInternal()));
-        return;
-    }
-    // maybe it is loaded soon
-    connect(&d->demuxer, SIGNAL(loaded()), this, SLOT(unloadInternal()));
-    // user interrupt if still loading
-    connect(&d->demuxer, SIGNAL(userInterrupted()), this, SLOT(unloadInternal()));
-    d->demuxer.setInterruptStatus(-1);
-}
-
-void AVPlayer::unloadInternal()
-{
-    disconnect(&d->demuxer, SIGNAL(loaded()), this, SLOT(unloadInternal()));
-    disconnect(&d->demuxer, SIGNAL(userInterrupted()), this, SLOT(unloadInternal()));
-
+    QMutexLocker lock(&d->load_mutex);
+    Q_UNUSED(lock);
     d->loaded = false;
+    d->demuxer.setInterruptStatus(-1);
     /*
      * FIXME: no a/v/d thread started and in LoadedMedia status when stop(). but now is running (and to using the decoder).
      * then we must wait the threads finished. or use smart ptr for decoders? demuxer is still unsafe
@@ -817,8 +797,6 @@ void AVPlayer::setPosition(qint64 position)
     if (relativeTimeMode())
         pos_pts += absoluteMediaStartPosition();
     d->seeking = true;
-    d->seek_target = position;
-    qreal s = (qreal)pos_pts/1000.0;
     masterClock()->updateValue(double(pos_pts)/1000.0); //what is duration == 0
     masterClock()->updateExternalClock(pos_pts); //in msec. ignore usec part using t/1000
     d->read_thread->seek(pos_pts, seekType());
@@ -1043,6 +1021,7 @@ void AVPlayer::play()
     //FIXME: bad delay after play from here
     bool start_last = d->last_position == -1;
     if (isPlaying()) {
+        qDebug("play() when playing");
         if (start_last) {
             d->clock->pause(true); //external clock
             d->last_position = mediaStopPosition() != kInvalidPosition ? -position() : 0;
@@ -1061,45 +1040,14 @@ void AVPlayer::play()
         if (last_pos < 0)
             d->last_position = -last_pos;
     }
-    if (mediaStatus() == LoadingMedia) {
-        // can not use userInterrupted(), userInterrupted() is connected to unloadInternal()
-        connect(&d->demuxer, SIGNAL(unloaded()), this, SLOT(loadAndPlay()));
-        unload();
-    } else {
-        unload();
-        loadAndPlay();
-    }
-    return;
-    /*
-     * avoid load mutiple times when replaying the same seekable file
-     * TODO: force load unseekable stream? avio.seekable. currently you
-     * must setFile() agian to reload an unseekable stream
-     */
-    //TODO: no eof if replay by seek(0)
-#if EOF_ISSUE_SOLVED
-    bool force_reload = position() > 0; //eof issue now
-    if (!isLoaded() || force_reload) { //if (!isLoaded() && !load())
-        if (!load(force_reload)) {
-            d->statistics.reset();
-            return;
-        } else {
-            d->initStatistics();
-        }
-    } else {
-        qDebug("seek(%f)", d->last_position);
-        d->demuxer.seek(d->last_position); //FIXME: now assume it is seekable. for unseekable, setFile() again
-#else
-        if (!load(true))
-            return;
-#endif //EOF_ISSUE_SOLVED
-#if EOF_ISSUE_SOLVED
-    }
-#endif //EOF_ISSUE_SOLVED    
+    disconnect(this, SIGNAL(loaded()), this, SLOT(playInternal()));
+    unload();
+    loadAndPlay();
+    // seek(0LL) instead of reload for loaded seekable stream?
 }
 
 void AVPlayer::loadAndPlay()
 {
-    disconnect(&d->demuxer, SIGNAL(unloaded()), this, SLOT(loadAndPlay()));
     if (isAsyncLoad()) {
         connect(this, SIGNAL(loaded()), this, SLOT(playInternal()));
         load(true);
@@ -1107,11 +1055,15 @@ void AVPlayer::loadAndPlay()
     }
     loadInternal();
     playInternal();
-    //QTimer::singleShot(0, this, SLOT(playInternal()));
 }
 
 void AVPlayer::playInternal()
 {
+    QMutexLocker lock(&d->load_mutex);
+    Q_UNUSED(lock);
+    if (!d->demuxer.isLoaded())
+        return;
+    // FIXME: if call play() frequently playInternal may not be called if disconnect here
     disconnect(this, SIGNAL(loaded()), this, SLOT(playInternal()));
     if (!d->setupAudioThread(this)) {
         d->read_thread->setAudioThread(0); //set 0 before delete. ptr is used in demux thread when set 0
@@ -1133,7 +1085,6 @@ void AVPlayer::playInternal()
         d->loaded = false;
         qWarning("load failed");
         return;
-        //return false;
     }
     // setup clock before avthread.start() becuase avthreads use clock. after avthreads setup because of ao check
     if (d->last_position > 0) {//start_last) {
@@ -1148,6 +1099,7 @@ void AVPlayer::playInternal()
         if (d->vthread)
             d->vthread->setFrameRate(d->force_fps);
     } else {
+        masterClock()->setClockAuto(true);
         if (d->vthread)
             d->vthread->setFrameRate(-1.0);
     }
@@ -1283,6 +1235,12 @@ void AVPlayer::updateMediaStatus(QtAV::MediaStatus status)
     emit mediaStatusChanged(d->status);
 }
 
+void AVPlayer::onSeekFinished()
+{
+    d->seeking = false;
+    Q_EMIT seekFinished();
+}
+
 // TODO: doc about when the state will be reset
 void AVPlayer::stop()
 {
@@ -1344,11 +1302,6 @@ void AVPlayer::timerEvent(QTimerEvent *te)
             emit positionChanged(t);
             return;
         }
-        // FIXME: totally wrong if seek_target - keyframe_seek > 1000
-        if (d->seeking && t >= d->seek_target + 1000) {
-            d->seeking = false;
-            d->seek_target = 0;
-        }
         if (t < startPosition()) {
             //qDebug("position %lld < startPosition %lld", t, startPosition());
             // or set clock initial value to get correct t
@@ -1358,8 +1311,14 @@ void AVPlayer::timerEvent(QTimerEvent *te)
             }
         }
         if (t <= stopPosition()) {
-            if (!d->seeking) { // FIXME
-                emit positionChanged(t);
+            if (!d->seeking) {
+                Q_EMIT positionChanged(t);
+            }
+            return;
+        }
+        if (!d->demuxer.atEnd()) {
+            if (!d->seeking) {
+                Q_EMIT positionChanged(t);
             }
             return;
         }
