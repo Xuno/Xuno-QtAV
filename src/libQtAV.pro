@@ -142,9 +142,9 @@ config_ipp {
     #omp for static link. _t is multi-thread static link
 }
 win32: {
-  HEADERS += output/audio/xaudio2_compat.h
-  SOURCES += output/audio/AudioOutputXAudio2.cpp
-  DEFINES *= QTAV_HAVE_XAUDIO2=1
+#  HEADERS += output/audio/xaudio2_compat.h
+#  SOURCES += output/audio/AudioOutputXAudio2.cpp
+#  DEFINES *= QTAV_HAVE_XAUDIO2=1
   !config_xaudio2 { #winsdk has no xaudio2.h, use June 2010 DXSDK
 ## TODO: build xaudio2 code as a seperate static lib so wen can safely add contrib/dxsdk to INCLUDEPATH for that lib build
     win32-icc|win32-g++|win32-msvc2010|win32-msvc2008|win32-msvc2005: \
