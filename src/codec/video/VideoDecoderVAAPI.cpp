@@ -37,12 +37,6 @@ extern "C" {
 #include "vaapi/SurfaceInteropVAAPI.h"
 #include "utils/Logger.h"
 
-// TODO: add to AVCompat.h?
-// FF_API_PIX_FMT
-#ifdef PixelFormat
-#undef PixelFormat
-#endif
-
 #define VERSION_CHK(major, minor, patch) \
     (((major&0xff)<<16) | ((minor&0xff)<<8) | (patch&0xff))
 
@@ -165,11 +159,15 @@ public:
             display_type = VideoDecoderVAAPI::GLX;
         if (VAAPI_X11::isLoaded())
             display_type = VideoDecoderVAAPI::X11;
-        if (display_type == VideoDecoderVAAPI::DRM)
+        if (display_type == VideoDecoderVAAPI::DRM) {
             copy_mode = VideoDecoderFFmpegHW::OptimizedCopy;
-        else
+        } else {
+#if VA_X11_INTEROP
             copy_mode = VideoDecoderFFmpegHW::ZeroCopy;
-
+#else
+            copy_mode = VideoDecoderFFmpegHW::OptimizedCopy;
+#endif //VA_X11_INTEROP
+        }
         drm_fd = -1;
         display_x11 = 0;
         config_id = VA_INVALID_ID;
@@ -323,6 +321,7 @@ VideoFrame VideoDecoderVAAPI::frame()
         f.setBytesPerLine(d.width*4); //used by gl to compute texture size
         f.setMetaData("surface_interop", QVariant::fromValue(VideoSurfaceInteropPtr(interop)));
         f.setTimestamp(double(d.frame->pkt_pts)/1000.0);
+        f.setDisplayAspectRatio(d.getDAR(d.frame));
 
         ColorSpace cs = colorSpaceFromFFmpeg(av_frame_get_colorspace(d.frame));
         if (cs != ColorSpace_Unknow)
@@ -419,6 +418,8 @@ QStringList VideoDecoderVAAPI::displayPriority() const
 
 bool VideoDecoderVAAPIPrivate::open()
 {
+    if (!prepare())
+        return false;
     const codec_profile_t* pe = findProfileEntry(codec_ctx->codec_id, codec_ctx->profile);
     // TODO: allow wrong profile
     // FIXME: sometimes get wrong profile (switch copyMode)
@@ -550,8 +551,10 @@ bool VideoDecoderVAAPIPrivate::open()
     supports_derive = false;
     if (display_type == VideoDecoderVAAPI::GLX)
         interop_res = InteropResourcePtr(new GLXInteropResource());
+#if VA_X11_INTEROP
     else if (display_type == VideoDecoderVAAPI::X11)
         interop_res = InteropResourcePtr(new X11InteropResource());
+#endif //VA_X11_INTEROP
     return true;
 }
 

@@ -29,11 +29,6 @@
 #include "utils/GPUMemCopy.h"
 #include "utils/Logger.h"
 
-// FF_API_PIX_FMT
-#ifdef PixelFormat
-#undef PixelFormat
-#endif
-
 namespace QtAV {
 namespace{
 static const struct RegisterMetaTypes
@@ -166,8 +161,7 @@ VideoFrame::VideoFrame(const QVector<int>& textures, int width, int height, cons
 VideoFrame::VideoFrame(const QImage& image)
     : Frame(new VideoFramePrivate(image.width(), image.height(), VideoFormat(image.format())))
 {
-    // TODO: call const image.bits()?
-    setBits((uchar*)image.bits(), 0);
+    setBits((uchar*)image.constBits(), 0);
     setBytesPerLine(image.bytesPerLine(), 0);
 }
 
@@ -233,7 +227,7 @@ VideoFrame VideoFrame::clone() const
         f.setBits((quint8*)dst, i);
         f.setBytesPerLine(bytesPerLine(i), i);
         const int plane_size = bytesPerLine(i)*planeHeight(i);
-        memcpy(dst, bits(i), plane_size);
+        memcpy(dst, constBits(i), plane_size);
         dst += plane_size;
     }
     f.d_ptr->metadata = d->metadata; // need metadata?
@@ -339,7 +333,7 @@ float VideoFrame::displayAspectRatio() const
     if (d->width > 0 && d->height > 0)
         return (float)d->width / (float)d->height;
 
-    return 1;
+    return 0;
 }
 
 void VideoFrame::setDisplayAspectRatio(float displayAspectRatio)
@@ -374,7 +368,7 @@ QImage VideoFrame::toImage(QImage::Format fmt, const QSize& dstSize, const QRect
 
 VideoFrame VideoFrame::to(const VideoFormat &fmt, const QSize& dstSize, const QRectF& roi) const
 {
-    if (!isValid() || !bits(0)) {// hw surface. map to host. only supports rgb packed formats now
+    if (!isValid() || !constBits(0)) {// hw surface. map to host. only supports rgb packed formats now
         Q_D(const VideoFrame);
         const QVariant v = d->metadata.value("surface_interop");
         if (!v.isValid())
@@ -383,6 +377,7 @@ VideoFrame VideoFrame::to(const VideoFormat &fmt, const QSize& dstSize, const QR
         if (!si)
             return VideoFrame();
         VideoFrame f;
+        f.setDisplayAspectRatio(displayAspectRatio());
         f.setTimestamp(timestamp());
         if (si->map(HostMemorySurface, fmt, &f)) {
             if ((!dstSize.isValid() ||dstSize == QSize(width(), height())) && (!roi.isValid() || roi == QRectF(0, 0, width(), height()))) //roi is not supported now
@@ -526,7 +521,7 @@ VideoFrame VideoFrameConverter::convert(const VideoFrame &frame, int fffmt) cons
 {
     if (!frame.isValid() || fffmt == QTAV_PIX_FMT_C(NONE))
         return VideoFrame();
-    if (!frame.bits(0)) // hw surface
+    if (!frame.constBits(0)) // hw surface
         return frame.to(VideoFormat::pixelFormatFromFFmpeg(fffmt));
     const VideoFormat format(frame.format());
     //if (fffmt == format.pixelFormatFFmpeg())
@@ -544,7 +539,7 @@ VideoFrame VideoFrameConverter::convert(const VideoFrame &frame, int fffmt) cons
     QVector<const uchar*> pitch(format.planeCount());
     QVector<int> stride(format.planeCount());
     for (int i = 0; i < format.planeCount(); ++i) {
-        pitch[i] = frame.bits(i);
+        pitch[i] = frame.constBits(i);
         stride[i] = frame.bytesPerLine(i);
     }
     if (!m_cvt->convert(pitch.constData(), stride.constData())) {
@@ -555,6 +550,7 @@ VideoFrame VideoFrameConverter::convert(const VideoFrame &frame, int fffmt) cons
     f.setBits(m_cvt->outPlanes());
     f.setBytesPerLine(m_cvt->outLineSizes());
     f.setTimestamp(frame.timestamp());
+    f.setDisplayAspectRatio(frame.displayAspectRatio());
     // metadata?
     if (fmt.isRGB()) {
         f.setColorSpace(fmt.isPlanar() ? ColorSpace_GBR : ColorSpace_RGB);

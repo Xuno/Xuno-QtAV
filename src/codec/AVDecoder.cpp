@@ -51,6 +51,7 @@ QString AVDecoder::description() const
 bool AVDecoder::open()
 {
     DPTR_D(AVDecoder);
+    // codec_ctx can't be null for none-ffmpeg based decoders because we may use it's properties in those decoders
     if (!d.codec_ctx) {
         qWarning("FFmpeg codec context not ready");
         return false;
@@ -61,7 +62,7 @@ bool AVDecoder::open()
     } else {
         codec = avcodec_find_decoder(d.codec_ctx->codec_id);
     }
-    if (!codec) {
+    if (!codec) { // TODO: can be null for none-ffmpeg based decoders
         QString es(tr("No codec could be found for '%1'"));
         if (d.codec_name.isEmpty()) {
             es = es.arg(avcodec_get_name(d.codec_ctx->codec_id));
@@ -90,7 +91,9 @@ bool AVDecoder::open()
         d.close();
         return false;
     }
+    // TODO: skip for none-ffmpeg based decoders
     d.applyOptionsForDict();
+    av_opt_set_int(d.codec_ctx, "refcounted_frames", d.enableFrameRef(), 0); // why dict may have no effect?
     AV_ENSURE_OK(avcodec_open2(d.codec_ctx, codec, d.options.isEmpty() ? NULL : &d.dict), false);
     d.is_open = true;
     return true;
@@ -181,16 +184,6 @@ bool AVDecoder::isAvailable() const
     return d_func().codec_ctx != 0;
 }
 
-bool AVDecoder::prepare()
-{
-    DPTR_D(AVDecoder);
-    if (!d.codec_ctx) {
-        qWarning("call this after AVCodecContext is set!");
-        return false;
-    }
-    return true;
-}
-
 bool AVDecoder::decode(const QByteArray &encoded)
 {
     Q_UNUSED(encoded);
@@ -235,6 +228,8 @@ void AVDecoderPrivate::applyOptionsForDict()
         av_dict_free(&dict);
         dict = 0; //aready 0 in av_free
     }
+    // enable ref if possible
+    av_dict_set(&dict, "refcounted_frames", enableFrameRef() ? "1" : "0", 0);
     if (options.isEmpty())
         return;
     // TODO: use QVariantMap only

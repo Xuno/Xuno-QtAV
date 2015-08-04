@@ -91,7 +91,6 @@ AVPlayer::Private::Private()
     , vthread(0)
     , vcapture(0)
     , speed(1.0)
-    , ao_enabled(true)
     , vos(0)
     , aos(0)
     , brightness(0)
@@ -319,11 +318,6 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
         emit player->error(e);
         return false;
     }
-    if (ao_enabled) {
-        // TODO: only when no audio stream or user disable audio stream. running an audio thread without sound is waste resource?
-        //masterClock()->setClockType(AVClock::ExternalClock);
-        //return;
-    }
     correct_audio_channels(avctx);
     AudioFormat af;
     af.setSampleRate(avctx->sample_rate);
@@ -364,7 +358,6 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
     adec->resampler()->inAudioFormat().setSampleRate(avctx->sample_rate);
     adec->resampler()->inAudioFormat().setChannels(avctx->channels);
     adec->resampler()->inAudioFormat().setChannelLayoutFFmpeg(avctx->channel_layout);
-    adec->prepare();
 #endif
     if (!athread) {
         qDebug("new audio thread");
@@ -390,16 +383,37 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
     return true;
 }
 
-QVariantList AVPlayer::Private::getAudioTracksInfo(AVDemuxer *demuxer)
+QVariantList AVPlayer::Private::getTracksInfo(AVDemuxer *demuxer, AVDemuxer::StreamType st)
 {
     QVariantList info;
     if (!demuxer)
         return info;
-    foreach (int s, demuxer->audioStreams()) {
+    QList<int> streams;
+    switch (st) {
+    case AVDemuxer::AudioStream:
+        streams = demuxer->audioStreams();
+        break;
+    case AVDemuxer::SubtitleStream:
+        streams = demuxer->subtitleStreams();
+        break;
+    case AVDemuxer::VideoStream:
+        streams = demuxer->videoStreams();
+    default:
+        break;
+    }
+    if (streams.isEmpty())
+        return info;
+    foreach (int s, streams) {
         QVariantMap t;
         t["id"] = info.size();
         t["file"] = demuxer->fileName();
         AVStream *stream = demuxer->formatContext()->streams[s];
+        AVCodecContext *ctx = stream->codec;
+        if (ctx) {
+            t["codec"] = QByteArray(avcodec_descriptor_get(ctx->codec_id)->name);
+            if (ctx->extradata)
+                t["extra"] = QByteArray((const char*)ctx->extradata, ctx->extradata_size);
+        }
         AVDictionaryEntry *tag = av_dict_get(stream->metadata, "language", NULL, 0);
         if (!tag)
             tag = av_dict_get(stream->metadata, "lang", NULL, 0);
@@ -413,6 +427,22 @@ QVariantList AVPlayer::Private::getAudioTracksInfo(AVDemuxer *demuxer)
         info.push_back(t);
     }
     return info;
+}
+
+bool AVPlayer::Private::applySubtitleStream(int n, AVPlayer *player)
+{
+    if (!demuxer.setStreamIndex(AVDemuxer::SubtitleStream, n))
+        return false;
+    AVCodecContext *ctx = demuxer.subtitleCodecContext();
+    if (!ctx)
+        return false;
+    const AVCodecDescriptor *codec_desc = avcodec_descriptor_get(ctx->codec_id);
+    QByteArray codec(codec_desc->name);
+    if (ctx->extradata)
+        Q_EMIT player->internalSubtitleHeaderRead(codec, QByteArray((const char*)ctx->extradata, ctx->extradata_size));
+    else
+        Q_EMIT player->internalSubtitleHeaderRead(codec, QByteArray());
+    return true;
 }
 
 bool AVPlayer::Private::setupVideoThread(AVPlayer *player)
@@ -443,7 +473,7 @@ bool AVPlayer::Private::setupVideoThread(AVPlayer *player)
         //vd->isAvailable() //TODO: the value is wrong now
         vd->setCodecContext(avctx);
         vd->setOptions(vc_opt);
-        if (vd->prepare() && vd->open()) {
+        if (vd->open()) {
             vdec = vd;
             qDebug("**************Video decoder found");
             break;

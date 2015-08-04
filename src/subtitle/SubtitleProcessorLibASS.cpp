@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and LibASS
-    Copyright (C) 2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -20,6 +20,10 @@
 ******************************************************************************/
 
 #include "QtAV/private/SubtitleProcessor.h"
+#include <QtCore/QCoreApplication>
+#include <QtCore/QEventLoop>
+#include <QtCore/QMutex>
+#include <QtCore/QThread>
 #include "QtAV/private/prepost.h"
 #include "QtAV/Packet.h"
 #include "PlainText.h"
@@ -33,30 +37,35 @@
 
 namespace QtAV {
 
-class SubtitleProcessorLibASS : public SubtitleProcessor, public ass::api
+class SubtitleProcessorLibASS Q_DECL_FINAL: public SubtitleProcessor, public ass::api
 {
 public:
     SubtitleProcessorLibASS();
-    virtual ~SubtitleProcessorLibASS();
-    virtual SubtitleProcessorId id() const;
-    virtual QString name() const;
-    virtual QStringList supportedTypes() const;
-    virtual bool process(QIODevice* dev);
+    ~SubtitleProcessorLibASS();
+    void updateFontCache();
+    SubtitleProcessorId id() const Q_DECL_OVERRIDE;
+    QString name() const Q_DECL_OVERRIDE;
+    QStringList supportedTypes() const Q_DECL_OVERRIDE;
+    bool process(QIODevice* dev) Q_DECL_OVERRIDE;
     // supportsFromFile must be true
-    virtual bool process(const QString& path);
-    virtual QList<SubtitleFrame> frames() const;
-    virtual bool canRender() const { return true;}
-    virtual QString getText(qreal pts) const;
-    virtual QImage getImage(qreal pts, QRect *boundingRect = 0);
-    virtual bool processHeader(const QByteArray& data);
-    virtual SubtitleFrame processLine(const QByteArray& data, qreal pts = -1, qreal duration = 0);
+    bool process(const QString& path) Q_DECL_OVERRIDE;
+    QList<SubtitleFrame> frames() const Q_DECL_OVERRIDE;
+    bool canRender() const Q_DECL_OVERRIDE { return true;}
+    QString getText(qreal pts) const Q_DECL_OVERRIDE;
+    QImage getImage(qreal pts, QRect *boundingRect = 0) Q_DECL_OVERRIDE;
+    bool processHeader(const QByteArray& codec, const QByteArray& data) Q_DECL_OVERRIDE;
+    SubtitleFrame processLine(const QByteArray& data, qreal pts = -1, qreal duration = 0) Q_DECL_OVERRIDE;
 protected:
-    virtual void onFrameSizeChanged(int width, int height);
+    void onFrameSizeChanged(int width, int height) Q_DECL_OVERRIDE;
 private:
+    bool initRenderer();
+    void updateFontCacheAsync();
     // render 1 ass image into a 32bit QImage with alpha channel.
     //use dstX, dstY instead of img->dst_x/y because image size is small then ass renderer size
     void renderASS32(QImage *image, ASS_Image* img, int dstX, int dstY);
     void processTrack(ASS_Track *track);
+    bool m_update_cache;
+    QByteArray m_codec;
     ASS_Library *m_ass;
     ASS_Renderer *m_renderer;
     ASS_Track *m_track;
@@ -64,6 +73,7 @@ private:
     //cache the image for the last invocation. return this if image does not change
     QImage m_image;
     QRect m_bound;
+    mutable QMutex m_mutex;
 };
 
 static const SubtitleProcessorId SubtitleProcessorId_LibASS = "qtav.subtitle.processor.libass";
@@ -85,7 +95,7 @@ void RegisterSubtitleProcessorLibASS_Man()
 #define MSGL_V 6
 #define MSGL_DBG2 7
 
-static void msg_callback(int level, const char *fmt, va_list va, void *data)
+static void ass_msg_cb(int level, const char *fmt, va_list va, void *data)
 {
     Q_UNUSED(data)
     QString msg("{libass} " + QString().vsprintf(fmt, va));
@@ -98,7 +108,8 @@ static void msg_callback(int level, const char *fmt, va_list va, void *data)
 }
 
 SubtitleProcessorLibASS::SubtitleProcessorLibASS()
-    : m_ass(0)
+    : m_update_cache(true)
+    , m_ass(0)
     , m_renderer(0)
     , m_track(0)
 {
@@ -109,30 +120,19 @@ SubtitleProcessorLibASS::SubtitleProcessorLibASS()
         qWarning("ass_library_init failed!");
         return;
     }
-    ass_set_message_cb(m_ass, msg_callback, NULL);
-    m_renderer = ass_renderer_init(m_ass);
-    if (!m_renderer) {
-        qWarning("ass_renderer_init failed!");
-        return;
-    }
-#if LIBASS_VERSION >= 0x01000000
-    ass_set_shaper(m_renderer, ASS_SHAPING_SIMPLE);
-#endif
-    //ass_set_frame_size(m_renderer, frame_w, frame_h);
-    //ass_set_fonts(m_renderer, NULL, "Sans", 1, NULL, 1); //must set!
-    ass_set_fonts(m_renderer, NULL, NULL, 1, NULL, 1);
+    ass_set_message_cb(m_ass, ass_msg_cb, NULL);
 }
 
 SubtitleProcessorLibASS::~SubtitleProcessorLibASS()
-{
-    if (!ass::api::loaded())
-        return;
+{ // ass dll is loaded if ass objects are available
     if (m_track) {
         ass_free_track(m_track);
         m_track = 0;
     }
     if (m_renderer) {
-        ass_renderer_done(m_renderer);
+        QMutexLocker lock(&m_mutex);
+        Q_UNUSED(lock);
+        ass_renderer_done(m_renderer); // check async update cache!!
         m_renderer = 0;
     }
     if (m_ass) {
@@ -168,6 +168,8 @@ bool SubtitleProcessorLibASS::process(QIODevice *dev)
 {
     if (!ass::api::loaded())
         return false;
+    QMutexLocker lock(&m_mutex);
+    Q_UNUSED(lock);
     if (m_track) {
         ass_free_track(m_track);
         m_track = 0;
@@ -193,6 +195,8 @@ bool SubtitleProcessorLibASS::process(const QString &path)
 {
     if (!ass::api::loaded())
         return false;
+    QMutexLocker lock(&m_mutex);
+    Q_UNUSED(lock);
     if (m_track) {
         ass_free_track(m_track);
         m_track = 0;
@@ -206,23 +210,66 @@ bool SubtitleProcessorLibASS::process(const QString &path)
     return true;
 }
 
-bool SubtitleProcessorLibASS::processHeader(const QByteArray &data)
+bool SubtitleProcessorLibASS::processHeader(const QByteArray& codec, const QByteArray &data)
 {
-    // new track, ass_process_codec_private
-    return false;
+    if (!ass::api::loaded())
+        return false;
+    QMutexLocker lock(&m_mutex);
+    Q_UNUSED(lock);
+    m_codec = codec;
+    m_frames.clear();
+    setFrameSize(0, 0);
+    if (m_track) {
+        ass_free_track(m_track);
+        m_track = 0;
+    }
+    m_track = ass_new_track(m_ass);
+    if (!m_track) {
+        qWarning("failed to create an ass track");
+        return false;
+    }
+    ass_process_codec_private(m_track, (char*)data.constData(), data.size());
+    return true;
 }
 
 SubtitleFrame SubtitleProcessorLibASS::processLine(const QByteArray &data, qreal pts, qreal duration)
 {
-    //ass_process_data(track,...)
-    SubtitleFrame frame;
-    frame.begin = pts;
-    frame.end = frame.begin + duration;
+    if (!ass::api::loaded())
+        return SubtitleFrame();
+    QMutexLocker lock(&m_mutex);
+    Q_UNUSED(lock);
+    if (!m_track)
+        return SubtitleFrame();
+    const int nb_tracks = m_track->n_events;
+    // TODO: confirm. ass/ssa path from mpv
+    if (m_codec == QByteArrayLiteral("ass")) {
+        ass_process_chunk(m_track, (char*)data.constData(), data.size(), pts*1000.0, duration*1000.0);
+    } else { //ssa
+        //ssa. mpv: flush_on_seek, broken ffmpeg ASS packet format
+        ass_process_data(m_track, (char*)data.constData(), data.size());
+    }
+    if (nb_tracks == m_track->n_events)
+        return SubtitleFrame();
+    //qDebug("events: %d", m_track->n_events);
+    for (int i = m_track->n_events-1; i >= 0; --i) {
+        const ASS_Event& ae = m_track->events[i];
+        //qDebug("ass_event[%d] %lld+%lld/%lld+%lld: %s", i, ae.Start, ae.Duration, (long long)(pts*1000.0),  (long long)(duration*1000.0), ae.Text);
+        //packet.duration can be 0
+        if (ae.Start == (long long)(pts*1000.0)) {// && ae.Duration == (long long)(duration*1000.0)) {
+            SubtitleFrame frame;
+            frame.text = PlainText::fromAss(ae.Text);
+            frame.begin = qreal(ae.Start)/1000.0;
+            frame.end = frame.begin + qreal(ae.Duration)/1000.0;
+            return frame;
+        }
+    }
     return SubtitleFrame();
 }
 
 QString SubtitleProcessorLibASS::getText(qreal pts) const
 {
+    QMutexLocker lock(&m_mutex);
+    Q_UNUSED(lock);
     QString text;
     for (int i = 0; i < m_frames.size(); ++i) {
         if (m_frames[i].begin <= pts && m_frames[i].end >= pts) {
@@ -236,21 +283,31 @@ QString SubtitleProcessorLibASS::getText(qreal pts) const
 }
 
 QImage SubtitleProcessorLibASS::getImage(qreal pts, QRect *boundingRect)
-{
-    if (!ass::api::loaded())
-        return QImage();
+{ // ass dll is loaded if ass library is available
+    {
+    QMutexLocker lock(&m_mutex);
+    Q_UNUSED(lock);
     if (!m_ass) {
         qWarning("ass library not available");
-        return QImage();
-    }
-    if (!m_renderer) {
-        qWarning("ass renderer not available");
         return QImage();
     }
     if (!m_track) {
         qWarning("ass track not available");
         return QImage();
     }
+    if (!m_renderer) {
+        initRenderer();
+        if (!m_renderer) {
+            qWarning("ass renderer not available");
+            return QImage();
+        }
+    }
+    }
+    if (m_update_cache)
+        updateFontCache();
+
+    QMutexLocker lock(&m_mutex);
+    Q_UNUSED(lock);
     int detect_change = 0;
     ASS_Image *img = ass_render_frame(m_renderer, m_track, (long long)(pts * 1000.0), &detect_change);
     if (!detect_change) {
@@ -285,9 +342,75 @@ QImage SubtitleProcessorLibASS::getImage(qreal pts, QRect *boundingRect)
 
 void SubtitleProcessorLibASS::onFrameSizeChanged(int width, int height)
 {
+    if (!m_renderer) {
+        initRenderer();
+        if (!m_renderer)
+            return;
+    }
+    ass_set_frame_size(m_renderer, width, height);
+}
+
+bool SubtitleProcessorLibASS::initRenderer()
+{
+    m_renderer = ass_renderer_init(m_ass);
+    if (!m_renderer) {
+        qWarning("ass_renderer_init failed!");
+        return false;
+    }
+#if LIBASS_VERSION >= 0x01000000
+    ass_set_shaper(m_renderer, ASS_SHAPING_SIMPLE);
+#endif
+    return true;
+}
+// TODO: set font cache dir. default is working dir which may be not writable on some platforms
+void SubtitleProcessorLibASS::updateFontCache()
+{ // ass dll is loaded if renderer is valid
+    QMutexLocker lock(&m_mutex);
+    Q_UNUSED(lock);
     if (!m_renderer)
         return;
-    ass_set_frame_size(m_renderer, width, height);
+    static QByteArray conf; //FC_CONFIG_FILE?
+    if (conf.isEmpty()) {
+        conf = qgetenv("QTAV_FC_FILE");
+        if (conf.isEmpty())
+            conf = qApp->applicationDirPath().append("/fonts/fonts.conf").toUtf8();
+    }
+    static QByteArray font;
+    if (font.isEmpty()) {
+        font = qgetenv("QTAV_SUB_FONT_FILE_DEFAULT");
+    }
+    static QByteArray family;
+    if (family.isEmpty()) {
+        family = qgetenv("QTAV_SUB_FONT_FAMILY_DEFAULT");
+    }
+    //ass_set_fonts_dir(m_ass, font_dir.constData()); // we can set it in fonts.conf <dir></dir>
+    // update cache later (maybe async update in the future)
+    ass_set_fonts(m_renderer, font.isEmpty() ? NULL : font.constData(), family.isEmpty() ? NULL : family.constData(), 1, conf.constData(), 0);
+    ass_fonts_update(m_renderer);
+    m_update_cache = false;
+}
+
+void SubtitleProcessorLibASS::updateFontCacheAsync()
+{
+    class FontCacheUpdater : public QThread {
+        SubtitleProcessorLibASS *sp;
+    public:
+        FontCacheUpdater(SubtitleProcessorLibASS *p) : sp(p) {}
+        void run() {
+            if (!sp)
+                return;
+            sp->updateFontCache();
+        }
+    };
+    FontCacheUpdater updater(this);
+    QEventLoop loop;
+    //QObject::connect(&updater, SIGNAL(finished()), &loop, SLOT(quit()));
+    updater.start();
+    while (updater.isRunning()) {
+        loop.processEvents();
+    }
+    //loop.exec(); // what if updater is finished before exec()?
+    //updater.wait();
 }
 
 void SubtitleProcessorLibASS::processTrack(ASS_Track *track)
@@ -358,7 +481,7 @@ void SubtitleProcessorLibASS::renderASS32(QImage *image, ASS_Image *img, int dst
     const quint8 b = _b(img->color);
     quint8 *src = img->bitmap;
     // use QRgb to avoid endian issue
-    QRgb *dst = (QRgb*)image->bits() + dstY * image->width() + dstX;
+    QRgb *dst = (QRgb*)image->constBits() + dstY * image->width() + dstX;
     for (int y = 0; y < img->h; ++y) {
         for (int x = 0; x < img->w; ++x) {
             const unsigned k = ((unsigned) src[x])*a/255;

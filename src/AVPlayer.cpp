@@ -85,7 +85,7 @@ AVPlayer::AVPlayer(QObject *parent) :
     connect(d->read_thread, SIGNAL(mediaStatusChanged(QtAV::MediaStatus)), this, SLOT(updateMediaStatus(QtAV::MediaStatus)));
     connect(d->read_thread, SIGNAL(bufferProgressChanged(qreal)), this, SIGNAL(bufferProgressChanged(qreal)));
     connect(d->read_thread, SIGNAL(seekFinished(qint64)), this, SLOT(onSeekFinished()), Qt::DirectConnection);
-
+    connect(d->read_thread, SIGNAL(internalSubtitlePacketRead(int, QtAV::Packet)), this, SIGNAL(internalSubtitlePacketRead(int, QtAV::Packet)), Qt::DirectConnection);
     d->vcapture = new VideoCapture(this);
 }
 
@@ -94,9 +94,12 @@ AVPlayer::~AVPlayer()
     stop();
     // if not uninstall here, player's qobject children filters will call uninstallFilter too late that player is almost be destroyed
     QList<Filter*> filters(FilterManager::instance().videoFilters(this));
-    filters.append(FilterManager::instance().audioFilters(this));
-    foreach (Filter *f, filters) {
-        uninstallFilter(f);
+    foreach (Filter* f, filters) {
+        uninstallFilter(reinterpret_cast<VideoFilter*>(f));
+    }
+    filters = FilterManager::instance().audioFilters(this);
+    foreach (Filter* f, filters) {
+        uninstallFilter(reinterpret_cast<AudioFilter*>(f));
     }
 }
 
@@ -168,26 +171,6 @@ QList<VideoRenderer*> AVPlayer::videoOutputs()
 AudioOutput* AVPlayer::audio()
 {
     return d->ao;
-}
-
-void AVPlayer::enableAudio(bool enable)
-{
-    d->ao_enabled = enable;
-}
-
-void AVPlayer::disableAudio(bool disable)
-{
-    d->ao_enabled = !disable;
-}
-
-void AVPlayer::setMute(bool mute)
-{
-    d->ao->setMute(mute);
-}
-
-bool AVPlayer::isMute() const
-{
-    return d->ao->isMute();
 }
 
 void AVPlayer::setSpeed(qreal speed)
@@ -275,11 +258,50 @@ bool AVPlayer::installVideoFilter(Filter *filter)
     return d->vthread->installFilter(filter);
 }
 
+bool AVPlayer::installFilter(AudioFilter *filter, int index)
+{
+    if (!FilterManager::instance().registerAudioFilter((Filter*)filter, this, index))
+        return false;
+    if (!d->athread)
+        return false; //install later when avthread created
+    return d->athread->installFilter((Filter*)filter, index);
+}
+
+bool AVPlayer::installFilter(VideoFilter *filter, int index)
+{
+    if (!FilterManager::instance().registerVideoFilter((Filter*)filter, this, index))
+        return false;
+    if (!d->vthread)
+        return false; //install later when avthread created
+    return d->vthread->installFilter((Filter*)filter, index);
+}
+
+bool AVPlayer::uninstallFilter(AudioFilter *filter)
+{
+    FilterManager::instance().unregisterAudioFilter(filter, this);
+    AVThread *avthread = d->athread;
+    if (!avthread)
+        return false;
+    if (!avthread->filters().contains(filter))
+        return false;
+    return avthread->uninstallFilter(filter, true);
+}
+
+bool AVPlayer::uninstallFilter(VideoFilter *filter)
+{
+    FilterManager::instance().unregisterVideoFilter(filter, this);
+    AVThread *avthread = d->vthread;
+    if (!avthread)
+        return false;
+    if (!avthread->filters().contains(filter))
+        return false;
+    return avthread->uninstallFilter(filter, true);
+}
+
 bool AVPlayer::uninstallFilter(Filter *filter)
 {
-    if (!FilterManager::instance().unregisterFilter(filter)) {
-        qWarning("unregister filter %p failed", filter);
-        //return false;
+    if (!FilterManager::instance().unregisterVideoFilter(filter, this)) {
+        FilterManager::instance().unregisterAudioFilter(filter, this);
     }
     AVThread *avthread = d->vthread;
     if (!avthread || !avthread->filters().contains(filter)) {
@@ -290,32 +312,16 @@ bool AVPlayer::uninstallFilter(Filter *filter)
     }
     avthread->uninstallFilter(filter, true);
     return true;
-    /*
-     * TODO: send FilterUninstallTask(this, filter){this.mFilters.remove} to
-     * active player's AVThread
-     *
-     */
-    class UninstallFilterTask : public QRunnable {
-    public:
-        UninstallFilterTask(AVThread *thread, Filter *filter):
-            QRunnable()
-          , mpThread(thread)
-          , mpFilter(filter)
-        {
-            setAutoDelete(true);
-        }
+}
 
-        virtual void run() {
-            mpThread->uninstallFilter(mpFilter, false);
-            //QMetaObject::invokeMethod(FilterManager::instance(), "onUninstallInTargetDone", Qt::AutoConnection, Q_ARG(Filter*, filter));
-            FilterManager::instance().emitOnUninstallInTargetDone(mpFilter);
-        }
-    private:
-        AVThread *mpThread;
-        Filter *mpFilter;
-    };
-    avthread->scheduleTask(new UninstallFilterTask(avthread, filter));
-    return true;
+QList<Filter*> AVPlayer::audioFilters() const
+{
+    return FilterManager::instance().audioFilters((AVPlayer*)this);
+}
+
+QList<Filter*> AVPlayer::videoFilters() const
+{
+    return FilterManager::instance().videoFilters((AVPlayer*)this);
 }
 
 void AVPlayer::setPriority(const QVector<VideoDecoderId> &ids)
@@ -609,11 +615,16 @@ void AVPlayer::loadInternal()
     if (!d->loaded) {
         d->statistics.reset();
         qWarning("Load failed!");
-        d->audio_tracks = d->getAudioTracksInfo(&d->demuxer);
+        d->audio_tracks = d->getTracksInfo(&d->demuxer, AVDemuxer::AudioStream);
         Q_EMIT internalAudioTracksChanged(d->audio_tracks);
+        d->subtitle_tracks = d->getTracksInfo(&d->demuxer, AVDemuxer::SubtitleStream);
+        Q_EMIT internalSubtitleTracksChanged(d->subtitle_tracks);
         return;
     }
-    d->audio_tracks = d->getAudioTracksInfo(&d->demuxer);
+    d->subtitle_tracks = d->getTracksInfo(&d->demuxer, AVDemuxer::SubtitleStream);
+    Q_EMIT internalSubtitleTracksChanged(d->subtitle_tracks);
+    d->applySubtitleStream(d->subtitle_track, this);
+    d->audio_tracks = d->getTracksInfo(&d->demuxer, AVDemuxer::AudioStream);
     Q_EMIT internalAudioTracksChanged(d->audio_tracks);
     Q_EMIT durationChanged(duration());
     // setup parameters from loaded media
@@ -661,7 +672,8 @@ void AVPlayer::unload()
     }
     d->demuxer.unload();
     Q_EMIT durationChanged(0LL);
-    d->audio_tracks = d->getAudioTracksInfo(&d->demuxer);
+    // ??
+    d->audio_tracks = d->getTracksInfo(&d->demuxer, AVDemuxer::AudioStream);
     Q_EMIT internalAudioTracksChanged(d->audio_tracks);
 }
 
@@ -837,12 +849,12 @@ QString AVPlayer::externalAudio() const
     return d->external_audio;
 }
 
-QVariantList AVPlayer::externalAudioTracks() const
+const QVariantList& AVPlayer::externalAudioTracks() const
 {
     return d->external_audio_tracks;
 }
 
-QVariantList AVPlayer::internalAudioTracks() const
+const QVariantList &AVPlayer::internalAudioTracks() const
 {
     return d->audio_tracks;
 }
@@ -915,7 +927,7 @@ update_demuxer:
                 Q_EMIT externalAudioTracksChanged(d->external_audio_tracks);
                 return false;
             }
-            d->external_audio_tracks = d->getAudioTracksInfo(&d->audio_demuxer);
+            d->external_audio_tracks = d->getTracksInfo(&d->audio_demuxer, AVDemuxer::AudioStream);
             Q_EMIT externalAudioTracksChanged(d->external_audio_tracks);
             d->read_thread->setAudioDemuxer(&d->audio_demuxer);
         }
@@ -979,10 +991,21 @@ bool AVPlayer::setVideoStream(int n)
     return true;
 }
 
+const QVariantList& AVPlayer::internalSubtitleTracks() const
+{
+    return d->subtitle_tracks;
+}
+
 bool AVPlayer::setSubtitleStream(int n)
 {
-    Q_UNUSED(n);
-    return false;
+    if (d->subtitle_track == n)
+        return true;
+    // TODO: xxxchanged signal
+    d->subtitle_track = n;
+    Q_EMIT subtitleStreamChanged(n);
+    if (!d->demuxer.isLoaded())
+        return true;
+    return d->applySubtitleStream(n, this);
 }
 
 int AVPlayer::currentAudioStream() const
@@ -1105,7 +1128,7 @@ void AVPlayer::playInternal()
     }
     if (masterClock()->isClockAuto()) {
         qDebug("auto select clock: audio > external");
-        if (!d->demuxer.audioCodecContext() || !d->ao) {
+        if (!d->demuxer.audioCodecContext() || !d->ao || !d->ao->isOpen() || !d->athread) {
             masterClock()->setClockType(AVClock::ExternalClock);
             qDebug("No audio found or audio not supported. Using ExternalClock.");
         } else {

@@ -1,19 +1,22 @@
 /******************************************************************************
-    AudioOutputDSound.cpp: description
+    QtAV:  Media play library based on Qt and FFmpeg
     Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+*   This file is part of QtAV
 
-    This program is distributed in the hope that it will be useful,
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
 
 
@@ -22,20 +25,14 @@
 #include "QtAV/private/prepost.h"
 #include <QtCore/QLibrary>
 #include <math.h>
-#include <windows.h>
 #define DIRECTSOUND_VERSION 0x0600
 #include <dsound.h>
 #include "QtAV/private/AVCompat.h"
 #include "utils/Logger.h"
+#define DX_LOG_COMPONENT "DSound"
+#include "utils/DirectXHelper.h"
 
 namespace QtAV {
-
-template <class T> void SafeRelease(T **ppT) {
-  if (*ppT) {
-    (*ppT)->Release();
-    *ppT = NULL;
-  }
-}
 
 static const char kName[] = "DirectSound";
 class AudioOutputDSound Q_DECL_FINAL: public AudioOutputBackend
@@ -81,20 +78,6 @@ void RegisterAudioOutputDSound_Man()
 {
     FACTORY_REGISTER_ID_MAN(AudioOutputBackend, DSound, kName)
 }
-
-#define DX_LOG_COMPONENT "DSound"
-
-#ifndef DX_LOG_COMPONENT
-#define DX_LOG_COMPONENT "DirectX"
-#endif //DX_LOG_COMPONENT
-#define DX_ENSURE_OK(f, ...) \
-    do { \
-        HRESULT hr = f; \
-        if (FAILED(hr)) { \
-            qWarning() << DX_LOG_COMPONENT " error@" << __LINE__ << ". " #f ": " << QString("(0x%1) ").arg(hr, 0, 16) << qt_error_string(hr); \
-            return __VA_ARGS__; \
-        } \
-    } while (0)
 
 // use the definitions from the win32 api headers when they define these
 #define WAVE_FORMAT_IEEE_FLOAT      0x0003

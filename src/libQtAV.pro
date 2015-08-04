@@ -112,6 +112,8 @@ config_avdevice { #may depends on avfilter
     static_ffmpeg {
       win32 {
         LIBS *= -lgdi32 -loleaut32 -lshlwapi #shlwapi: desktop >= xp only
+      } else:linux {
+        LIBS *= -lXv #-lX11 -lxcb -lxcb-shm -lxcb-xfixes -lxcb-render -lxcb-shape
       } else:mac:!ios { # static ffmpeg
         LIBS += -framework Foundation -framework QTKit -framework CoreMedia -framework QuartzCore -framework CoreGraphics \
                 -framework AVFoundation
@@ -139,6 +141,18 @@ config_ipp {
             -L$$(IPPROOT)/../compiler/lib/$$IPPARCH -lsvml -limf
     #omp for static link. _t is multi-thread static link
 }
+win32: {
+  HEADERS += output/audio/xaudio2_compat.h
+  SOURCES += output/audio/AudioOutputXAudio2.cpp
+  DEFINES *= QTAV_HAVE_XAUDIO2=1
+  !config_xaudio2 { #winsdk has no xaudio2.h, use June 2010 DXSDK
+## TODO: build xaudio2 code as a seperate static lib so wen can safely add contrib/dxsdk to INCLUDEPATH for that lib build
+    win32-icc|win32-g++|win32-msvc2010|win32-msvc2008|win32-msvc2005: \
+        INCLUDEPATH *= $$PROJECTROOT/contrib/dxsdk
+  }
+  !winrt: LIBS += -lole32 #CoInitializeEx for vs2008, but can not find the symbol at runtime
+  #LIBS += -lxaudio2 #only for xbox or >=win8
+}
 config_dsound {
     SOURCES += output/audio/AudioOutputDSound.cpp
     DEFINES *= QTAV_HAVE_DSOUND=1
@@ -152,15 +166,17 @@ config_portaudio {
 config_openal {
     SOURCES += output/audio/AudioOutputOpenAL.cpp
     DEFINES *= QTAV_HAVE_OPENAL=1
-    win32: LIBS += -lOpenAL32
-    unix:!mac:!blackberry: LIBS += -lopenal
-    blackberry: LIBS += -lOpenAL
-    mac: LIBS += -framework OpenAL
-    mac: DEFINES += HEADER_OPENAL_PREFIX
-    static_openal {
-      DEFINES += AL_LIBTYPE_STATIC
-      *linux*:!android: LIBS += -lasound
-      win32: LIBS += -lwinmm
+    static_openal: DEFINES += AL_LIBTYPE_STATIC
+    win32 {
+      LIBS += -lOpenAL32 -lwinmm
+    } else:mac {
+      LIBS += -framework OpenAL
+      DEFINES += HEADER_OPENAL_PREFIX
+    } else:blackberry {
+      LIBS += -lOpenAL
+    } else {
+      LIBS += -lopenal
+      static_openal:!android: LIBS += -lasound
     }
 }
 config_opensl {
@@ -212,7 +228,8 @@ config_vaapi* {
 config_libcedarv {
     DEFINES *= QTAV_HAVE_CEDARV=1
     QMAKE_CXXFLAGS *= -march=armv7-a
-    NEON_SOURCES += codec/video/VideoDecoderCedarv.cpp
+# Can not use NEON_SOURCE because it can not work with moc
+    SOURCES += codec/video/VideoDecoderCedarv.cpp
     !config_simd: CONFIG *= simd #addSimdCompiler xxx_ASM
     CONFIG += no_clang_integrated_as #see qtbase/src/gui/painting/painting.pri. add -fno-integrated-as from simd.prf
     NEON_ASM += codec/video/tiled_yuv.S #from libvdpau-sunxi
@@ -251,8 +268,8 @@ config_openglwindow {
 }
 config_libass {
 #link against libass instead of dynamic load
-  !capi {
-    LIBS += -lass
+  !capi|*g++* {
+    LIBS += -lass #-lfribidi -lfontconfig -lxml2 -lfreetype -lharfbuzz -lz
     DEFINES += CAPI_LINK_ASS
   }
   HEADERS *= subtitle/ass_api.h
@@ -269,6 +286,7 @@ contains(QT_CONFIG, dynamicgl)|contains(QT_CONFIG, opengles2) {
 # mac is -FQTDIR we need -LQTDIR
 LIBS *= -L$$[QT_INSTALL_LIBS] -lavcodec -lavformat -lswscale -lavutil
 win32 {
+  HEADERS *= utils/DirectXHelper.h
 #dynamicgl: __impl__GetDC __impl_ReleaseDC __impl_GetDesktopWindow
     LIBS += -luser32
 }
@@ -301,6 +319,7 @@ SOURCES += \
     AudioFormat.cpp \
     AudioFrame.cpp \
     AudioResampler.cpp \
+    AudioResamplerTemplate.cpp \
     AudioResamplerTypes.cpp \
     codec/audio/AudioDecoder.cpp \
     codec/audio/AudioDecoderFFmpeg.cpp \
@@ -335,6 +354,7 @@ SOURCES += \
     io/QIODeviceIO.cpp \
     output/audio/AudioOutput.cpp \
     output/audio/AudioOutputBackend.cpp \
+    output/audio/AudioOutputNull.cpp \
     output/video/VideoRenderer.cpp \
     output/video/VideoRendererTypes.cpp \
     output/video/VideoOutput.cpp \

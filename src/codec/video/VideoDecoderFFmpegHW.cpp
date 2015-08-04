@@ -34,7 +34,7 @@ static AVPixelFormat ffmpeg_get_va_format(struct AVCodecContext *c, const AVPixe
     return va->getFormat(c, ff);
 }
 
-#if QTAV_VA_REF
+#if QTAV_HAVE(AVBUFREF)
 
 typedef struct ffmpeg_va_ref_t {
     VideoDecoderFFmpegHWPrivate *va;
@@ -116,7 +116,55 @@ static void ffmpeg_release_va_buffer(struct AVCodecContext *c, AVFrame *ff)
     memset(ff->data, 0, sizeof(ff->data));
     memset(ff->linesize, 0, sizeof(ff->linesize));
 }
-#endif //QTAV_VA_REF
+#endif //QTAV_HAVE(AVBUFREF)
+
+
+bool VideoDecoderFFmpegHWPrivate::prepare()
+{
+    //// From vlc begin
+    codec_ctx->thread_safe_callbacks = true; //?
+#pragma warning(disable:4065) //vc: switch has default but no case
+    switch (codec_ctx->codec_id) {
+# if (LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55, 1, 0))
+        /// tested libav-9.x + va-api. If remove this code:  Bug detected, please report the issue. Context scratch buffers could not be allocated due to unknown size
+        case QTAV_CODEC_ID(H264):
+        case QTAV_CODEC_ID(VC1):
+        case QTAV_CODEC_ID(WMV3):
+            codec_ctx->thread_type &= ~FF_THREAD_FRAME;
+# endif
+        default:
+            break;
+    }
+    //// From vlc end
+    //TODO: neccesary?
+#if 0
+    if (!setup(codec_ctx)) {
+        qWarning("Setup va failed.");
+        return false;
+    }
+#endif
+    codec_ctx->opaque = this; //is it ok?
+
+    pixfmt = codec_ctx->pix_fmt;
+    get_format = codec_ctx->get_format;
+#if QTAV_HAVE(AVBUFREF)
+    get_buffer2 = codec_ctx->get_buffer2;
+#else
+    get_buffer = codec_ctx->get_buffer;
+    reget_buffer = codec_ctx->reget_buffer;
+    release_buffer = codec_ctx->release_buffer;
+#endif //QTAV_HAVE(AVBUFREF)
+    codec_ctx->get_format = ffmpeg_get_va_format;
+#if QTAV_HAVE(AVBUFREF)
+    codec_ctx->get_buffer2 = ffmpeg_get_va_buffer2;
+#else
+    // TODO: FF_API_GET_BUFFER
+    codec_ctx->get_buffer = ffmpeg_get_va_buffer;//ffmpeg_GetFrameBuf;
+    codec_ctx->reget_buffer = avcodec_default_reget_buffer;
+    codec_ctx->release_buffer = ffmpeg_release_va_buffer;//ffmpeg_ReleaseFrameBuf;
+#endif //QTAV_HAVE(AVBUFREF)
+    return true;
+}
 
 AVPixelFormat VideoDecoderFFmpegHWPrivate::getFormat(struct AVCodecContext *p_context, const AVPixelFormat *pi_fmt)
 {
@@ -275,78 +323,9 @@ VideoFrame VideoDecoderFFmpegHW::copyToFrame(const VideoFormat& fmt, int surface
         frame = frame.clone();
     }
     frame.setTimestamp(double(d.frame->pkt_pts)/1000.0);
+    frame.setDisplayAspectRatio(d.getDAR(d.frame));
     d.updateColorDetails(&frame);
     return frame;
-}
-
-bool VideoDecoderFFmpegHW::prepare()
-{
-    DPTR_D(VideoDecoderFFmpegHW);
-    if (!d.codec_ctx) {
-        qWarning("call this after AVCodecContext is set!");
-        return false;
-    }
-    //TODO: setup profile in open. vlc/modules/hw/vdpau/avcodec.c, xbmc/xbmc/cores/dvdplayer/DVDCodecs/Video/VDPAU.cpp
-    if (d.codec_ctx->codec_id == QTAV_CODEC_ID(H264)) {
-        // check Hi10p. NO HW support now
-        switch (d.codec_ctx->profile) {
-        //case FF_PROFILE_H264_HIGH: //VDP_DECODER_PROFILE_H264_HIGH
-        case FF_PROFILE_H264_HIGH_10:
-        case FF_PROFILE_H264_HIGH_10_INTRA:
-        case FF_PROFILE_H264_HIGH_422:
-        case FF_PROFILE_H264_HIGH_422_INTRA:
-        //case FF_PROFILE_H264_HIGH_444: //ignored by xbmc
-        case FF_PROFILE_H264_HIGH_444_PREDICTIVE:
-        case FF_PROFILE_H264_HIGH_444_INTRA:
-        case FF_PROFILE_H264_CAVLC_444:
-            return false;
-        default:
-            break;
-        }
-    }
-    //// From vlc begin
-    d.codec_ctx->thread_safe_callbacks = true; //?
-#pragma warning(disable:4065) //vc: switch has default but no case
-    switch (d.codec_ctx->codec_id) {
-# if (LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55, 1, 0))
-        /// tested libav-9.x + va-api. If remove this code:  Bug detected, please report the issue. Context scratch buffers could not be allocated due to unknown size
-        case QTAV_CODEC_ID(H264):
-        case QTAV_CODEC_ID(VC1):
-        case QTAV_CODEC_ID(WMV3):
-            d.codec_ctx->thread_type &= ~FF_THREAD_FRAME;
-# endif
-        default:
-            break;
-    }
-    //// From vlc end
-    //TODO: neccesary?
-#if 0
-    if (!d.setup(d.codec_ctx)) {
-        qWarning("Setup va failed.");
-        return false;
-    }
-#endif
-    d.codec_ctx->opaque = &d; //is it ok?
-
-    d.pixfmt = d.codec_ctx->pix_fmt;
-    d.get_format = d.codec_ctx->get_format;
-#if QTAV_VA_REF
-    d.get_buffer2 = d.codec_ctx->get_buffer2;
-#else
-    d.get_buffer = d.codec_ctx->get_buffer;
-    d.reget_buffer = d.codec_ctx->reget_buffer;
-    d.release_buffer = d.codec_ctx->release_buffer;
-#endif //QTAV_VA_REF
-    d.codec_ctx->get_format = ffmpeg_get_va_format;
-#if QTAV_VA_REF
-    d.codec_ctx->get_buffer2 = ffmpeg_get_va_buffer2;
-#else
-    // TODO: FF_API_GET_BUFFER
-    d.codec_ctx->get_buffer = ffmpeg_get_va_buffer;//ffmpeg_GetFrameBuf;
-    d.codec_ctx->reget_buffer = avcodec_default_reget_buffer;
-    d.codec_ctx->release_buffer = ffmpeg_release_va_buffer;//ffmpeg_ReleaseFrameBuf;
-#endif //QTAV_VA_REF
-    return true;
 }
 
 } //namespace QtAV

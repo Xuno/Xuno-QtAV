@@ -32,7 +32,6 @@ extern "C" {
 #include "utils/Logger.h"
 
 // TODO: neon+nv12+opengl crash
-
 #ifndef NO_NEON_OPT //Don't HAVE_NEON
 extern "C" {
 // from libvdpau-sunxi
@@ -62,14 +61,13 @@ public:
         NV12
     };
     VideoDecoderCedarv();
-    virtual VideoDecoderId id() const;
-    virtual QString description() const{
+    VideoDecoderId id() const Q_DECL_OVERRIDE Q_DECL_FINAL;
+    QString description() const Q_DECL_OVERRIDE Q_DECL_FINAL{
         return "Allwinner A10 CedarX video hardware acceleration";
     }
-    bool prepare();
-    bool decode(const QByteArray &encoded) Q_DECL_FINAL;
-    bool decode(const Packet& packet) Q_DECL_FINAL;
-    VideoFrame frame();
+    bool decode(const QByteArray &encoded) Q_DECL_OVERRIDE Q_DECL_FINAL;
+    bool decode(const Packet& packet) Q_DECL_OVERRIDE Q_DECL_FINAL;
+    VideoFrame frame() Q_DECL_OVERRIDE Q_DECL_FINAL;
 
     //properties
     void setNeon(bool value);
@@ -196,131 +194,6 @@ static void map32x32_to_nv12_UV(void* srcC, void* tarUV, unsigned int dst_pitch,
     }
 }
 #endif
-#ifndef NO_NEON_OPT //Don't HAVE_NEON
-// use tiled_to_planar instead
-static void map32x32_to_yuv_Y_neon(void* srcY, void* tarY, unsigned int dst_pitch, unsigned int coded_width,unsigned int coded_height)
-{
-    unsigned long offset;
-    unsigned char *dst_asm,*src_asm;
-
-    unsigned char *ptr = (unsigned char *)srcY;
-    const unsigned int mb_width = (coded_width+15) >> 4;
-    const unsigned int mb_height = (coded_height+15) >> 4;
-    const unsigned int twomb_line = (mb_height+1) >> 1;
-    const unsigned int twomb_width = mb_width/2;
-    for (unsigned int i = 0; i < twomb_line; i++) {
-        const int M = i*32;
-        for (unsigned int j = 0; j < twomb_width; j++) {
-            const unsigned int n= j*32;
-            offset = M*dst_pitch + n;
-            for (unsigned int l=0;l<32;l++) {
-                //first mb
-                dst_asm = (unsigned char *)tarY + offset;
-                src_asm = ptr;
-                asm volatile (
-                        "vld1.8         {d0 - d3}, [%[src_asm]]              \n\t"
-                        "vst1.8         {d0 - d3}, [%[dst_asm]]              \n\t"
-                        : [dst_asm] "+r" (dst_asm), [src_asm] "+r" (src_asm)
-                        :  //[srcY] "r" (srcY)
-                        : "cc", "memory", "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d16", "d17", "d18", "d19", "d20", "d21", "d22", "d23", "d24", "d28", "d29", "d30", "d31"
-                        );
-                offset += dst_pitch;
-                ptr += 32;
-            }
-        }
-
-        //LOGV("mb_width:%d",mb_width);
-        if(mb_width & 1) {
-            unsigned int j = mb_width-1;
-            const unsigned int n = j*16;
-            offset = M*dst_pitch + n;
-            for (unsigned int l = 0; l < 32; l++) {
-                //first mb
-                if (M+l<coded_height && n<coded_width) {
-                    dst_asm = (unsigned char *)tarY + offset;
-                    src_asm = ptr;
-                    asm volatile (
-                            "vld1.8         {d0 - d1}, [%[src_asm]]              \n\t"
-                            "vst1.8         {d0 - d1}, [%[dst_asm]]              \n\t"
-                            : [dst_asm] "+r" (dst_asm), [src_asm] "+r" (src_asm)
-                            :  //[srcY] "r" (srcY)
-                            : "cc", "memory", "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d16", "d17", "d18", "d19", "d20", "d21", "d22", "d23", "d24", "d28", "d29", "d30", "d31"
-                            );
-                }
-                offset += dst_pitch;
-                ptr += 32;
-            }
-        }
-    }
-}
-// use tiled_deinterleave_to_planar instead
-static void map32x32_to_yuv_C_neon(void* srcC, void* tarCb, void* tarCr, unsigned int dst_pitch, unsigned int coded_width, unsigned int coded_height)
-{
-    coded_width /= 2; // libvdpau-sunxi compatible
-    unsigned int j,l,k;
-    unsigned long offset;
-    unsigned char *dst0_asm,*dst1_asm,*src_asm;
-    unsigned char line[16];
-    int dst_stride = FFALIGN(coded_width, 16);
-
-    unsigned char *ptr = (unsigned char *)srcC;
-    const unsigned int mb_width = (coded_width+7)>>3;
-    const unsigned int mb_height = (coded_height+7)>>3;
-    const unsigned int fourmb_line = (mb_height+3)>>2;
-    const unsigned int twomb_width = mb_width/2;
-
-    for (unsigned int i = 0; i < fourmb_line; i++) {
-        const int M = i*32;
-        for (j = 0; j < twomb_width; j++) {
-            const unsigned int n = j*16;
-            offset = M*dst_stride + n;
-            for (l = 0; l < 32; l++) {
-                //first mb
-                if (M+l<coded_height && n<coded_width) {
-                    dst0_asm = (unsigned char *)tarCb + offset;
-                    dst1_asm = (unsigned char *)tarCr + offset;
-                    src_asm = ptr;
-//                    for(k=0;k<16;k++)
-//                    {
-//                        dst0_asm[k] = src_asm[2*k];
-//                        dst1_asm[k] = src_asm[2*k+1];
-//                    }
-                    asm volatile (
-                            "vld1.8         {d0 - d3}, [%[src_asm]]              \n\t"
-                            "vuzp.8         d0, d1              \n\t"
-                            "vuzp.8         d2, d3              \n\t"
-                            "vst1.8         {d0}, [%[dst0_asm]]!              \n\t"
-                            "vst1.8         {d2}, [%[dst0_asm]]!              \n\t"
-                            "vst1.8         {d1}, [%[dst1_asm]]!              \n\t"
-                            "vst1.8         {d3}, [%[dst1_asm]]!              \n\t"
-                             : [dst0_asm] "+r" (dst0_asm), [dst1_asm] "+r" (dst1_asm), [src_asm] "+r" (src_asm)
-                             :  //[srcY] "r" (srcY)
-                             : "cc", "memory", "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d16", "d17", "d18", "d19", "d20", "d21", "d22", "d23", "d24", "d28", "d29", "d30", "d31"
-                             );
-                }
-                offset += dst_pitch;
-                ptr += 32;
-            }
-        }
-        if (mb_width & 1) {
-            j = mb_width-1;
-            for (l = 0; l < 32; l++) {
-                const unsigned int n = j*8;
-                offset = M*dst_stride + n;
-                if (M+l<coded_height && n<coded_width) {
-                    memcpy(line, ptr, 16);
-                    for(k = 0; k < 8; k++) {
-                        *((unsigned char *)tarCb + offset + k) = line[2*k];
-                        *((unsigned char *)tarCr + offset + k) = line[2*k+1];
-                    }
-                }
-                offset += dst_stride;
-                ptr += 32;
-            }
-        }
-    }
-}
-#endif
 
 typedef struct {
     enum AVCodecID id;
@@ -397,7 +270,7 @@ enum AVPixelFormat pixel_format_from_cedarv(cedarv_pixel_format_e cpf)
     return QTAV_PIX_FMT_C(NONE);
 }
 
-class VideoDecoderCedarvPrivate : public VideoDecoderPrivate
+class VideoDecoderCedarvPrivate Q_DECL_FINAL: public VideoDecoderPrivate
 {
 public:
     VideoDecoderCedarvPrivate()
@@ -416,6 +289,7 @@ public:
         //libcedarv_exit(cedarv);
         cedarv = NULL;
     }
+    bool open()  Q_DECL_OVERRIDE;
 
     CEDARV_DECODER *cedarv;
     cedarv_picture_t cedarPicture;
@@ -443,8 +317,8 @@ void VideoDecoderCedarv::setNeon(bool value)
     DPTR_D(VideoDecoderCedarv);
     if (value) {
 #ifndef NO_NEON_OPT //Don't HAVE_NEON
-        d.map_y = tiled_to_planar;// map32x32_to_yuv_Y_neon;
-        d.map_c = tiled_deinterleave_to_planar;// map32x32_to_yuv_C_neon;
+        d.map_y = tiled_to_planar;
+        d.map_c = tiled_deinterleave_to_planar;
 #endif
     } else {
         d.map_y = map32x32_to_yuv_Y;
@@ -471,50 +345,47 @@ bool VideoDecoderCedarv::neon() const
     return d_func().map_y != map32x32_to_yuv_Y;
 }
 
-bool VideoDecoderCedarv::prepare()
+bool VideoDecoderCedarvPrivate::open()
 {
-    DPTR_D(VideoDecoderCedarv);
     cedarv_stream_format_e format;
     cedarv_sub_format_e sub_format;
     /* format check */
-    format_from_avcodec(d.codec_ctx->codec_id, &format, &sub_format);
+    format_from_avcodec(codec_ctx->codec_id, &format, &sub_format);
     if (format == CEDARV_STREAM_FORMAT_UNKNOW) {
-        qWarning("CedarV: codec not supported '%s'", avcodec_get_name(d.codec_ctx->codec_id));
+        qWarning("CedarV: codec not supported '%s'", avcodec_get_name(codec_ctx->codec_id));
         return false;
     }
-    if (!d.cedarv) {
+    if (!cedarv) {
         int ret;
-        d.cedarv = libcedarv_init(&ret);
-        if (ret < 0 || d.cedarv == NULL)
+        cedarv = libcedarv_init(&ret);
+        if (ret < 0 || cedarv == NULL)
             return false;
     }
-
-    d.codec_ctx->opaque = &d; //is it ok?
 
     cedarv_stream_info_t cedarStreamInfo;
     memset(&cedarStreamInfo, 0, sizeof cedarStreamInfo);
     cedarStreamInfo.format = format;
     cedarStreamInfo.sub_format = sub_format;
-    cedarStreamInfo.video_width = d.codec_ctx->coded_width; //coded_width?
-    cedarStreamInfo.video_height = d.codec_ctx->coded_height;
-    if (d.codec_ctx->extradata_size) {
-        cedarStreamInfo.init_data = d.codec_ctx->extradata;
-        cedarStreamInfo.init_data_len = d.codec_ctx->extradata_size;
+    cedarStreamInfo.video_width = codec_ctx->coded_width; //coded_width?
+    cedarStreamInfo.video_height = codec_ctx->coded_height;
+    if (codec_ctx->extradata_size) {
+        cedarStreamInfo.init_data = codec_ctx->extradata;
+        cedarStreamInfo.init_data_len = codec_ctx->extradata_size;
     }
 
     int cedarvRet;
-    cedarvRet = d.cedarv->set_vstream_info(d.cedarv, &cedarStreamInfo);
+    cedarvRet = cedarv->set_vstream_info(cedarv, &cedarStreamInfo);
     if (cedarvRet < 0) {
         qWarning("CedarV: set_vstream_info error: %d", cedarvRet);
         return false;
     }
-    cedarvRet = d.cedarv->open(d.cedarv);
+    cedarvRet = cedarv->open(cedarv);
     if (cedarvRet < 0) {
         qWarning("CedarV: set_vstream_info error: %d", cedarvRet);
         return false;
     }
-    d.cedarv->ioctrl(d.cedarv, CEDARV_COMMAND_RESET, 0);
-    d.cedarv->ioctrl(d.cedarv, CEDARV_COMMAND_PLAY, 0);
+    cedarv->ioctrl(cedarv, CEDARV_COMMAND_RESET, 0);
+    cedarv->ioctrl(cedarv, CEDARV_COMMAND_PLAY, 0);
 
     return true;
 }
