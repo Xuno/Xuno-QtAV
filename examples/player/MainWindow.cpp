@@ -226,19 +226,28 @@ void MainWindow::setupUi()
     setLayout(mainLayout);
 
     mpPlayerLayout = new QVBoxLayout();
-#define useDetachedVideo 0
-#define useDetachedControl 1
-#if useDetachedVideo
-    detachedVideo = new QWidget();
-    detachedVideo->setWindowFlags(detachedVideo->windowFlags() & ~Qt::WindowCloseButtonHint);
-    detachedVideo->setMinimumSize(640,480);
-    mpPlayerLayout->setContentsMargins(0,0,0,0);
-    detachedVideo->setLayout(mpPlayerLayout);
-    detachedVideo->show();
-#endif
 
     //QVBoxLayout *mpControlLayout = new QVBoxLayout();
+
+#define useDetachedControl 1
+#if useDetachedControl
+    detachedControl = new QWidget(this);
+    detachedControl->setWindowTitle(tr("Player  controls"));
+    detachedControl->setWindowFlags(Qt::Dialog);
+    detachedControl->setMaximumHeight(55);
+    detachedControl->setMinimumSize(500,55);
+    detachedControl->resize(650,55);
+    QVBoxLayout *detachedControlLayout = new QVBoxLayout();
+    detachedControlLayout->setContentsMargins(0,0,0,0);
+    //detachedControl->setWindowModality(Qt::WindowModal);
+    detachedControl->setLayout(detachedControlLayout);
+    detachedControl->show();
+    detachedControl->raise();
+    mpControl = new QWidget(detachedControl);
+#else
     mpControl = new QWidget(this);
+#endif
+
     mpControl->setMaximumHeight(25);
     mpControl->setMaximumHeight(30);
 
@@ -615,15 +624,16 @@ QSlider::handle:horizontal { \
 
 
     //mpImgSeqExtract->hide();
-#if useDetachedVideo
-    QVBoxLayout *tv=new QVBoxLayout();
-    tv->addWidget(new QWidget());
-    mainLayout->addLayout(tv);
-#else
     mainLayout->addLayout(mpPlayerLayout);
-#endif
+
+#if !useDetachedControl
     mainLayout->addWidget(mpTimeSlider);
     mainLayout->addWidget(mpControl);
+#else
+    detachedControlLayout->addWidget(mpTimeSlider);
+    detachedControlLayout->addWidget(mpControl);
+
+#endif
    // mpControlLayout->addWidget(mpImgSeqExtract);
     //mainLayout->addWidget(mpControl);
 
@@ -1554,7 +1564,10 @@ void MainWindow::tryHideControlBar()
         return;
 
     qDebug()<<"tryHideControlBar";
-    mpControl->hide();
+    if (detachedControl)
+        detachedControl->hide();
+    else
+        mpControl->hide();
     if (mpControl->isHidden()) mpTimeSlider->hide();
     workaroundRendererSize();
 }
@@ -1566,6 +1579,9 @@ void MainWindow::tryShowControlBar()
         (mpControl && mpControl->isHidden())
        )
         mpTimeSlider->show();
+    if (detachedControl)
+        detachedControl->show();
+    else
         mpControl->show();
 }
 

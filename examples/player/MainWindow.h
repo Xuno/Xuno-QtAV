@@ -202,7 +202,7 @@ private:
     QStringList mAudioBackends;
     QVBoxLayout *mpPlayerLayout;
 
-    QWidget *detachedVideo=0;
+    QWidget *detachedControl=0;
     QWidget *mpControl;
     QLabel *mpCurrent, *mpEnd;
     QLabel *mpTitle;
