@@ -226,6 +226,17 @@ void MainWindow::setupUi()
     setLayout(mainLayout);
 
     mpPlayerLayout = new QVBoxLayout();
+#define useDetachedVideo 0
+#define useDetachedControl 1
+#if useDetachedVideo
+    detachedVideo = new QWidget();
+    detachedVideo->setWindowFlags(detachedVideo->windowFlags() & ~Qt::WindowCloseButtonHint);
+    detachedVideo->setMinimumSize(640,480);
+    mpPlayerLayout->setContentsMargins(0,0,0,0);
+    detachedVideo->setLayout(mpPlayerLayout);
+    detachedVideo->show();
+#endif
+
     //QVBoxLayout *mpControlLayout = new QVBoxLayout();
     mpControl = new QWidget(this);
     mpControl->setMaximumHeight(25);
@@ -604,7 +615,13 @@ QSlider::handle:horizontal { \
 
 
     //mpImgSeqExtract->hide();
+#if useDetachedVideo
+    QVBoxLayout *tv=new QVBoxLayout();
+    tv->addWidget(new QWidget());
+    mainLayout->addLayout(tv);
+#else
     mainLayout->addLayout(mpPlayerLayout);
+#endif
     mainLayout->addWidget(mpTimeSlider);
     mainLayout->addWidget(mpControl);
    // mpControlLayout->addWidget(mpImgSeqExtract);
@@ -1933,7 +1950,9 @@ void MainWindow::reSizeByMovie()
       t.setWidth(st.video_only.width*mPlayerScale);
       t.setHeight(st.video_only.height*mPlayerScale);
     }
-    if (t.isValid() && (!t.isNull())) resize(t);
+    if (t.isValid() && (!t.isNull())) {
+            resize(t);
+    }
 }
 
 void MainWindow::onClickXunoBrowser(QUrl url){
