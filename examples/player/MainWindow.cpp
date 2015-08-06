@@ -232,11 +232,14 @@ void MainWindow::setupUi()
 #define useDetachedControl 1
 #if useDetachedControl
     detachedControl = new QWidget(this);
-    detachedControl->setWindowTitle(tr("Player  controls"));
+    detachedControl->setWindowTitle(tr("XunoPlayer Controls"));
     detachedControl->setWindowFlags(Qt::Dialog);
-    detachedControl->setMaximumHeight(55);
-    detachedControl->setMinimumSize(500,55);
-    detachedControl->resize(650,55);
+    detachedControl->setWindowFlags(detachedControl->windowFlags() & ~Qt::WindowCloseButtonHint);
+    //detachedControl->setWindowFlags(detachedControl->windowFlags() |Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
+    detachedControl->setMaximumSize(785,125);
+    detachedControl->setMinimumSize(785,55);
+    detachedControl->resize(detachedControl->minimumSize());
+
     QVBoxLayout *detachedControlLayout = new QVBoxLayout();
     detachedControlLayout->setContentsMargins(0,0,0,0);
     //detachedControl->setWindowModality(Qt::WindowModal);
@@ -1564,10 +1567,7 @@ void MainWindow::tryHideControlBar()
         return;
 
     qDebug()<<"tryHideControlBar";
-    if (detachedControl)
-        detachedControl->hide();
-    else
-        mpControl->hide();
+    if (!detachedControl) mpControl->hide();
     if (mpControl->isHidden()) mpTimeSlider->hide();
     workaroundRendererSize();
 }
@@ -1596,7 +1596,12 @@ void MainWindow::showInfo()
 
 void MainWindow::onTimeSliderHover(int pos, int value)
 {
-    QPoint gpos = mapToGlobal(mpTimeSlider->pos() + QPoint(pos, 0));
+    QPoint gpos;
+    if (detachedControl){
+        gpos = (detachedControl->pos() + QPoint(pos, 0));
+    }else{
+        gpos = mapToGlobal(mpTimeSlider->pos() + QPoint(pos, 0));
+    }
     QToolTip::showText(gpos, QTime(0, 0, 0).addMSecs(value).toString("HH:mm:ss.zzz"));
     if (!Config::instance().previewEnabled())
         return;
@@ -2075,6 +2080,9 @@ bool MainWindow::applyCustomFPS(){
      mpImgSeqExtract->setVisible(state);
      mpCurrent->setVisible(!state);
      mpEnd->setVisible(!state);
+     if (detachedControl){
+         detachedControl->resize(state?detachedControl->maximumSize():detachedControl->minimumSize());
+     }
 
  }
 
