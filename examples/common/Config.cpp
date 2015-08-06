@@ -52,7 +52,7 @@ public:
         abort_timeoutI = settings.value("abort_timeoutImgSeq", true).toBool();
         force_videoclockI = settings.value("force_videoclockI", true).toBool();
         force_fps = settings.value("force_fps", 0.0).toReal();
-        floatcontrol_enabled = settings.value("floatcontrol_enabled", true).toBool();
+        floatcontrol_enabled = settings.value("floatcontrol_enabled", false).toBool();
         settings.beginGroup("decoder");
         settings.beginGroup("video");
         QString decs_default("FFmpeg");
