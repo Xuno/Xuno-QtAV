@@ -234,14 +234,12 @@ void MainWindow::setupUi()
         detachedControl->setWindowTitle(tr("XunoPlayer Controls"));
         detachedControl->setWindowFlags(Qt::Dialog);
         detachedControl->setWindowFlags(detachedControl->windowFlags() & ~Qt::WindowCloseButtonHint);
-        //detachedControl->setWindowFlags(detachedControl->windowFlags() |Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
         detachedControl->setMaximumHeight(125);//785
         detachedControl->setMaximumHeight(55);
         detachedControl->resize(785,detachedControl->minimumHeight());
 
         detachedControlLayout = new QVBoxLayout();
         detachedControlLayout->setContentsMargins(0,0,0,0);
-        //detachedControl->setWindowModality(Qt::WindowModal);
         detachedControl->setLayout(detachedControlLayout);
         detachedControl->show();
         detachedControl->raise();
