@@ -87,9 +87,10 @@ MiscPage::MiscPage()
     m_angle_platform->setToolTip(tr("D3D9 has performance if ZeroCopy is disabled or for software decoders") + "\n" + tr("RESTART REQUIRED"));
     m_angle_platform->addItems(QStringList() << "D3D9" << "D3D11" << "AUTO" << "WARP");
     gl->addWidget(m_angle_platform, r++, 2);
-    m_floatcontrol = new QCheckBox(tr("Float Control Window"));
-    m_floatcontrol->setToolTip(tr("Application restart required"));
-    gl->addWidget(m_floatcontrol, r++, 0);
+
+    //gl->addItem(new QSpacerItem(185, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r,0);
+    //gl->addItem(new QSpacerItem(120, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r,1);
+    //gl->addItem(new QSpacerItem(120, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r++,2);
 
     vl->addWidget(video,1, Qt::AlignTop);
 
@@ -106,13 +107,28 @@ MiscPage::MiscPage()
     m_buffer_valueI = new QSpinBox(imgSeq);
     m_buffer_valueI->setRange(-1, 32767);
     m_buffer_valueI->setToolTip("-1: auto");
-    gli->addWidget(m_buffer_valueI, r++, 1);
+    gli->addWidget(m_buffer_valueI, r, 1);
 
     m_forceVideoClockI = new QCheckBox(tr("Force Video Clock"),imgSeq);
-    gli->addWidget(m_forceVideoClockI, r++, 0);
-    gli->addItem(new QSpacerItem(185, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r,0);
-    gli->addItem(new QSpacerItem(118, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r++,1);
+    gli->addWidget(m_forceVideoClockI, ++r, 0);
+    gli->addItem(new QSpacerItem(178, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),++r,0);
+    gli->addItem(new QSpacerItem(140, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r,1);
     vl->addWidget(imgSeq,1, Qt::AlignTop);
+
+
+    QGroupBox *playerView = new QGroupBox(this);
+    playerView->setTitle(tr(" Player View"));
+    QGridLayout *glpv = new QGridLayout(playerView);
+    glpv->setSizeConstraint(QLayout::SetFixedSize);
+    r = 0;
+    m_floatcontrol = new QCheckBox(tr("Float Control Window"));
+    m_floatcontrol->setToolTip(tr("Application restart required"));
+    glpv->addWidget(m_floatcontrol, r, 0);
+    glpv->addWidget(new QLabel(tr("(application restart required)")), r, 1);
+    glpv->addItem(new QSpacerItem(178, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),++r,0);
+    glpv->addItem(new QSpacerItem(140, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r,1);
+
+    vl->addWidget(playerView,1, Qt::AlignTop);
 
     setLayout(vl);
     applyToUi();
