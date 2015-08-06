@@ -66,6 +66,8 @@ class COMMON_EXPORT Config : public QObject
     Q_PROPERTY(int bufferValueI READ bufferValueI WRITE setBufferValueI NOTIFY bufferValueChangedI)
     Q_PROPERTY(bool forceVideoClockI READ forceVideoClockI WRITE setForceVideoClockI NOTIFY forceVideoClockChangedI)
     Q_ENUMS(OpenGLType)
+    Q_PROPERTY(bool floatControlEnabled READ floatControlEnabled WRITE setFloatControlEnabled NOTIFY floatControlEnabledChanged)
+
 
 public:
     enum OpenGLType { // currently only for windows
@@ -135,6 +137,9 @@ public:
     Config& setPreviewWidth(int value);
     int previewHeight() const;
     Config& setPreviewHeight(int value);
+
+    bool floatControlEnabled() const;
+    Config& setFloatControlEnabled(bool value);
 
     QVariantHash avformatOptions() const;
     bool avformatOptionsEnabled() const;
@@ -236,6 +241,7 @@ public:
     Q_SIGNAL void timeoutChangedI();
     Q_SIGNAL void abortOnTimeoutChangedI();
     Q_SIGNAL void forceVideoClockChangedI();
+    Q_SIGNAL void floatControlEnabledChanged();
 
 protected:
     explicit Config(QObject *parent = 0);

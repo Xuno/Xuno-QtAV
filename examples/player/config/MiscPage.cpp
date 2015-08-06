@@ -87,6 +87,9 @@ MiscPage::MiscPage()
     m_angle_platform->setToolTip(tr("D3D9 has performance if ZeroCopy is disabled or for software decoders") + "\n" + tr("RESTART REQUIRED"));
     m_angle_platform->addItems(QStringList() << "D3D9" << "D3D11" << "AUTO" << "WARP");
     gl->addWidget(m_angle_platform, r++, 2);
+    m_floatcontrol = new QCheckBox(tr("Float Control Window"));
+    m_floatcontrol->setToolTip(tr("Application restart required"));
+    gl->addWidget(m_floatcontrol, r++, 0);
 
     vl->addWidget(video,1, Qt::AlignTop);
 
@@ -134,6 +137,7 @@ void MiscPage::applyFromUi()
             .setAbortOnTimeout(m_timeout_abort->isChecked())
             .setBufferValueI(m_buffer_valueI->value())
             .setForceVideoClockI(m_forceVideoClockI->isChecked())
+            .setFloatControlEnabled(m_floatcontrol->isChecked())
             ;
 }
 
@@ -151,4 +155,5 @@ void MiscPage::applyToUi()
     m_timeout_abort->setChecked(Config::instance().abortOnTimeout());
     m_buffer_valueI->setValue(Config::instance().bufferValueI());
     m_forceVideoClockI->setChecked(Config::instance().forceVideoClockI());
+    m_floatcontrol->setChecked(Config::instance().floatControlEnabled());
 }

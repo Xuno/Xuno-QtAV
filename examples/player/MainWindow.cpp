@@ -229,27 +229,26 @@ void MainWindow::setupUi()
 
     //QVBoxLayout *mpControlLayout = new QVBoxLayout();
 
-#define useDetachedControl 1
-#if useDetachedControl
-    detachedControl = new QWidget(this);
-    detachedControl->setWindowTitle(tr("XunoPlayer Controls"));
-    detachedControl->setWindowFlags(Qt::Dialog);
-    detachedControl->setWindowFlags(detachedControl->windowFlags() & ~Qt::WindowCloseButtonHint);
-    //detachedControl->setWindowFlags(detachedControl->windowFlags() |Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
-    detachedControl->setMaximumSize(785,125);
-    detachedControl->setMinimumSize(785,55);
-    detachedControl->resize(detachedControl->minimumSize());
+    if (Config::instance().floatControlEnabled()){
+        detachedControl = new QWidget(this);
+        detachedControl->setWindowTitle(tr("XunoPlayer Controls"));
+        detachedControl->setWindowFlags(Qt::Dialog);
+        detachedControl->setWindowFlags(detachedControl->windowFlags() & ~Qt::WindowCloseButtonHint);
+        //detachedControl->setWindowFlags(detachedControl->windowFlags() |Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
+        detachedControl->setMaximumHeight(125);//785
+        detachedControl->setMaximumHeight(55);
+        detachedControl->resize(785,detachedControl->minimumHeight());
 
-    QVBoxLayout *detachedControlLayout = new QVBoxLayout();
-    detachedControlLayout->setContentsMargins(0,0,0,0);
-    //detachedControl->setWindowModality(Qt::WindowModal);
-    detachedControl->setLayout(detachedControlLayout);
-    detachedControl->show();
-    detachedControl->raise();
-    mpControl = new QWidget(detachedControl);
-#else
-    mpControl = new QWidget(this);
-#endif
+        detachedControlLayout = new QVBoxLayout();
+        detachedControlLayout->setContentsMargins(0,0,0,0);
+        //detachedControl->setWindowModality(Qt::WindowModal);
+        detachedControl->setLayout(detachedControlLayout);
+        detachedControl->show();
+        detachedControl->raise();
+        mpControl = new QWidget(detachedControl);
+    }else{
+        mpControl = new QWidget(this);
+    }
 
     mpControl->setMaximumHeight(25);
     mpControl->setMaximumHeight(30);
@@ -629,14 +628,14 @@ QSlider::handle:horizontal { \
     //mpImgSeqExtract->hide();
     mainLayout->addLayout(mpPlayerLayout);
 
-#if !useDetachedControl
-    mainLayout->addWidget(mpTimeSlider);
-    mainLayout->addWidget(mpControl);
-#else
-    detachedControlLayout->addWidget(mpTimeSlider);
-    detachedControlLayout->addWidget(mpControl);
+    if (detachedControlLayout){
+        detachedControlLayout->addWidget(mpTimeSlider);
+        detachedControlLayout->addWidget(mpControl);
+    }else{
+        mainLayout->addWidget(mpTimeSlider);
+        mainLayout->addWidget(mpControl);
+    }
 
-#endif
    // mpControlLayout->addWidget(mpImgSeqExtract);
     //mainLayout->addWidget(mpControl);
 
@@ -2081,7 +2080,8 @@ bool MainWindow::applyCustomFPS(){
      mpCurrent->setVisible(!state);
      mpEnd->setVisible(!state);
      if (detachedControl){
-         detachedControl->resize(state?detachedControl->maximumSize():detachedControl->minimumSize());
+         QSize s=QSize(detachedControl->width(),state?detachedControl->maximumHeight():detachedControl->minimumHeight());
+         detachedControl->resize(s);
      }
 
  }

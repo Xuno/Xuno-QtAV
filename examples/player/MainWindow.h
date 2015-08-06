@@ -203,6 +203,7 @@ private:
     QVBoxLayout *mpPlayerLayout;
 
     QWidget *detachedControl=0;
+    QVBoxLayout *detachedControlLayout=0;
     QWidget *mpControl;
     QLabel *mpCurrent, *mpEnd;
     QLabel *mpTitle;

@@ -52,6 +52,7 @@ public:
         abort_timeoutI = settings.value("abort_timeoutImgSeq", true).toBool();
         force_videoclockI = settings.value("force_videoclockI", true).toBool();
         force_fps = settings.value("force_fps", 0.0).toReal();
+        floatcontrol_enabled = settings.value("floatcontrol_enabled", true).toBool();
         settings.beginGroup("decoder");
         settings.beginGroup("video");
         QString decs_default("FFmpeg");
@@ -152,6 +153,7 @@ public:
         settings.setValue("abort_timeoutImgSeq", abort_timeoutI);
         settings.setValue("force_fps", force_fps);
         settings.setValue("force_videoclockI", force_videoclockI);
+        settings.setValue("floatcontrol_enabled", floatcontrol_enabled);
         settings.beginGroup("decoder");
         settings.beginGroup("video");
         settings.setValue("priority", video_decoders.join(" "));
@@ -233,6 +235,7 @@ public:
 
     bool avformat_on;
     bool direct;
+    bool floatcontrol_enabled;
     unsigned int probe_size;
     int analyze_duration;
     QString avformat_extra;
@@ -532,6 +535,21 @@ Config& Config::setPreviewEnabled(bool value)
     emit previewEnabledChanged();
     return *this;
 }
+
+bool Config::floatControlEnabled() const
+{
+    return mpData->floatcontrol_enabled;
+}
+
+Config& Config::setFloatControlEnabled(bool value)
+{
+    if (mpData->floatcontrol_enabled == value)
+        return *this;
+    mpData->floatcontrol_enabled = value;
+    emit floatControlEnabledChanged();
+    return *this;
+}
+
 
 int Config::previewWidth() const
 {
