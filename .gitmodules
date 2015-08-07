@@ -4,3 +4,6 @@
 [submodule "contrib/capi"]
 	path = contrib/capi
 	url = https://github.com/wang-bin/capi.git
+[submodule "capi"]
+	path = capi
+	url = https://github.com/wang-bin/capi.git
