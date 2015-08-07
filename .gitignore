@@ -54,6 +54,7 @@ Makefile*
 /lib*
 Debug
 Release
+contrib
 *.Debug
 *.Release
 
