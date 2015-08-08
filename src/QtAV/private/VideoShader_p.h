@@ -80,6 +80,7 @@ public:
     int u_gammaRGB;
     int u_pix;
     int u_filterkernel;
+    int u_pixeloffsetkernel;
     int u_c;
     QVector<int> u_Texture;
     GLenum texture_target;

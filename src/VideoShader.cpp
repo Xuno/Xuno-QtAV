@@ -269,6 +269,7 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
     d.u_gammaRGB = shaderProgram->uniformLocation("u_gammaRGB");
     d.u_pix = shaderProgram->uniformLocation("u_pix");
     d.u_filterkernel = shaderProgram->uniformLocation("u_filterkernel");
+    d.u_pixeloffsetkernel = shaderProgram->uniformLocation("u_pixeloffsetkernel");
     d.u_c = shaderProgram->uniformLocation("u_c");
     d.u_Texture.resize(textureLocationCount());
     for (int i = 0; i < d.u_Texture.size(); ++i) {
@@ -334,6 +335,11 @@ int VideoShader::pixeloffsetLocation() const
     return d_func().u_pix;
 }
 
+int VideoShader::pixeloffsetkernelLocation() const
+{
+    return d_func().u_pixeloffsetkernel;
+}
+
 int VideoShader::filterkernelLocation() const
 {
     return d_func().u_filterkernel;
@@ -389,6 +395,20 @@ bool VideoShader::update(VideoMaterial *material)
                  0.,fsa ,0.
      };
 
+    QVector2D pix=material->pixeloffset();
+    QVector2D pixeloffsetkernel[9] =  {
+        QVector2D(  -pix.x()   , -pix.y()  ),
+        QVector2D(   0.0	   , -pix.y()  ),
+        QVector2D(   pix.x()   , -pix.y()  ),
+        QVector2D(  -pix.x()   ,  0.0      ),
+        QVector2D(   0.0	   ,  0.0      ),
+        QVector2D(   pix.x()   ,  0.0      ),
+        QVector2D(  -pix.x()   ,  pix.y()  ),
+        QVector2D(   0.0	   ,  pix.y()  ),
+        QVector2D(   pix.x()   ,  pix.y()  )
+     };
+
+
     const VideoFormat fmt(material->currentFormat());
     //format is out of date because we may use the same shader for different formats
     setVideoFormat(fmt);
@@ -417,6 +437,7 @@ bool VideoShader::update(VideoMaterial *material)
     program()->setUniformValue(gammaRGBLocation(), (GLfloat)material->gammaRGB());
     program()->setUniformValue(pixeloffsetLocation(), material->pixeloffset());
     program()->setUniformValueArray(filterkernelLocation(),kernel,9,1);
+    program()->setUniformValueArray(pixeloffsetkernelLocation(),pixeloffsetkernel,9);
     return true;
 }
 

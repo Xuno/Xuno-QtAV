@@ -55,6 +55,7 @@ uniform mat4 u_colorMatrix;
 uniform float u_gammaRGB;
 uniform vec2  u_pix;
 uniform float u_filterkernel[9];
+uniform vec2 u_pixeloffsetkernel[9];
 vec3 color;
 
 //#define USED_DEBUG
@@ -191,20 +192,6 @@ vec4 BiCubic( sampler2D textureSampler, vec2 TexCoord )
 // 10, 16bit: http://msdn.microsoft.com/en-us/library/windows/desktop/bb970578%28v=vs.85%29.aspx
 void main()
 {
-//added by xuno
-    vec2 pixeloffset[9] = vec2[9](
-          vec2(  -u_pix.x   , -u_pix.y  ),
-          vec2(   0.0	  , -u_pix.y  ),
-          vec2(   u_pix.x   , -u_pix.y  ),
-          vec2(  -u_pix.x   ,  0.0      ),
-          vec2(   0.0	  ,  0.0      ),
-          vec2(   u_pix.x   ,  0.0      ),
-          vec2(  -u_pix.x   ,  u_pix.y  ),
-          vec2(   0.0	  ,  u_pix.y  ),
-          vec2(   u_pix.x   ,  u_pix.y  )
-    );
-//added by xuno
-
     // FFmpeg supports 9, 10, 12, 14, 16 bits
 #if LA_16BITS
     //http://stackoverflow.com/questions/22693169/opengl-es-2-0-glsl-compiling-fails-on-osx-when-using-const
@@ -231,26 +218,26 @@ void main()
 #if LA_16BITS
 //added by xuno
 #if defined(USED_BiCubic)
-                             dot(BiCubic(u_Texture0, v_TexCoords0+pixeloffset[i]).ra, t),
-                             dot(BiCubic(u_Texture1, v_TexCoords1+pixeloffset[i]).ra, t),
-                             dot(BiCubic(u_Texture2, v_TexCoords2+pixeloffset[i]).ra, t),
+                             dot(BiCubic(u_Texture0, v_TexCoords0+u_pixeloffsetkernel[i]).ra, t),
+                             dot(BiCubic(u_Texture1, v_TexCoords1+u_pixeloffsetkernel[i]).ra, t),
+                             dot(BiCubic(u_Texture2, v_TexCoords2+u_pixeloffsetkernel[i]).ra, t),
 #else  //USED_BiCubic
-                             dot(texture2D(u_Texture0, v_TexCoords0+pixeloffset[i]).ra, t),
-                             dot(texture2D(u_Texture1, v_TexCoords1+pixeloffset[i]).ra, t),
-                             dot(texture2D(u_Texture2, v_TexCoords2+pixeloffset[i]).ra, t),
+                             dot(texture2D(u_Texture0, v_TexCoords0+u_pixeloffsetkernel[i]).ra, t),
+                             dot(texture2D(u_Texture1, v_TexCoords1+u_pixeloffsetkernel[i]).ra, t),
+                             dot(texture2D(u_Texture2, v_TexCoords2+u_pixeloffsetkernel[i]).ra, t),
 #endif //USED_BiCubic
 //added by xuno
 #else  //LA_16BITS
 // use r, g, a to work for both yv12 and nv12. idea from xbmc
 //added by xuno
 #if defined(USED_BiCubic)
-                             BiCubic(u_Texture0, v_TexCoords0 + pixeloffset[i]).r,
-                             BiCubic(u_Texture1, v_TexCoords1 + pixeloffset[i]).g,
-                             BiCubic(u_Texture2, v_TexCoords2 + pixeloffset[i]).a,
+                             BiCubic(u_Texture0, v_TexCoords0 + u_pixeloffsetkernel[i]).r,
+                             BiCubic(u_Texture1, v_TexCoords1 + u_pixeloffsetkernel[i]).g,
+                             BiCubic(u_Texture2, v_TexCoords2 + u_pixeloffsetkernel[i]).a,
 #else  //USED_BiCubic
-                             texture2D(u_Texture0, v_TexCoords0 + pixeloffset[i]).r,
-                             texture2D(u_Texture1, v_TexCoords1 + pixeloffset[i]).g,
-                             texture2D(u_Texture2, v_TexCoords2 + pixeloffset[i]).a,
+                             texture2D(u_Texture0, v_TexCoords0 + u_pixeloffsetkernel[i]).r,
+                             texture2D(u_Texture1, v_TexCoords1 + u_pixeloffsetkernel[i]).g,
+                             texture2D(u_Texture2, v_TexCoords2 + u_pixeloffsetkernel[i]).a,
 #endif //USED_BiCubic
 //added by xuno
 #endif //LA_16BITS

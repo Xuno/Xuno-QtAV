@@ -78,6 +78,7 @@ public:
     int gammaRGBLocation() const;
     int pixeloffsetLocation() const;
     int filterkernelLocation() const;
+    int pixeloffsetkernelLocation() const;
     int channelMapLocation() const;
     VideoFormat videoFormat() const;
     // defalut is GL_TEXTURE_2D

@@ -43,6 +43,7 @@ uniform float u_bpp;
 uniform float u_gammaRGB;
 uniform vec2  u_pix;
 uniform float u_filterkernel[9];
+uniform vec2 u_pixeloffsetkernel[9];
 vec3 color;
 #ifdef PACKED_YUV
 uniform mat4 u_c;
@@ -141,18 +142,6 @@ vec4 BiCubic( sampler2D textureSampler, vec2 TexCoord )
 
 
 void main() {
-    vec2 pixeloffset[9] = vec2[9](
-          vec2(  -u_pix.x   , -u_pix.y  ),
-          vec2(   0.0	  , -u_pix.y  ),
-          vec2(   u_pix.x   , -u_pix.y  ),
-          vec2(  -u_pix.x   ,  0.0      ),
-          vec2(   0.0	  ,  0.0      ),
-          vec2(   u_pix.x   ,  0.0      ),
-          vec2(  -u_pix.x   ,  u_pix.y  ),
-          vec2(   0.0	  ,  u_pix.y  ),
-          vec2(   u_pix.x   ,  u_pix.y  )
-  );
-
 #if defined(USED_FILTERS)
   vec3 sum = vec3(0.0);
   for (int i=0;i<9;i++) {
@@ -161,9 +150,9 @@ void main() {
 #endif //USED_FILTERS
 
 #if defined(USED_BiCubic)
-  vec4 c = BiCubic(u_Texture0, v_TexCoords0 + pixeloffset[i]);
+  vec4 c = BiCubic(u_Texture0, v_TexCoords0 + u_pixeloffsetkernel[i]);
 #else  //USED_BiCubic
-  vec4 c = texture2D(u_Texture0, v_TexCoords0 + pixeloffset[i]);
+  vec4 c = texture2D(u_Texture0, v_TexCoords0 + u_pixeloffsetkernel[i]);
 #endif //USED_BiCubic
 
 #ifdef PACKED_YUV
