@@ -40,11 +40,9 @@
 
 #include <QtWidgets>
 #include <QMainWindow>
-//#include <QtNetwork>
 #include <QTextDocument>
-#include <QtWebKitWidgets/QtWebKitWidgets>
-#include <QtWebKitWidgets/QGraphicsWebView>
-//#include <QWebView>
+#include <QWebView>
+#include <QNetworkProxyFactory>
 #include "XunoBrowser.h"
 
  XunoBrowser::XunoBrowser(QWidget *parent) : QDialog(parent)
