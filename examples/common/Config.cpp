@@ -127,7 +127,7 @@ public:
         weblinks = settings.value(QString::fromLatin1("links"),tmpweb).toMap();
         settings.endGroup();
         settings.beginGroup(QString::fromLatin1("opengl"));
-        const QString glname = settings.value(QString::fromLatin1("type"), QString::fromLatin1("OpenGLES")).toString();
+        const QString glname = settings.value(QString::fromLatin1("type"), QString::fromLatin1("Desktop")).toString();
         opengl = (Config::OpenGLType)Config::staticMetaObject.enumerator(Config::staticMetaObject.indexOfEnumerator("OpenGLType")).keysToValue(glname.toLatin1().constData());
         // d3d11 bad performance (gltexsubimage2d)
         angle_dx = settings.value(QString::fromLatin1("angle_platform"), QString::fromLatin1("d3d9")).toString();
