@@ -283,6 +283,7 @@ void VideoThread::run()
     const qint64 start_time = QDateTime::currentMSecsSinceEpoch();
     bool skip_render = false; // keep true if decoded frame does not reach desired time
     qreal v_a = 0;
+    const char* pkt_data = NULL; // workaround for libav9 decode fail but error code >= 0
     while (true) {
         processNextTask();
         //TODO: why put it at the end of loop then playNextFrame() not work?
@@ -308,8 +309,8 @@ void VideoThread::run()
             if (!pkt.isValid()) {
                 // may be we should check other information. invalid packet can come from
                 wait_key_frame = true;
-                qDebug("Invalid packet! flush video codec context!!!!!!!!!! video packet queue size: %d", d.packets.size());
-                dec->flush();
+                qDebug("Invalid packet! flush video codec context!!!!!!!!!! video packet queue size: %d", d.packets.size());  
+                d.dec->flush(); //d.dec instead of dec because d.dec maybe changed in processNextTask() but dec is not
                 d.render_pts0 = pkt.pts;
                 continue;
             }
@@ -447,6 +448,16 @@ void VideoThread::run()
                 seek_count = -1;
             }
         }
+
+        // decoder maybe changed in processNextTask(). code above MUST use d.dec but not dec
+        if (dec != static_cast<VideoDecoder*>(d.dec)) {
+            dec = static_cast<VideoDecoder*>(d.dec);
+            if (!pkt.hasKeyFrame) {
+                wait_key_frame = true;
+                continue;
+            }
+            qDebug("decoder changed. decoding key frame");
+        }
         if (dec_opt != dec_opt_old)
             dec->setOptions(*dec_opt);
         if (!dec->decode(pkt)) {
@@ -464,8 +475,13 @@ void VideoThread::run()
         VideoFrame frame = dec->frame();
         if (!frame.isValid()) {
             qWarning("invalid video frame from decoder. undecoded data size: %d", pkt.data.size());
+            if (pkt_data == pkt.data.constData()) //FIXME: for libav9. what about other versions?
+                pkt = Packet();
+            else
+                pkt_data = pkt.data.constData();
             continue;
         }
+        pkt_data = pkt.data.constData();
         if (frame.timestamp() <= 0)
             frame.setTimestamp(pkt.pts); // pkt.pts is wrong. >= real timestamp
         const qreal pts = frame.timestamp();

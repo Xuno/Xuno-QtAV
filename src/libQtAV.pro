@@ -87,6 +87,7 @@ sse2 {
 *msvc* {
 #link FFmpeg and portaudio which are built by gcc need /SAFESEH:NO
     debug: QMAKE_LFLAGS += /SAFESEH:NO
+#CXXFLAGS debug: /MTd
     QMAKE_LFLAGS *= /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libcmtd.lib #for msbuild vs2013
     INCLUDEPATH += compat/msvc
 }
@@ -193,8 +194,10 @@ CONFIG += config_cuda #config_dllapi config_dllapi_cuda
 #CONFIG += config_cuda_link
 config_cuda {
     DEFINES += QTAV_HAVE_CUDA=1
-    HEADERS += cuda/dllapi/nv_inc.h cuda/helper_cuda.h
-    SOURCES += codec/video/VideoDecoderCUDA.cpp
+    HEADERS += cuda/dllapi/nv_inc.h cuda/helper_cuda.h \
+               codec/video/SurfaceInteropCUDA.h
+    SOURCES += codec/video/VideoDecoderCUDA.cpp \
+               codec/video/SurfaceInteropCUDA.cpp
     INCLUDEPATH += $$PWD/cuda cuda/dllapi
     config_dllapi:config_dllapi_cuda {
         DEFINES += QTAV_HAVE_DLLAPI_CUDA=1
@@ -243,6 +246,12 @@ config_vda {
     LIBS += -framework VideoDecodeAcceleration -framework CoreVideo -framework CoreFoundation \
             -framework IOSurface
 }
+config_videotoolbox {
+  DEFINES *= QTAV_HAVE_VIDEOTOOLBOX=1
+  SOURCES += codec/video/VideoDecoderVideoToolbox.cpp
+  LIBS += -framework CoreVideo -framework CoreFoundation -framework CoreMedia \
+          -framework IOSurface
+}
 
 config_gl|config_opengl {
   OTHER_FILES += shaders/planar.f.glsl shaders/rgb.f.glsl
@@ -268,7 +277,7 @@ config_openglwindow {
 }
 config_libass {
 #link against libass instead of dynamic load
-  !capi|*g++* {
+  !capi|android|ios|winrt {
     LIBS += -lass #-lfribidi -lfontconfig -lxml2 -lfreetype -lharfbuzz -lz
     DEFINES += CAPI_LINK_ASS
   }
@@ -287,6 +296,7 @@ contains(QT_CONFIG, dynamicgl)|contains(QT_CONFIG, opengles2) {
 LIBS *= -L$$[QT_INSTALL_LIBS] -lavcodec -lavformat -lswscale -lavutil
 win32 {
   HEADERS *= utils/DirectXHelper.h
+  SOURCES *= utils/DirectXHelper.cpp
 #dynamicgl: __impl__GetDC __impl_ReleaseDC __impl_GetDesktopWindow
     LIBS += -luser32
 }
@@ -298,8 +308,8 @@ static_ffmpeg {
   mac: LIBS += -liconv -lbz2 -lz -framework CoreFoundation  -Wl,-framework,Security
   win32: LIBS *= -lws2_32 -lstrmiids -lvfw32 -luuid
   !mac:*g++* {
-    LIBS += -lz
-    QMAKE_LFLAGS += -Wl,-Bsymbolic #link to static lib, see http://ffmpeg.org/platform.html
+    LIBS *= -lz
+    QMAKE_LFLAGS *= -Wl,-Bsymbolic #link to static lib, see http://ffmpeg.org/platform.html
   }
 }
 SOURCES += \

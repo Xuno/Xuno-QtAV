@@ -37,7 +37,7 @@ class AudioOutputPulse Q_DECL_FINAL: public AudioOutputBackend
 public:
     AudioOutputPulse(QObject *parent = 0);
 
-    QString name() const Q_DECL_FINAL { return kName;}
+    QString name() const Q_DECL_FINAL { return QString::fromLatin1(kName);}
     bool isSupported(AudioFormat::SampleFormat sampleFormat) const Q_DECL_FINAL;
     bool isSupported(AudioFormat::ChannelLayout channelLayout) const Q_DECL_FINAL;
     bool open() Q_DECL_FINAL;
@@ -265,12 +265,12 @@ bool AudioOutputPulse::init(const AudioFormat &format)
     ScopedPALocker lock(loop);
     Q_UNUSED(lock);
     pa_mainloop_api *api = pa_threaded_mainloop_get_api(loop);
-    ctx = pa_context_new(api, qApp->applicationName().append(" (QtAV)").toUtf8().constData());
+    ctx = pa_context_new(api, qApp->applicationName().append(QLatin1String(" (QtAV)")).toUtf8().constData());
     if (!ctx) {
         qWarning("PulseAudio failed to allocate a context");
         return false;
     }
-    qDebug() << QString("PulseAudio %1, protocol: %2, server protocol: %3").arg(pa_get_library_version()).arg(pa_context_get_protocol_version(ctx)).arg(pa_context_get_server_protocol_version(ctx));
+    qDebug() << tr("PulseAudio %1, protocol: %2, server protocol: %3").arg(QString::fromLatin1(pa_get_library_version())).arg(pa_context_get_protocol_version(ctx)).arg(pa_context_get_server_protocol_version(ctx));
     // TODO: host property
     pa_context_connect(ctx, NULL, PA_CONTEXT_NOFLAGS, NULL);
     pa_context_set_state_callback(ctx, AudioOutputPulse::contextStateCallback, this);
@@ -306,7 +306,7 @@ bool AudioOutputPulse::init(const AudioFormat &format)
     pa_proplist *pl = pa_proplist_new();
     if (pl) {
         pa_proplist_sets(pl, PA_PROP_MEDIA_ROLE, "video");
-        pa_proplist_sets(pl, PA_PROP_MEDIA_ICON_NAME, qApp->applicationName().append(" (QtAV)").toUtf8().constData());
+        pa_proplist_sets(pl, PA_PROP_MEDIA_ICON_NAME, qApp->applicationName().append(QLatin1String(" (QtAV)")).toUtf8().constData());
     }
     stream = pa_stream_new_extended(ctx, "audio stream", &fi, 1, pl);
     if (!stream) {

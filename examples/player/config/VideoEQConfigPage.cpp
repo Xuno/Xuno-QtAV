@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV Player Demo:  this file is part of QtAV examples
-    Copyright (C) 2012-2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -70,7 +70,7 @@ VideoEQConfigPage::VideoEQConfigPage(QWidget *parent) :
         { &mpSSlider, tr("Saturation"),0, &mpSSliderT},
         { &mpGSlider, tr("GammaRGB"),0, &mpGSliderT},
         { &mpFSSlider, tr("Filter Sharp"),-100, &mpFSSliderT},
-        { 0, "",0 }
+        { 0, QString(),0 }
     };
     for (int i = 0; sliders[i].slider; ++i) {
         QLabel *label = new QLabel(sliders[i].text);
@@ -233,11 +233,11 @@ void VideoEQConfigPage::setEngines(const QVector<Engine> &engines)
     mEngines = es;
     foreach (Engine e, es) {
         if (e == SWScale) {
-            mpEngine->addItem("libswscale");
+            mpEngine->addItem(QString::fromLatin1("libswscale"));
         } else if (e == GLSL) {
-            mpEngine->addItem("GLSL");
+            mpEngine->addItem(QString::fromLatin1("GLSL"));
         } else if (e == XV) {
-            mpEngine->addItem("XV");
+            mpEngine->addItem(QString::fromLatin1("XV"));
         }
     }
 }

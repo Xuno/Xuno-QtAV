@@ -115,9 +115,9 @@ MainWindow::MainWindow(QWidget *parent) :
   , mPlayerScale(1.)
   , m_preview(0)
 {
-    XUNOserverUrl="http://www.xuno.com";
-    XUNOpresetUrl=XUNOserverUrl+"/getpreset.php?";
-    setWindowIcon(QIcon(":/Xuno-QtAV.ico"));
+    XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
+    XUNOpresetUrl=XUNOserverUrl+QString::fromLatin1("/getpreset.php?");
+    setWindowIcon(QIcon(QString::fromLatin1(":/Xuno-QtAV.ico")));
     mpOSD = new OSDFilterQPainter(this);
     mpSubtitle = new SubtitleFilter(this);
     mpChannelAction = 0;
@@ -259,59 +259,59 @@ void MainWindow::setupUi()
     mpTimeSlider->setOrientation(Qt::Horizontal);
     mpTimeSlider->setMinimum(0);
     mpTimeSlider->setStyleSheet(" \
-QSlider::groove:horizontal { \
-    margin: 4px 0px 2px 0px;\
-    background-color: solid #F8F8F8; \
-} \
-QSlider::handle:horizontal { \
-    width: 7px;  \
-    border: 1px solid #5c5c5c; \
-    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #ffffff); \
-    border-radius: 2px;\
-    margin: -2px 0;\
-}\
-   QSlider::sub-page:horizontal { \
-    margin: 2px 0px 3px 0px;\
-    background-color: #0066FF; \
-} \
-        ");
-    mpTimeSlider->addVisualLimits();
-    mpCurrent = new QLabel(mpControl);
+                                QSlider::groove:horizontal { \
+                                    margin: 4px 0px 2px 0px;\
+                                    background-color: solid #F8F8F8; \
+                                } \
+                                QSlider::handle:horizontal { \
+                                    width: 7px;  \
+                                    border: 1px solid #5c5c5c; \
+                                    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #ffffff); \
+                                    border-radius: 2px;\
+                                    margin: -2px 0;\
+                                }\
+                                QSlider::sub-page:horizontal { \
+                                    margin: 2px 0px 3px 0px;\
+                                    background-color: #0066FF; \
+                                } \
+                                ");
+                                mpTimeSlider->addVisualLimits();
+            mpCurrent = new QLabel(mpControl);
     mpCurrent->setToolTip(tr("Current time"));
     mpCurrent->setMargin(2);
-    mpCurrent->setText("00:00:00");
+    mpCurrent->setText(QString::fromLatin1("00:00:00"));
     mpEnd = new QLabel(mpControl);
     mpEnd->setToolTip(tr("Duration"));
     mpEnd->setMargin(2);
-    mpEnd->setText("00:00:00");
-//    mpTitle = new QLabel(mpControl);
-//    mpTitle->setToolTip(tr("Render engine"));
-//    mpTitle->setText("QPainter");
-//    mpTitle->setIndent(8);
-    mpSpeed = new QLabel("1.00");
+    mpEnd->setText(QString::fromLatin1("00:00:00"));
+    //    mpTitle = new QLabel(mpControl);
+    //    mpTitle->setToolTip(tr("Render engine"));
+    //    mpTitle->setText("QPainter");
+    //    mpTitle->setIndent(8);
+    mpSpeed = new QLabel(QString::fromLatin1("1.00"));
     mpSpeed->setMargin(1);
     mpSpeed->setToolTip(tr("Speed. Ctrl+Up/Down"));
 
     mpPlayPauseBtn = new QToolButton(mpControl);
-    mpPlayPauseBtn->setIcon(QIcon(":/theme/dark/play.svg"));
+    mpPlayPauseBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/play.svg")));
     mpStopBtn = new QToolButton(mpControl);
-    mpStopBtn->setIcon(QIcon(":/theme/dark/stop.svg"));
+    mpStopBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/stop.svg")));
     mpBackwardBtn = new QToolButton(mpControl);
-    mpBackwardBtn->setIcon(QIcon(":/theme/dark/backward.svg"));
+    mpBackwardBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/backward.svg")));
     mpForwardBtn = new QToolButton(mpControl);
-    mpForwardBtn->setIcon(QIcon(":/theme/dark/forward.svg"));
+    mpForwardBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/forward.svg")));
     mpOpenBtn = new QToolButton(mpControl);
     mpOpenBtn->setToolTip(tr("Open"));
-    mpOpenBtn->setIcon(QIcon(":/theme/dark/open.svg"));
+    mpOpenBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/open.svg")));
 
     mpInfoBtn = new QToolButton();
-    mpInfoBtn->setToolTip(QString("Media information"));
-    mpInfoBtn->setIcon(QIcon(":/theme/dark/info.svg"));
+    mpInfoBtn->setToolTip(QString::fromLatin1("Media information"));
+    mpInfoBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/info.svg")));
     mpCaptureBtn = new QToolButton();
-    mpCaptureBtn->setToolTip(QString("Capture"));
-    mpCaptureBtn->setIcon(QIcon(":/theme/dark/capture.svg"));
+    mpCaptureBtn->setToolTip(tr("Capture"));
+    mpCaptureBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/capture.svg")));
     mpVolumeBtn = new QToolButton();
-    mpVolumeBtn->setIcon(QIcon(":/theme/dark/sound.svg"));
+    mpVolumeBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/sound.svg")));
 
     mpVolumeSlider = new Slider();
     //mpVolumeSlider->hide();
@@ -335,7 +335,7 @@ QSlider::handle:horizontal { \
     mpWebBtn->setPopupMode(QToolButton::InstantPopup);
     mpWebBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
     mpWebBtn->setToolTip(tr("Open XunoWeb browser"));
-    mpWebBtn->setStyleSheet("color:grey;");
+    mpWebBtn->setStyleSheet(QString::fromLatin1("color:grey;"));
 
 
     mpWebMenu = new ConfigWebMemu(mpWebBtn);
@@ -344,13 +344,13 @@ QSlider::handle:horizontal { \
     connect(&Config::instance(),SIGNAL(weblinksChanged()),mpWebMenu,SLOT(onChanged()));
 
     mpFullScreenBtn = new QToolButton();
-    mpFullScreenBtn->setIcon(QPixmap(":/theme/dark/fullscreen.svg"));
+    mpFullScreenBtn->setIcon(QPixmap(QString::fromLatin1(":/theme/dark/fullscreen.svg")));
     //mpFullScreenBtn->setIconSize(QSize(a, a));
     //mpFullScreenBtn->setMaximumSize(a+kMaxButtonIconMargin+2, a+kMaxButtonIconMargin);
     mpFullScreenBtn->setToolTip(tr("Full Screen"));
 
     mpMenuBtn = new QToolButton();
-    mpMenuBtn->setIcon(QIcon(":/theme/dark/menu.svg"));
+    mpMenuBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/menu.svg")));
     //mpMenuBtn->setAutoRaise(true);
     mpMenuBtn->setPopupMode(QToolButton::InstantPopup);
 
@@ -386,15 +386,15 @@ QSlider::handle:horizontal { \
 
     mpMenu->addAction(tr("Image Sequence"), this, SLOT(onImageSequenceConfig()));
 
-//    pWA = new QWidgetAction(0);
-//    pWA->setDefaultWidget(mpImageSequence);
-//    subMenu->addAction(pWA);
+    //    pWA = new QWidgetAction(0);
+    //    pWA->setDefaultWidget(mpImageSequence);
+    //    subMenu->addAction(pWA);
 
     mpMenu->addSeparator();
     subMenu = new QMenu(tr("Play list"));
     mpMenu->addMenu(subMenu);
     mpPlayList = new PlayList(this);
-    mpPlayList->setSaveFile(Config::instance().defaultDir() + "/playlist.qds");
+    mpPlayList->setSaveFile(Config::instance().defaultDir() + QString::fromLatin1("/playlist.qds"));
     mpPlayList->load();
     connect(mpPlayList, SIGNAL(aboutToPlay(QString)), SLOT(play(QString)));
     pWA = new QWidgetAction(0);
@@ -405,7 +405,7 @@ QSlider::handle:horizontal { \
     mpMenu->addMenu(subMenu);
     mpHistory = new PlayList(this);
     mpHistory->setMaxRows(20);
-    mpHistory->setSaveFile(Config::instance().defaultDir() + "/history.qds");
+    mpHistory->setSaveFile(Config::instance().defaultDir() + QString::fromLatin1("/history.qds"));
     mpHistory->load();
     connect(mpHistory, SIGNAL(aboutToPlay(QString)), SLOT(play(QString)));
     pWA = new QWidgetAction(0);
@@ -447,7 +447,7 @@ QSlider::handle:horizontal { \
     mpRepeatBox = new QSpinBox(0);
     mpRepeatBox->setMinimum(-1);
     mpRepeatBox->setValue(1);
-    mpRepeatBox->setToolTip("-1: " + tr("infinity"));
+    mpRepeatBox->setToolTip(QString::fromLatin1("-1: ") + tr("infinity"));
     connect(mpRepeatBox, SIGNAL(valueChanged(int)), SLOT(setRepeateMax(int)));
     QLabel *pRepeatLabel = new QLabel(tr("Times"));
     QHBoxLayout *hb = new QHBoxLayout;
@@ -459,7 +459,7 @@ QSlider::handle:horizontal { \
     vb->addLayout(hb);
     pRepeatLabel = new QLabel(tr("From"));
     mpRepeatA = new QTimeEdit();
-    mpRepeatA->setDisplayFormat("HH:mm:ss.zzz");
+    mpRepeatA->setDisplayFormat(QString::fromLatin1("HH:mm:ss.zzz"));
     mpRepeatA->setToolTip(tr("negative value means from the end"));
     connect(mpRepeatA, SIGNAL(timeChanged(QTime)), SLOT(repeatAChanged(QTime)));
     hb = new QHBoxLayout;
@@ -468,7 +468,7 @@ QSlider::handle:horizontal { \
     vb->addLayout(hb);
     pRepeatLabel = new QLabel(tr("To"));
     mpRepeatB = new QTimeEdit();
-    mpRepeatB->setDisplayFormat("HH:mm:ss.zzz");
+    mpRepeatB->setDisplayFormat(QString::fromLatin1("HH:mm:ss.zzz"));
     mpRepeatB->setToolTip(tr("negative value means from the end"));
     connect(mpRepeatB, SIGNAL(timeChanged(QTime)), SLOT(repeatBChanged(QTime)));
     hb = new QHBoxLayout;
@@ -526,11 +526,11 @@ QSlider::handle:horizontal { \
     pWA = new QWidgetAction(0);
     pWA->setDefaultWidget(wgt);
     subMenu->addAction(pWA); //must add action after the widget action is ready. is it a Qt bug?
-    box->addItem("FFmpeg", "FFmpeg");
-    box->addItem("LibASS", "LibASS");
+    box->addItem(QString::fromLatin1("FFmpeg"), QString::fromLatin1("FFmpeg"));
+    box->addItem(QString::fromLatin1("LibASS"), QString::fromLatin1("LibASS"));
     connect(box, SIGNAL(activated(QString)), SLOT(setSubtitleEngine(QString)));
     mpSubtitle->setEngines(QStringList() << box->itemData(box->currentIndex()).toString());
-    box->setToolTip(tr("FFmpeg supports more subtitles but only render plain text") + "\n" + tr("LibASS supports ass styles"));
+    box->setToolTip(tr("FFmpeg supports more subtitles but only render plain text") + QString::fromLatin1("\n") + tr("LibASS supports ass styles"));
 
     wgt = new QWidget();
     hb = new QHBoxLayout();
@@ -541,10 +541,10 @@ QSlider::handle:horizontal { \
     pWA = new QWidgetAction(0);
     pWA->setDefaultWidget(wgt);
     subMenu->addAction(pWA); //must add action after the widget action is ready. is it a Qt bug?
-    box->addItem(tr("Auto detect"), "AutoDetect");
-    box->addItem(tr("System"), "System");
+    box->addItem(tr("Auto detect"), QString::fromLatin1("AutoDetect"));
+    box->addItem(tr("System"), QString::fromLatin1("System"));
     foreach (const QByteArray& cs, QTextCodec::availableCodecs()) {
-        box->addItem(cs, cs);
+        box->addItem(QString::fromLatin1(cs), QString::fromLatin1(cs));
     }
     connect(box, SIGNAL(activated(QString)), SLOT(setSubtitleCharset(QString)));
     mpSubtitle->setCodec(box->itemData(box->currentIndex()).toByteArray());
@@ -578,8 +578,8 @@ QSlider::handle:horizontal { \
     mpARAction = subMenu->addAction(tr("Video"));
     mpARAction->setData(0);
     subMenu->addAction(tr("Window"))->setData(-1);
-    subMenu->addAction("4:3")->setData(4.0/3.0);
-    subMenu->addAction("16:9")->setData(16.0/9.0);
+    subMenu->addAction(QString::fromLatin1("4:3"))->setData(4.0/3.0);
+    subMenu->addAction(QString::fromLatin1("16:9"))->setData(16.0/9.0);
     subMenu->addAction(tr("Custom"))->setData(-2);
     foreach(QAction* action, subMenu->actions()) {
         action->setCheckable(true);
@@ -608,14 +608,14 @@ QSlider::handle:horizontal { \
     mpMenu->addMenu(subMenu);
     connect(subMenu, SIGNAL(triggered(QAction*)), SLOT(changeVO(QAction*)));
     //TODO: AVOutput.name,detail(description). check whether it is available
-    mpVOAction = subMenu->addAction("QPainter");
+    mpVOAction = subMenu->addAction(QString::fromLatin1("QPainter"));
     mpVOAction->setData(VideoRendererId_Widget);
-    subMenu->addAction("OpenGLWidget")->setData(VideoRendererId_OpenGLWidget);
-    subMenu->addAction("GLWidget 2")->setData(VideoRendererId_GLWidget2);
-    subMenu->addAction("GLWidget")->setData(VideoRendererId_GLWidget);
-    subMenu->addAction("GDI+")->setData(VideoRendererId_GDI);
-    subMenu->addAction("Direct2D")->setData(VideoRendererId_Direct2D);
-    subMenu->addAction("XV")->setData(VideoRendererId_XV);
+    subMenu->addAction(QString::fromLatin1("OpenGLWidget"))->setData(VideoRendererId_OpenGLWidget);
+    subMenu->addAction(QString::fromLatin1("GLWidget 2"))->setData(VideoRendererId_GLWidget2);
+    subMenu->addAction(QString::fromLatin1("GLWidget"))->setData(VideoRendererId_GLWidget);
+    subMenu->addAction(QString::fromLatin1("GDI+"))->setData(VideoRendererId_GDI);
+    subMenu->addAction(QString::fromLatin1("Direct2D"))->setData(VideoRendererId_Direct2D);
+    subMenu->addAction(QString::fromLatin1("XV"))->setData(VideoRendererId_XV);
     mVOActions = subMenu->actions();
     foreach(QAction* action, subMenu->actions()) {
         action->setCheckable(true);
@@ -634,7 +634,7 @@ QSlider::handle:horizontal { \
         mainLayout->addWidget(mpControl);
     }
 
-   // mpControlLayout->addWidget(mpImgSeqExtract);
+    // mpControlLayout->addWidget(mpImgSeqExtract);
     //mainLayout->addWidget(mpControl);
 
     QVBoxLayout *controlVLayout = new QVBoxLayout();
@@ -686,18 +686,18 @@ QSlider::handle:horizontal { \
     controlVLayout->addWidget(mpImgSeqExtract);
     controlVLayout->addLayout(controlLayout);
     mpImgSeqExtract->setVisible(false);
-//    mpImgSeqExtract->setStyleSheet(" \
-//    QSpinBox::up-arrow { \
-//        image: url(:/theme/up_arrow-bw.png); \
-//        width: 7px; \
-//        height: 7px; \
-//    } \
-//    QSpinBox::down-arrow { \
-//        image: url(:/theme/down_arrow-bw.png); \
-//        width: 7px; \
-//        height: 7px; \
-//    } \
-//    ");
+    //    mpImgSeqExtract->setStyleSheet(" \
+    //    QSpinBox::up-arrow { \
+    //        image: url(:/theme/up_arrow-bw.png); \
+    //        width: 7px; \
+    //        height: 7px; \
+    //    } \
+    //    QSpinBox::down-arrow { \
+    //        image: url(:/theme/down_arrow-bw.png); \
+    //        width: 7px; \
+    //        height: 7px; \
+    //    } \
+    //    ");
 
     connect(pSpeedBox, SIGNAL(valueChanged(double)), SLOT(onSpinBoxChanged(double)));
     connect(mpOpenBtn, SIGNAL(clicked()), SLOT(openFile()));
@@ -784,7 +784,7 @@ void MainWindow::changeVO(QAction *action)
         setRenderer(vo);
     } else {
         action->toggle(); //check state changes if clicked
-        QMessageBox::critical(0, "QtAV", tr("not availabe on your platform!"));
+        QMessageBox::critical(0, QString::fromLatin1("QtAV"), tr("not availabe on your platform!"));
         return;
     }
 }
@@ -876,7 +876,7 @@ void MainWindow::play(const QString &name)
         return;
     }
     mTitle = mFile;
-    if (!mFile.contains("://") || mFile.startsWith("file://")) {
+    if (!mFile.contains(QLatin1String("://")) || mFile.startsWith(QLatin1String("file://"))) {
         mTitle = QFileInfo(mFile).fileName();
     }
     if (isFileImgageSequence()) {
@@ -1028,7 +1028,7 @@ void MainWindow::togglePlayPause()
             play(mFile);
         else
             mpPlayer->play();
-        mpPlayPauseBtn->setIcon(QIcon(":/theme/dark/pause.svg"));
+        mpPlayPauseBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/pause.svg")));
     }
 }
 
@@ -1062,17 +1062,17 @@ void MainWindow::onPaused(bool p)
 {
     if (p) {
         qDebug("start pausing...");
-        mpPlayPauseBtn->setIcon(QIcon(":/theme/dark/play.svg"));
+        mpPlayPauseBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/play.svg")));
         if (mpImgSeqExtract) mpImgSeqExtract->onPaused();
     } else {
         qDebug("stop pausing...");
-        mpPlayPauseBtn->setIcon(QIcon(":/theme/dark/pause.svg"));
+        mpPlayPauseBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/pause.svg")));
     }
 }
 
 void MainWindow::onStartPlay()
 {
-//--- TODO --- remove after recover OpenGL rgb48le
+    //--- TODO --- remove after recover OpenGL rgb48le
 #if !IMGSEQOPENGL
     bool rgb48=mpPlayer->statistics().video_only.pix_fmt.contains("rgb48be");
     VideoRenderer *vo = VideoRendererFactory::create( (isFileImgageSequence() && rgb48) ? VideoRendererId_Widget : VideoRendererId_GLWidget2);
@@ -1084,17 +1084,17 @@ void MainWindow::onStartPlay()
     mpRenderer->setRegionOfInterest(QRectF());
     mFile = mpPlayer->file(); //open from EventFilter's menu
     mTitle = mFile;
-    if (!mFile.contains("://") || mFile.startsWith("file://"))
+    if (!mFile.contains(QLatin1String("://")) || mFile.startsWith(QLatin1String("file://")))
         mTitle = QFileInfo(mFile).fileName();
     setWindowTitle(mTitle);
 
-    mpPlayPauseBtn->setIcon(QIcon(":/theme/dark/pause.svg"));
+    mpPlayPauseBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/pause.svg")));
     mpTimeSlider->setMinimum(mpPlayer->mediaStartPosition());
     mpTimeSlider->setMaximum(mpPlayer->mediaStopPosition());
     setPlayerPosFromRepeat();
     mpTimeSlider->setValue(0);
     mpTimeSlider->setEnabled(mpPlayer->isSeekable());
-    mpEnd->setText(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()).toString("HH:mm:ss"));
+    mpEnd->setText(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()).toString(QString::fromLatin1("HH:mm:ss")));
     setVolume();
     mShowControl = 0;
     QTimer::singleShot(3000, this, SLOT(tryHideControlBar()));
@@ -1133,14 +1133,14 @@ void MainWindow::onStopPlay()
     if (Config::instance().avformatOptionsEnabled())
         mpPlayer->setOptionsForFormat(Config::instance().avformatOptions());
 
-    mpPlayPauseBtn->setIcon(QIcon(":/theme/dark/play.svg"));
+    mpPlayPauseBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/play.svg")));
     mpTimeSlider->setValue(0);
     qDebug(">>>>>>>>>>>>>>disable slider");
     mpTimeSlider->setDisabled(true);
     mpTimeSlider->setMinimum(0);
     mpTimeSlider->setMaximum(0);
-    mpCurrent->setText("00:00:00");
-    mpEnd->setText("00:00:00");
+    mpCurrent->setText(QString::fromLatin1("00:00:00"));
+    mpEnd->setText(QString::fromLatin1("00:00:00"));
     if (mpImgSeqExtract){
         mpImgSeqExtract->setEndTime(QTime(0, 0, 0));
         mpImgSeqExtract->setStartTime(QTime(0, 0, 0));
@@ -1157,7 +1157,7 @@ void MainWindow::onStopPlay()
 
 void MainWindow::onSpeedChange(qreal speed)
 {
-    mpSpeed->setText(QString("%1").arg(speed, 4, 'f', 2, '0'));
+    mpSpeed->setText(QString::fromLatin1("%1").arg(speed, 4, 'f', 2, QLatin1Char('0')));
 }
 
 void MainWindow::seek()
@@ -1237,7 +1237,7 @@ void MainWindow::onPositionChange(qint64 pos)
 {
     if (mpPlayer->isSeekable())
         mpTimeSlider->setValue(pos);
-    mpCurrent->setText(QTime(0, 0, 0).addMSecs(pos).toString("HH:mm:ss"));
+    mpCurrent->setText(QTime(0, 0, 0).addMSecs(pos).toString(QString::fromLatin1("HH:mm:ss")));
     if (mpImgSeqExtract) {
         mpImgSeqExtract->setStartTime(QTime(0, 0, 0).addMSecs(pos));
         if (mpImgSeqExtract->regionPlaying() && mpImgSeqExtract->EndPosExtract() && pos >= mpImgSeqExtract->EndPosExtract()) pause();
@@ -1378,16 +1378,16 @@ void MainWindow::about()
 
 void MainWindow::help()
 {
-    QString name = QString("help-%1.html").arg(QLocale::system().name());
-    QFile f(qApp->applicationDirPath() + "/" + name);
+    QString name = QString::fromLatin1("help-%1.html").arg(QLocale::system().name());
+    QFile f(qApp->applicationDirPath() + QString::fromLatin1("/") + name);
     if (!f.exists()) {
-        f.setFileName(":/" + name);
+        f.setFileName(QString::fromLatin1(":/") + name);
     }
     if (!f.exists()) {
-        f.setFileName(qApp->applicationDirPath() + "/help.html");
+        f.setFileName(qApp->applicationDirPath() + QString::fromLatin1("/help.html"));
     }
     if (!f.exists()) {
-        f.setFileName(":/help.html");
+        f.setFileName(QString::fromLatin1(":/help.html"));
     }
     if (!f.open(QIODevice::ReadOnly)) {
         qWarning("Failed to open help-%s.html and help.html: %s", qPrintable(QLocale::system().name()), qPrintable(f.errorString()));
@@ -1396,7 +1396,7 @@ void MainWindow::help()
     QTextStream ts(&f);
     ts.setCodec("UTF-8");
     QString text = ts.readAll();
-    QMessageBox::information(0, "Help", text);
+    QMessageBox::information(0, tr("Help"), text);
 }
 
 void MainWindow::openUrl()
@@ -1499,7 +1499,7 @@ void MainWindow::switchAspectRatio(QAction *action)
         mpPlayer->renderer()->setOutAspectRatioMode(VideoRenderer::RendererAspectRatio);
     } else {
         if (r == -2)
-            r = QInputDialog::getDouble(0, tr("Aspect ratio"), "", 1.0);
+            r = QInputDialog::getDouble(0, tr("Aspect ratio"), QString(), 1.0);
         mpPlayer->renderer()->setOutAspectRatioMode(VideoRenderer::CustomAspectRation);
         mpPlayer->renderer()->setOutAspectRatio(r);
     }
@@ -1559,8 +1559,8 @@ void MainWindow::tryHideControlBar()
         return;
     }
     if ( (mpTimeSlider && mpTimeSlider->isHidden()) &&
-           (mpControl && mpControl->isHidden())
-       )
+         (mpControl && mpControl->isHidden())
+         )
         return;
 
     qDebug()<<"tryHideControlBar";
@@ -1573,8 +1573,8 @@ void MainWindow::tryShowControlBar()
 {
     unsetCursor();
     if ((mpTimeSlider && mpTimeSlider->isHidden()) &&
-        (mpControl && mpControl->isHidden())
-       )
+            (mpControl && mpControl->isHidden())
+            )
         mpTimeSlider->show();
     if (detachedControl)
         detachedControl->show();
@@ -1599,9 +1599,9 @@ void MainWindow::onTimeSliderHover(int pos, int value)
     }else{
         gpos = mapToGlobal(mpTimeSlider->pos() + QPoint(pos, 0));
     }
-    QToolTip::showText(gpos, QTime(0, 0, 0).addMSecs(value).toString("HH:mm:ss.zzz"));
-    if (!Config::instance().previewEnabled())
-        return;
+    QToolTip::showText(gpos, QTime(0, 0, 0).addMSecs(value).toString(QString::fromLatin1("HH:mm:ss.zzz")));
+            if (!Config::instance().previewEnabled())
+            return;
     if (!m_preview)
         m_preview = new VideoPreviewWidget();
 
@@ -1627,7 +1627,7 @@ void MainWindow::onTimeSliderLeave()
 
 void MainWindow::handleError(const AVError &e)
 {
-    QMessageBox::warning(0, "Player error", e.string());
+    QMessageBox::warning(0, tr("Player error"), e.string());
 }
 
 void MainWindow::onMediaStatusChanged()
@@ -1636,38 +1636,38 @@ void MainWindow::onMediaStatusChanged()
     AVPlayer *player = qobject_cast<AVPlayer*>(sender());
     switch (player->mediaStatus()) {
     case NoMedia:
-        status = QObject::tr("No media");
+        status = tr("No media");
         break;
     case InvalidMedia:
-        status = QObject::tr("Invalid meida");
+        status = tr("Invalid meida");
         break;
     case BufferingMedia:
-        status = QObject::tr("Buffering...");
+        status = tr("Buffering...");
         break;
     case BufferedMedia:
-        status = QObject::tr("Buffered");
+        status = tr("Buffered");
         break;
     case LoadingMedia:
-        status = QObject::tr("Loading...");
+        status = tr("Loading...");
         break;
     case LoadedMedia:
-        status = QObject::tr("Loaded");
+        status = tr("Loaded");
         break;
     case StalledMedia:
-        status = "Stalled";
+        status = tr("Stalled");
         break;
     default:
-        status = "";
+        status = QString();
         onStopPlay();
         break;
     }
     qDebug() << "status changed " << status;
-    setWindowTitle(status + " " + mTitle);
+    setWindowTitle(status + QString::fromLatin1(" ") + mTitle);
 }
 
 void MainWindow::onBufferProgress(qreal percent)
 {
-    setWindowTitle(QString("Buffering... %1% ").arg(percent*100.0, 0, 'f', 1) + mTitle);
+    setWindowTitle(QString::fromLatin1("Buffering... %1% ").arg(percent*100.0, 0, 'f', 1) + mTitle);
 }
 
 void MainWindow::onVideoEQEngineChanged()
@@ -1690,14 +1690,14 @@ void MainWindow::onVideoEQEngineChanged()
 
 void MainWindow::onBrightnessChanged(int b)
 {
-//    VideoRenderer *vo = mpPlayer->renderer();
-//    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
-//            && vo->setBrightness(mpVideoEQ->brightness())) {
-//        mpPlayer->setBrightness(0);
-//    } else {
-//        vo->setBrightness(0);
-//        mpPlayer->setBrightness(b);
-//    }
+    //    VideoRenderer *vo = mpPlayer->renderer();
+    //    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
+    //            && vo->setBrightness(mpVideoEQ->brightness())) {
+    //        mpPlayer->setBrightness(0);
+    //    } else {
+    //        vo->setBrightness(0);
+    //        mpPlayer->setBrightness(b);
+    //    }
     Q_UNUSED(b);
     VideoRenderer *vo = mpPlayer->renderer();
     vo->setBrightness(mpVideoEQ->brightness());
@@ -1705,14 +1705,14 @@ void MainWindow::onBrightnessChanged(int b)
 
 void MainWindow::onContrastChanged(int c)
 {
-//    VideoRenderer *vo = mpPlayer->renderer();
-//    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
-//            && vo->setContrast(mpVideoEQ->contrast())) {
-//        mpPlayer->setContrast(0);
-//    } else {
-//        vo->setContrast(0);
-//        mpPlayer->setContrast(c);
-//    }
+    //    VideoRenderer *vo = mpPlayer->renderer();
+    //    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
+    //            && vo->setContrast(mpVideoEQ->contrast())) {
+    //        mpPlayer->setContrast(0);
+    //    } else {
+    //        vo->setContrast(0);
+    //        mpPlayer->setContrast(c);
+    //    }
     Q_UNUSED(c);
     VideoRenderer *vo = mpPlayer->renderer();
     vo->setContrast(mpVideoEQ->contrast());
@@ -1720,14 +1720,14 @@ void MainWindow::onContrastChanged(int c)
 
 void MainWindow::onHueChanged(int h)
 {
-//    VideoRenderer *vo = mpPlayer->renderer();
-//    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
-//            && vo->setHue(mpVideoEQ->hue())) {
-//        mpPlayer->setHue(0);
-//    } else {
-//        vo->setHue(0);
-//        mpPlayer->setHue(h);
-//    }
+    //    VideoRenderer *vo = mpPlayer->renderer();
+    //    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
+    //            && vo->setHue(mpVideoEQ->hue())) {
+    //        mpPlayer->setHue(0);
+    //    } else {
+    //        vo->setHue(0);
+    //        mpPlayer->setHue(h);
+    //    }
     Q_UNUSED(h);
     VideoRenderer *vo = mpPlayer->renderer();
     vo->setHue(mpVideoEQ->hue());
@@ -1735,14 +1735,14 @@ void MainWindow::onHueChanged(int h)
 
 void MainWindow::onSaturationChanged(int s)
 {
-//    VideoRenderer *vo = mpPlayer->renderer();
-//    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
-//            && vo->setSaturation(mpVideoEQ->saturation())) {
-//        mpPlayer->setSaturation(0);
-//    } else {
-//        vo->setSaturation(0);
-//        mpPlayer->setSaturation(s);
-//    }
+    //    VideoRenderer *vo = mpPlayer->renderer();
+    //    if (mpVideoEQ->engine() != VideoEQConfigPage::SWScale
+    //            && vo->setSaturation(mpVideoEQ->saturation())) {
+    //        mpPlayer->setSaturation(0);
+    //    } else {
+    //        vo->setSaturation(0);
+    //        mpPlayer->setSaturation(s);
+    //    }
     Q_UNUSED(s);
     VideoRenderer *vo = mpPlayer->renderer();
     vo->setSaturation(mpVideoEQ->saturation());
@@ -1766,14 +1766,18 @@ void MainWindow::onCaptureConfigChanged()
 {
     mpPlayer->videoCapture()->setCaptureDir(Config::instance().captureDir());
     mpPlayer->videoCapture()->setQuality(Config::instance().captureQuality());
-    if (Config::instance().captureFormat().toLower() == "original") {
+    if (Config::instance().captureFormat().toLower() == QLatin1String("original")) {
         mpPlayer->videoCapture()->setOriginalFormat(true);
     } else {
         mpPlayer->videoCapture()->setOriginalFormat(false);
         mpPlayer->videoCapture()->setSaveFormat(Config::instance().captureFormat());
     }
-    mpCaptureBtn->setToolTip(tr("Capture video frame") + "\n" + tr("Save to") + ": " + mpPlayer->videoCapture()->captureDir()
-                             + "\n" + tr("Format") + ": " + Config::instance().captureFormat());
+    mpCaptureBtn->setToolTip(QString::fromLatin1("%1\n%2: %3\n%4: %5")
+                             .arg(tr("Capture video frame"))
+                             .arg(tr("Save to"))
+                             .arg(mpPlayer->videoCapture()->captureDir())
+                             .arg(tr("Format"))
+                             .arg(Config::instance().captureFormat()));
 
 }
 
@@ -1814,7 +1818,7 @@ void MainWindow::onAVFilterAudioConfigChanged()
 void MainWindow::donate()
 {
     //QDesktopServices::openUrl(QUrl("https://sourceforge.net/p/qtav/wiki/Donate%20%E6%8D%90%E8%B5%A0/"));
-    QDesktopServices::openUrl(QUrl("http://www.qtav.org/donate.html"));
+    QDesktopServices::openUrl(QUrl(QString::fromLatin1("http://www.qtav.org/donate.html")));
 }
 
 void MainWindow::onBufferValueChanged()
@@ -1965,16 +1969,16 @@ void MainWindow::reSizeByMovie()
     QSize t=mpRenderer->frameSize();
     Statistics st=mpPlayer->statistics();
     if (st.video_only.width>0 && st.video_only.width>0 && mPlayerScale>0 ){ //(t.width()+t.height())==0
-      t.setWidth(st.video_only.width*mPlayerScale);
-      t.setHeight(st.video_only.height*mPlayerScale);
+        t.setWidth(st.video_only.width*mPlayerScale);
+        t.setHeight(st.video_only.height*mPlayerScale);
     }
     if (t.isValid() && (!t.isNull())) {
-            resize(t);
+        resize(t);
     }
 }
 
 void MainWindow::onClickXunoBrowser(QUrl url){
-  if (url.isValid()) play(url.toString());
+    if (url.isValid()) play(url.toString());
 }
 
 void MainWindow::onFullScreen(){
@@ -2001,11 +2005,11 @@ void MainWindow::setPlayerPosFromRepeat(){
 }
 
 void MainWindow::customfpsChanged(double n){
-  mCustomFPS=n;
-  if (mpImgSeqExtract) mpImgSeqExtract->setFPS(n);
+    mCustomFPS=n;
+    if (mpImgSeqExtract) mpImgSeqExtract->setFPS(n);
 }
 void MainWindow::tuneRepeatMovieDuration(){
-     mpImageSequence->setMovieDuration(mpPlayer->mediaStopPosition());
+    mpImageSequence->setMovieDuration(mpPlayer->mediaStopPosition());
 }
 
 bool MainWindow::isFileImgageSequence(){
@@ -2026,39 +2030,39 @@ bool MainWindow::applyCustomFPS(){
     return ret;
 }
 
- void MainWindow::RepeatLoopChanged(int i){
-     bool checked=(i==Qt::Checked);
-     mpRepeatLoop->setChecked(i);
-     qDebug()<<"RepeatLoopChanged:"<<i;
-     mpRepeatBox->setValue(checked?-1:1);
-     mpRepeatBox->setVisible(!checked);
-     QLayout *layout = mpRepeatBox->parentWidget()->layout();
-     QHBoxLayout *layout2 = layout->findChild<QHBoxLayout *>("TimesLayout");
-     if (layout2){
-         for (int j = 0; j < layout2->count(); ++j){
-             QWidget *widget =layout2->itemAt(j)->widget();
-             if (widget){
-                 widget->setVisible(!checked);
-             }
-         }
-     }
-     bool ch=mpRepeatEnableAction->isChecked();
-     mpRepeatEnableAction->setChecked(!ch);
-     mpRepeatEnableAction->setChecked(ch);
- }
+void MainWindow::RepeatLoopChanged(int i){
+    bool checked=(i==Qt::Checked);
+    mpRepeatLoop->setChecked(i);
+    qDebug()<<"RepeatLoopChanged:"<<i;
+    mpRepeatBox->setValue(checked?-1:1);
+    mpRepeatBox->setVisible(!checked);
+    QLayout *layout = mpRepeatBox->parentWidget()->layout();
+    QHBoxLayout *layout2 = layout->findChild<QHBoxLayout *>("TimesLayout");
+    if (layout2){
+        for (int j = 0; j < layout2->count(); ++j){
+            QWidget *widget =layout2->itemAt(j)->widget();
+            if (widget){
+                widget->setVisible(!checked);
+            }
+        }
+    }
+    bool ch=mpRepeatEnableAction->isChecked();
+    mpRepeatEnableAction->setChecked(!ch);
+    mpRepeatEnableAction->setChecked(ch);
+}
 
- void MainWindow::onPreviewEnabledChanged(){
-     //qDebug()<<"onPreviewEnabledChanged"<<Config::instance().previewEnabled();
-     if (m_preview && !Config::instance().previewEnabled()) {
-         m_preview->close();
-         delete m_preview;
-         m_preview = 0;
-         return;
-     }
- }
+void MainWindow::onPreviewEnabledChanged(){
+    //qDebug()<<"onPreviewEnabledChanged"<<Config::instance().previewEnabled();
+    if (m_preview && !Config::instance().previewEnabled()) {
+        m_preview->close();
+        delete m_preview;
+        m_preview = 0;
+        return;
+    }
+}
 
- void MainWindow::onImageSequenceConfig()
- {
+void MainWindow::onImageSequenceConfig()
+{
     int ret;
     bool state=!mpPlayer->isPaused() && mpPlayer->isPlaying();
     if (mpImageSequence) {
@@ -2069,31 +2073,31 @@ bool MainWindow::applyCustomFPS(){
         if (ret==QDialog::Rejected && state) togglePlayPause();
     }
     qDebug()<<"onImageSequenceConfig after show"<<ret;
- }
+}
 
- void MainWindow::onImageSequenceToogledFrameExtractor(bool state)
- {
-     qDebug()<<"onImageSequenceToogledFrameExtractor "<<state;
-     mpImgSeqExtract->setVisible(state);
-     mpCurrent->setVisible(!state);
-     mpEnd->setVisible(!state);
-     if (detachedControl){
-         QSize s=QSize(detachedControl->width(),state?detachedControl->maximumHeight():detachedControl->minimumHeight());
-         detachedControl->resize(s);
-     }
+void MainWindow::onImageSequenceToogledFrameExtractor(bool state)
+{
+    qDebug()<<"onImageSequenceToogledFrameExtractor "<<state;
+    mpImgSeqExtract->setVisible(state);
+    mpCurrent->setVisible(!state);
+    mpEnd->setVisible(!state);
+    if (detachedControl){
+        QSize s=QSize(detachedControl->width(),state?detachedControl->maximumHeight():detachedControl->minimumHeight());
+        detachedControl->resize(s);
+    }
 
- }
+}
 
- void MainWindow::analyeUsedFPS()
- {
-     Statistics st=mpPlayer->statistics();
-     qDebug()<<"analyeUsedFPS"<<st.video.frame_rate<<mCustomFPS;
-     if (mCustomFPS==0.)
-         if (mpImgSeqExtract){
-             //Statistics st=mpPlayer->statistics();
-             if (st.video.frame_rate>0.){
-                 qDebug()<<"setFPS analyeUsedFPS video.frame_rate"<<st.video.frame_rate;
-                 mpImgSeqExtract->setFPS(st.video.frame_rate);
-             }
-         }
- }
+void MainWindow::analyeUsedFPS()
+{
+    Statistics st=mpPlayer->statistics();
+    qDebug()<<"analyeUsedFPS"<<st.video.frame_rate<<mCustomFPS;
+    if (mCustomFPS==0.)
+        if (mpImgSeqExtract){
+            //Statistics st=mpPlayer->statistics();
+            if (st.video.frame_rate>0.){
+                qDebug()<<"setFPS analyeUsedFPS video.frame_rate"<<st.video.frame_rate;
+                mpImgSeqExtract->setFPS(st.video.frame_rate);
+            }
+        }
+}

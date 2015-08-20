@@ -32,7 +32,7 @@
 AVFormatConfigPage::AVFormatConfigPage(QWidget *parent) :
     ConfigPageBase(parent)
 {
-    setObjectName("avformat");
+    setObjectName(QString::fromLatin1("avformat"));
     QVBoxLayout *vl= new QVBoxLayout(this);
     QGroupBox *video = new QGroupBox(this);
     video->setTitle(tr(" Video"));
@@ -40,7 +40,7 @@ AVFormatConfigPage::AVFormatConfigPage(QWidget *parent) :
     gl->setContentsMargins(6, 6, 6, 6);
     //gl->setSizeConstraint(QLayout::SetFixedSize);
     int r = 0;
-    m_on = new QCheckBox(tr("Enable") + " " + "avformat " + tr("options"),video);
+    m_on = new QCheckBox(QString::fromLatin1("%1 avformat %2").arg(tr("Enable")).arg(tr("options")),video);
     gl->addWidget(m_on, r++, 0);
     m_direct = new QCheckBox(tr("Reduce buffering"),video);
     gl->addWidget(m_direct, r++, 0);
@@ -48,17 +48,17 @@ AVFormatConfigPage::AVFormatConfigPage(QWidget *parent) :
     m_probeSize = new QSpinBox(video);
     m_probeSize->setMaximum(std::numeric_limits<int>::max());
     m_probeSize->setMinimum(0);
-    m_probeSize->setToolTip("0: auto");
+    m_probeSize->setToolTip(tr("0: auto"));
     gl->addWidget(m_probeSize, r++, 1, Qt::AlignLeft);
     gl->addWidget(new QLabel(tr("Max analyze duration"),video), r, 0, Qt::AlignRight);
     m_analyzeDuration = new QSpinBox(video);
     m_analyzeDuration->setMaximum(std::numeric_limits<int>::max());
-    m_analyzeDuration->setToolTip("0: auto. how many microseconds are analyzed to probe the input");
+    m_analyzeDuration->setToolTip(tr("0: auto. how many microseconds are analyzed to probe the input"));
     gl->addWidget(m_analyzeDuration, r++, 1, Qt::AlignLeft);
 
     gl->addWidget(new QLabel(tr("Extra"),video), r, 0, Qt::AlignRight);
     m_extra = new QLineEdit(video);
-    m_extra->setToolTip("key1=value1 key2=value2 ...");
+    m_extra->setToolTip(QString::fromLatin1("key1=value1 key2=value2 ..."));
     gl->addWidget(m_extra, r++, 1, Qt::AlignLeft);
     vl->addWidget(video, 1, Qt::AlignTop);
 

@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -30,11 +30,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif //__cplusplus
-#include <libavcodec/vda.h>
+#include <libavcodec/videotoolbox.h>
 #ifdef __cplusplus
 }
 #endif //__cplusplus
-#include <VideoDecodeAcceleration/VDADecoder.h>
 #include "utils/Logger.h"
 
 #ifdef MAC_OS_X_VERSION_MIN_REQUIRED
@@ -48,12 +47,12 @@ extern "C" {
 
 namespace QtAV {
 
-class VideoDecoderVDAPrivate;
+class VideoDecoderVideoToolboxPrivate;
 // qt4 moc can not correctly process Q_DECL_FINAL here
-class VideoDecoderVDA : public VideoDecoderFFmpegHW
+class VideoDecoderVideoToolbox : public VideoDecoderFFmpegHW
 {
     Q_OBJECT
-    DPTR_DECLARE_PRIVATE(VideoDecoderVDA)
+    DPTR_DECLARE_PRIVATE(VideoDecoderVideoToolbox)
     Q_PROPERTY(PixelFormat format READ format WRITE setFormat NOTIFY formatChanged)
     // TODO: try async property
     Q_ENUMS(PixelFormat)
@@ -65,7 +64,7 @@ public:
         YUV420P = 'y420',
         YUYV = 'yuvs'
     };
-    VideoDecoderVDA();
+    VideoDecoderVideoToolbox();
     VideoDecoderId id() const Q_DECL_OVERRIDE;
     QString description() const Q_DECL_OVERRIDE;
     VideoFrame frame() Q_DECL_OVERRIDE;
@@ -76,67 +75,63 @@ Q_SIGNALS:
     void formatChanged();
 };
 
-extern VideoDecoderId VideoDecoderId_VDA;
-FACTORY_REGISTER_ID_AUTO(VideoDecoder, VDA, "VDA")
+extern VideoDecoderId VideoDecoderId_VideoToolbox;
+FACTORY_REGISTER_ID_AUTO(VideoDecoder, VideoToolbox, "VideoToolbox")
 
-void RegisterVideoDecoderVDA_Man()
+void RegisterVideoDecoderVideoToolbox_Man()
 {
-    FACTORY_REGISTER_ID_MAN(VideoDecoder, VDA, "VDA")
+    FACTORY_REGISTER_ID_MAN(VideoDecoder, VideoToolbox, "VideoToolbox")
 }
 
 
-class VideoDecoderVDAPrivate Q_DECL_FINAL: public VideoDecoderFFmpegHWPrivate
+class VideoDecoderVideoToolboxPrivate Q_DECL_FINAL: public VideoDecoderFFmpegHWPrivate
 {
 public:
-    VideoDecoderVDAPrivate()
+    VideoDecoderVideoToolboxPrivate()
         : VideoDecoderFFmpegHWPrivate()
-        , out_fmt(VideoDecoderVDA::NV12)
+        , out_fmt(VideoDecoderVideoToolbox::NV12)
     {
         if (kCFCoreFoundationVersionNumber < kCFCoreFoundationVersionNumber10_7)
-            out_fmt = VideoDecoderVDA::UYVY;
+            out_fmt = VideoDecoderVideoToolbox::UYVY;
         copy_mode = VideoDecoderFFmpegHW::ZeroCopy;
-        description = QStringLiteral("VDA");
-        memset(&hw_ctx, 0, sizeof(hw_ctx));
+        description = QStringLiteral("VideoToolbox");
     }
-    ~VideoDecoderVDAPrivate() {qDebug("~VideoDecoderVDAPrivate");}
+    ~VideoDecoderVideoToolboxPrivate() {qDebug("~VideoDecoderVideoToolboxPrivate");}
     bool open() Q_DECL_OVERRIDE;
     void close() Q_DECL_OVERRIDE;
 
     bool setup(AVCodecContext *avctx) Q_DECL_OVERRIDE;
     bool getBuffer(void **opaque, uint8_t **data) Q_DECL_OVERRIDE;
     void releaseBuffer(void *opaque, uint8_t *data) Q_DECL_OVERRIDE;
-    AVPixelFormat vaPixelFormat() const Q_DECL_OVERRIDE { return QTAV_PIX_FMT_C(VDA_VLD);}
+    AVPixelFormat vaPixelFormat() const Q_DECL_OVERRIDE { return AV_PIX_FMT_VIDEOTOOLBOX;}
 
-    VideoDecoderVDA::PixelFormat out_fmt;
-    struct vda_context  hw_ctx;
+    VideoDecoderVideoToolbox::PixelFormat out_fmt;
 };
 
 typedef struct {
     int  code;
     const char *str;
-} vda_error;
+} videotoolbox_error;
 
-static const vda_error vda_errors[] = {
-    { kVDADecoderHardwareNotSupportedErr,
-        "Hardware doesn't support accelerated decoding" },
-    { kVDADecoderFormatNotSupportedErr,
-        "Hardware doesn't support requested output format" },
-    { kVDADecoderConfigurationError,
-        "Invalid configuration provided to VDADecoderCreate" },
-    { kVDADecoderDecoderFailedErr,
-        "Generic error returned by the decoder layer. The cause can range from"
-        " VDADecoder finding errors in the bitstream to another application"
-        " using VDA at the moment. Only one application can use VDA at a"
-        " givent time." },
+static const videotoolbox_error videotoolbox_errors[] = {
+    { AVERROR(ENOSYS),
+      "Hardware doesn't support accelerated decoding for this stream"
+      " or Videotoolbox decoder is not available at the moment (another"
+      " application is using it)."
+    },
+    { AVERROR(EINVAL), "Invalid configuration provided to VTDecompressionSessionCreate" },
+    { AVERROR_INVALIDDATA,
+      "Generic error returned by the decoder layer. The cause can be Videotoolbox"
+      " found errors in the bitstream." },
     { 0, NULL },
 };
 
-static const char* vda_err_str(int err)
+static const char* videotoolbox_err_str(int err)
 {
-    for (int i = 0; vda_errors[i].code; ++i) {
-        if (vda_errors[i].code != err)
+    for (int i = 0; videotoolbox_errors[i].code; ++i) {
+        if (videotoolbox_errors[i].code != err)
             continue;
-        return vda_errors[i].str;
+        return videotoolbox_errors[i].str;
     }
     return 0;
 }
@@ -170,35 +165,26 @@ static VideoFormat::PixelFormat format_from_cv(int cv)
     return VideoFormat::Format_Invalid;
 }
 
-int format_to_cv(VideoFormat::PixelFormat fmt)
-{
-    for (int i = 0; cv_formats[i].cv_pixfmt; ++i) {
-        if (cv_formats[i].pixfmt == fmt)
-            return cv_formats[i].cv_pixfmt;
-    }
-    return 0;
-}
-
-VideoDecoderVDA::VideoDecoderVDA()
-    : VideoDecoderFFmpegHW(*new VideoDecoderVDAPrivate())
+VideoDecoderVideoToolbox::VideoDecoderVideoToolbox()
+    : VideoDecoderFFmpegHW(*new VideoDecoderVideoToolboxPrivate())
 {
     // dynamic properties about static property details. used by UI
     setProperty("detail_format", tr("Output pixel format from decoder. Performance NV12 > UYVY > YUV420P > YUYV.\nOSX < 10.7 only supports UYVY and YUV420p"));
 }
 
-VideoDecoderId VideoDecoderVDA::id() const
+VideoDecoderId VideoDecoderVideoToolbox::id() const
 {
-    return VideoDecoderId_VDA;
+    return VideoDecoderId_VideoToolbox;
 }
 
-QString VideoDecoderVDA::description() const
+QString VideoDecoderVideoToolbox::description() const
 {
     return QStringLiteral("Video Decode Acceleration");
 }
 
-VideoFrame VideoDecoderVDA::frame()
+VideoFrame VideoDecoderVideoToolbox::frame()
 {
-    DPTR_D(VideoDecoderVDA);
+    DPTR_D(VideoDecoderVideoToolbox);
     CVPixelBufferRef cv_buffer = (CVPixelBufferRef)d.frame->data[3];
     if (!cv_buffer) {
         qDebug("Frame buffer is empty.");
@@ -210,7 +196,7 @@ VideoFrame VideoDecoderVDA::frame()
     }
     VideoFormat::PixelFormat pixfmt = format_from_cv(CVPixelBufferGetPixelFormatType(cv_buffer));
     if (pixfmt == VideoFormat::Format_Invalid) {
-        qWarning("unsupported vda pixel format: %#x", CVPixelBufferGetPixelFormatType(cv_buffer));
+        qWarning("unsupported videotoolbox pixel format: %#x", CVPixelBufferGetPixelFormatType(cv_buffer));
         return VideoFrame();
     }
     // we can map the cv buffer addresses to video frame in SurfaceInteropCVBuffer. (may need VideoSurfaceInterop::mapToTexture()
@@ -218,7 +204,9 @@ VideoFrame VideoDecoderVDA::frame()
         bool glinterop;
         CVPixelBufferRef cvbuf; // keep ref until video frame is destroyed
     public:
-        SurfaceInteropCVBuffer(CVPixelBufferRef cv, bool gl) : glinterop(gl), cvbuf(cv) {}
+        SurfaceInteropCVBuffer(CVPixelBufferRef cv, bool gl) : glinterop(gl), cvbuf(cv) {
+            CVPixelBufferRetain(cvbuf); // videotoolbox need it for map and CVPixelBufferRelease
+        }
         ~SurfaceInteropCVBuffer() {
             CVPixelBufferRelease(cvbuf);
         }
@@ -362,9 +350,9 @@ VideoFrame VideoDecoderVDA::frame()
     return f;
 }
 
-void VideoDecoderVDA::setFormat(PixelFormat fmt)
+void VideoDecoderVideoToolbox::setFormat(PixelFormat fmt)
 {
-    DPTR_D(VideoDecoderVDA);
+    DPTR_D(VideoDecoderVideoToolbox);
     if (d.out_fmt == fmt)
         return;
     d.out_fmt = fmt;
@@ -375,105 +363,67 @@ void VideoDecoderVDA::setFormat(PixelFormat fmt)
         qWarning("format is not supported on OSX < 10.7");
 }
 
-VideoDecoderVDA::PixelFormat VideoDecoderVDA::format() const
+VideoDecoderVideoToolbox::PixelFormat VideoDecoderVideoToolbox::format() const
 {
     return d_func().out_fmt;
 }
 
-bool VideoDecoderVDAPrivate::setup(AVCodecContext *avctx)
+bool VideoDecoderVideoToolboxPrivate::setup(AVCodecContext *avctx)
 {
-    const int w = codedWidth(avctx);
-    const int h = codedHeight(avctx);
-    if (hw_ctx.width == w && hw_ctx.height == h && hw_ctx.decoder) {
-        avctx->hwaccel_context = &hw_ctx;
+    releaseUSWC();
+
+    if (avctx->hwaccel_context) {
+        AVVideotoolboxContext *vt = reinterpret_cast<AVVideotoolboxContext*>(avctx->hwaccel_context);
+        const CMVideoDimensions dim = CMVideoFormatDescriptionGetDimensions(vt->cm_fmt_desc);
+        qDebug("AVVideotoolboxContext ready: %dx%d", dim.width, dim.height);
         return true;
     }
-    if (hw_ctx.decoder) {
-        ff_vda_destroy_decoder(&hw_ctx);
-        releaseUSWC();
-    } else {
-        memset(&hw_ctx, 0, sizeof(hw_ctx));
-        hw_ctx.format = 'avc1'; //fourcc
-        hw_ctx.cv_pix_fmt_type = out_fmt; // has the same value as cv pixel format
-    }
-    /* Setup the libavcodec hardware context */
-    hw_ctx.width = w;
-    hw_ctx.height = h;
-    width = avctx->width; // not necessary. set in decode()
-    height = avctx->height;
-    avctx->hwaccel_context = NULL;
-    /* create the decoder */
-    int status = ff_vda_create_decoder(&hw_ctx, codec_ctx->extradata, codec_ctx->extradata_size);
-    if (status) {
-        qWarning("Failed to create decoder (%i): %s", status, vda_err_str(status));
+    AVVideotoolboxContext *vtctx = av_videotoolbox_alloc_context();
+    vtctx->cv_pix_fmt_type = out_fmt;
+
+    qDebug("AVVideotoolboxContext: %p", vtctx);
+    int err = av_videotoolbox_default_init2(codec_ctx, vtctx);
+    if (err < 0) {
+        qWarning("Failed to init videotoolbox decoder (%#x): %s", err, videotoolbox_err_str(err));
         return false;
     }
-    avctx->hwaccel_context = &hw_ctx;
-    initUSWC(hw_ctx.width);
-    qDebug() << "VDA decoder created. format: " << format_from_cv(out_fmt);
+    initUSWC(codedWidth(avctx));
+    qDebug() << "VideoToolbox decoder created. format: " << format_from_cv(out_fmt);
     return true;
 }
 
-bool VideoDecoderVDAPrivate::getBuffer(void **opaque, uint8_t **data)
+bool VideoDecoderVideoToolboxPrivate::getBuffer(void **opaque, uint8_t **data)
 {
     Q_UNUSED(data);
-    //qDebug("%s @%d data=%p", __PRETTY_FUNCTION__, __LINE__, *data);
-    // FIXME: why *data == 0?
-    //*data = (uint8_t *)1; // dummy
     Q_UNUSED(opaque);
     return true;
 }
 
-void VideoDecoderVDAPrivate::releaseBuffer(void *opaque, uint8_t *data)
+void VideoDecoderVideoToolboxPrivate::releaseBuffer(void *opaque, uint8_t *data)
 {
     Q_UNUSED(opaque);
-    Q_UNUSED(data)
-#if 0
-    // released in getBuffer?
-    CVPixelBufferRef cv_buffer = (CVPixelBufferRef)data;
-    if (!cv_buffer)
-        return;
-    CVPixelBufferRelease(cv_buffer);
-#endif
+    Q_UNUSED(data);
 }
 
-bool VideoDecoderVDAPrivate::open()
+bool VideoDecoderVideoToolboxPrivate::open()
 {
     if (!prepare())
         return false;
-    qDebug("opening VDA module");
-    if (codec_ctx->codec_id != AV_CODEC_ID_H264) {
-        qWarning("input codec (%s) isn't H264, canceling VDA decoding", avcodec_get_name(codec_ctx->codec_id));
-        return false;
-    }
-    switch (codec_ctx->profile) { //profile check code is from xbmc
-    case FF_PROFILE_H264_HIGH_10:
-    case FF_PROFILE_H264_HIGH_10_INTRA:
-    case FF_PROFILE_H264_HIGH_422:
-    case FF_PROFILE_H264_HIGH_422_INTRA:
-    case FF_PROFILE_H264_HIGH_444_PREDICTIVE:
-    case FF_PROFILE_H264_HIGH_444_INTRA:
-    case FF_PROFILE_H264_CAVLC_444:
-        return false;
-    default:
-        break;
-    }
-#if 0
-    if (!codec_ctx->extradata || codec_ctx->extradata_size < 7) {
-        qWarning("VDA requires extradata.");
-        return false;
-    }
-#endif
+    codec_ctx->thread_count = 1; // to avoid crash at av_videotoolbox_alloc_context/av_videotoolbox_default_free. I have no idea how the are called
+    qDebug("opening VideoToolbox module");
+    // codec/profile check?
     return setup(codec_ctx);
 }
 
-void VideoDecoderVDAPrivate::close()
+void VideoDecoderVideoToolboxPrivate::close()
 {
     restore(); //IMPORTANT. can not call restore in dtor because ctx is 0 there
-    qDebug("destroying VDA decoder");
-    ff_vda_destroy_decoder(&hw_ctx);
+    qDebug("destroying VideoToolbox decoder");
+    if (codec_ctx) {
+        av_videotoolbox_default_free(codec_ctx);
+    }
     releaseUSWC();
 }
 
 } //namespace QtAV
-#include "VideoDecoderVDA.moc"
+#include "VideoDecoderVideoToolbox.moc"

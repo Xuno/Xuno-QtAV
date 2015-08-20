@@ -37,7 +37,7 @@
 
 namespace QtAV {
 
-class SubtitleProcessorLibASS Q_DECL_FINAL: public SubtitleProcessor, public ass::api
+class SubtitleProcessorLibASS Q_DECL_FINAL: public SubtitleProcessor, protected ass::api
 {
 public:
     SubtitleProcessorLibASS();
@@ -76,7 +76,7 @@ private:
     mutable QMutex m_mutex;
 };
 
-static const SubtitleProcessorId SubtitleProcessorId_LibASS = "qtav.subtitle.processor.libass";
+static const SubtitleProcessorId SubtitleProcessorId_LibASS = QStringLiteral("qtav.subtitle.processor.libass");
 namespace {
 static const std::string kName("LibASS");
 }
@@ -98,7 +98,14 @@ void RegisterSubtitleProcessorLibASS_Man()
 static void ass_msg_cb(int level, const char *fmt, va_list va, void *data)
 {
     Q_UNUSED(data)
-    QString msg("{libass} " + QString().vsprintf(fmt, va));
+    if (level > MSGL_INFO)
+        return;
+    printf("[libass]: ");
+    vprintf(fmt, va);
+    printf("\n");
+    fflush(0);
+    return;
+    QString msg(QStringLiteral("{libass} ") + QString().vsprintf(fmt, va)); //QString.vsprintf() may crash at strlen().
     if (level == MSGL_FATAL)
         qFatal("%s", msg.toUtf8().constData());
     else if (level <= 2)
@@ -148,14 +155,14 @@ SubtitleProcessorId SubtitleProcessorLibASS::id() const
 
 QString SubtitleProcessorLibASS::name() const
 {
-    return QString(kName.c_str());//SubtitleProcessorFactory::name(id());
+    return QLatin1String(kName.c_str());//SubtitleProcessorFactory::name(id());
 }
 
 QStringList SubtitleProcessorLibASS::supportedTypes() const
 {
     // from LibASS/tests/fate/subtitles.mak
     // TODO: mp4
-    static const QStringList sSuffixes = QStringList() << "ass" << "ssa";
+    static const QStringList sSuffixes = QStringList() << QStringLiteral("ass") << QStringLiteral("ssa");
     return sSuffixes;
 }
 
@@ -236,6 +243,8 @@ SubtitleFrame SubtitleProcessorLibASS::processLine(const QByteArray &data, qreal
 {
     if (!ass::api::loaded())
         return SubtitleFrame();
+    if (data.isEmpty() || data.at(0) == 0)
+        return SubtitleFrame();
     QMutexLocker lock(&m_mutex);
     Q_UNUSED(lock);
     if (!m_track)
@@ -273,7 +282,7 @@ QString SubtitleProcessorLibASS::getText(qreal pts) const
     QString text;
     for (int i = 0; i < m_frames.size(); ++i) {
         if (m_frames[i].begin <= pts && m_frames[i].end >= pts) {
-            text += m_frames[i].text + "\n";
+            text += m_frames[i].text + QStringLiteral("\n");
             continue;
         }
         if (!text.isEmpty())
@@ -373,7 +382,7 @@ void SubtitleProcessorLibASS::updateFontCache()
     if (conf.isEmpty()) {
         conf = qgetenv("QTAV_FC_FILE");
         if (conf.isEmpty())
-            conf = qApp->applicationDirPath().append("/fonts/fonts.conf").toUtf8();
+            conf = qApp->applicationDirPath().append(QLatin1String("/fonts/fonts.conf")).toUtf8();
     }
     static QByteArray font;
     if (font.isEmpty()) {
@@ -383,10 +392,13 @@ void SubtitleProcessorLibASS::updateFontCache()
     if (family.isEmpty()) {
         family = qgetenv("QTAV_SUB_FONT_FAMILY_DEFAULT");
     }
-    //ass_set_fonts_dir(m_ass, font_dir.constData()); // we can set it in fonts.conf <dir></dir>
+#ifdef Q_OS_ANDROID
+    ass_set_fonts_dir(m_ass, "/system/fonts"); // we can set it in fonts.conf <dir></dir>
+#endif
     // update cache later (maybe async update in the future)
-    ass_set_fonts(m_renderer, font.isEmpty() ? NULL : font.constData(), family.isEmpty() ? NULL : family.constData(), 1, conf.constData(), 0);
-    ass_fonts_update(m_renderer);
+    // fontconfig can be false(0) and conf can be NULL if font is overrided by font var
+    ass_set_fonts(m_renderer, font.isEmpty() ? NULL : font.constData(), family.isEmpty() ? NULL : family.constData(), 1, conf.constData(), 1);
+    //ass_fonts_update(m_renderer); // update in ass_set_fonts(....,1)
     m_update_cache = false;
 }
 
