@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 #else
         vo = QString::fromLatin1("gl");
 #endif
-    QString title = QString::fromLatin1("XunoPlayer %1 xuno.com").arg(XUNO_QtAV_Version_String_Long());
+    QString title = QString::fromLatin1("XunoPlayer %1 http://www.xuno.com").arg(XUNO_QtAV_Version_String_Long());
 #ifndef QT_NO_OPENGL
     VideoRendererId vid = VideoRendererId_GLWidget2;
 #else
