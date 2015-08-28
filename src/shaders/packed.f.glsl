@@ -45,8 +45,8 @@ uniform vec2  u_pix;
 uniform float u_filterkernel[9];
 uniform vec2 u_pixeloffsetkernel[9];
 vec3 color;
-#ifdef PACKED_YUV
 uniform mat4 u_c;
+
 
 #ifdef BICUBIC_TRI
 float Triangular(float f) {
@@ -154,10 +154,6 @@ void main() {
    vec4 c = texture2D(u_Texture0, v_TexCoords0 + u_pixeloffsetkernel[i]);
 #endif //USED_BiCubic
 
-#ifdef PACKED_YUV
-   c = u_c * c;
-   c.a = 1.0;
-   vec4 c = texture2D(u_Texture0, v_TexCoords0);
    c = u_c * c;
 #ifdef PACKED_YUV
    c.a = 1.0; // remove this, and in mat last line use 1,1,1,1
