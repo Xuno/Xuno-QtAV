@@ -4,7 +4,7 @@ TARGET = QtAV
 QT += core gui
 #CONFIG *= ltcg
 greaterThan(QT_MAJOR_VERSION, 4) {
-  lessThan(QT_MINOR_VERSION, 5):!no_gui_private {
+  lessThan(QT_MINOR_VERSION, 5):!no_gui_private:win32 {
     QT *= gui-private #dxva+egl
     DEFINES *= QTAV_HAVE_GUI_PRIVATE=1
   }
@@ -277,7 +277,7 @@ config_openglwindow {
 }
 config_libass {
 #link against libass instead of dynamic load
-  !capi|android|ios|winrt {
+  !capi|android|ios|winrt|config_libass_link {
     LIBS += -lass #-lfribidi -lfontconfig -lxml2 -lfreetype -lharfbuzz -lz
     DEFINES += CAPI_LINK_ASS
   }

@@ -29,23 +29,51 @@
 #include <QtCore/QStandardPaths>
 #endif
 #include <QtDebug>
+#include "common.h"
 
 class Config::Data
 {
 public:
     Data() {
-        dir = qApp->applicationDirPath() + QString::fromLatin1("/data");
-        if (!QDir(dir).exists()) {
-            dir = QDir::homePath() + QString::fromLatin1("/.QtAV");
-            if (!QDir(dir).exists())
-                QDir().mkpath(dir);
+        file = appDataDir() + QString::fromLatin1("/") + qApp->applicationName() + QString::fromLatin1(".ini");
+        if (!QDir(appDataDir()).exists()) {
+            if (!QDir().mkpath(appDataDir())) {
+                qWarning() << "Failed to create appDataDir: " << appDataDir();
+            }
         }
-        file = dir + QString::fromLatin1("/") + qApp->applicationName() + QString::fromLatin1(".ini");
         load();
     }
 
     void load() {
+        // for old config data migration
+        QString dir_old = qApp->applicationDirPath() + QString::fromLatin1("/data");
+        if (!QDir(dir_old).exists()) {
+            dir_old = QDir::homePath() + QString::fromLatin1("/.QtAV");
+        }
+        if (QDir(dir_old).exists()) {
+            if (!QFile(file).exists()) {
+                QString old = dir_old + QString::fromLatin1("/") + qApp->applicationName() + QString::fromLatin1(".ini");
+                if (QFile(old).exists()) {
+                    QFile::copy(old, file);
+                    QFile::remove(old);
+                }
+                old = dir_old + QString::fromLatin1("/playlist.qds");
+                if (QFile(old).exists()) {
+                    if (!QFile::copy(old, appDataDir() + QString::fromLatin1("/playlist.qds")))
+                        qWarning("error to move old playlist data");
+                    QFile::remove(old);
+                }
+                old = dir_old + QString::fromLatin1("/history.qds");
+                if (QFile(old).exists()) {
+                    if (!QFile::copy(old, appDataDir() + QString::fromLatin1("/history.qds")))
+                        qWarning("error to move old history data");
+                    QFile::remove(old);
+                }
+            }
+        }
+
         QSettings settings(file, QSettings::IniFormat);
+        last_file = settings.value(QString::fromLatin1("last_file"), QString()).toString();
         timeout = settings.value(QString::fromLatin1("timeout"), 30.0).toReal();
         abort_timeout = settings.value(QString::fromLatin1("abort_timeout"), true).toBool();
         force_fps = settings.value(QString::fromLatin1("force_fps"), 0.0).toReal();
@@ -92,6 +120,11 @@ public:
         subtitle_outline_color = settings.value(QString::fromLatin1("outline_color"), QColor("blue")).value<QColor>();
         subtitle_outline = settings.value(QString::fromLatin1("outline"), true).toBool();
         subtilte_bottom_margin = settings.value(QString::fromLatin1("bottom margin"), 8).toInt();
+        settings.beginGroup(QString::fromLatin1("ass"));
+        ass_font_file = settings.value(QString::fromLatin1("font_file"), QString()).toString();
+        ass_force_font_file = settings.value(QString::fromLatin1("force_font_file"), false).toBool();
+        ass_fonts_dir = settings.value(QString::fromLatin1("fonts_dir"), QString()).toString();
+        settings.endGroup();
         settings.endGroup();
         settings.beginGroup(QString::fromLatin1("preview"));
         preview_enabled = settings.value(QString::fromLatin1("enabled"), true).toBool();
@@ -150,6 +183,7 @@ public:
         settings.setValue(QString::fromLatin1("abort_timeoutImgSeq"), abort_timeoutI);
         settings.setValue(QString::fromLatin1("force_videoclockI"), force_videoclockI);
         settings.setValue(QString::fromLatin1("floatcontrol_enabled"), floatcontrol_enabled);
+        settings.setValue(QString::fromLatin1("last_file"), last_file);
         settings.setValue(QString::fromLatin1("timeout"), timeout);
         settings.setValue(QString::fromLatin1("abort_timeout"), abort_timeout);
         settings.setValue(QString::fromLatin1("force_fps"), force_fps);
@@ -173,6 +207,11 @@ public:
         settings.setValue(QString::fromLatin1("outline_color"), subtitle_outline_color);
         settings.setValue(QString::fromLatin1("outline"), subtitle_outline);
         settings.setValue(QString::fromLatin1("bottom margin"), subtilte_bottom_margin);
+        settings.beginGroup(QString::fromLatin1("ass"));
+        settings.setValue(QString::fromLatin1("font_file"), ass_font_file);
+        settings.setValue(QString::fromLatin1("force_font_file"), ass_force_font_file);
+        settings.setValue(QString::fromLatin1("fonts_dir"), ass_fonts_dir);
+        settings.endGroup();
         settings.endGroup();
         settings.beginGroup(QString::fromLatin1("preview"));
         settings.setValue(QString::fromLatin1("enabled"), preview_enabled);
@@ -222,11 +261,12 @@ public:
         qDebug() << "sync end";
     }
 
-    QString dir;
     QString file;
 
     qreal force_fps;
     QStringList video_decoders;
+
+    QString last_file;
 
     QString capture_dir;
     QString capture_fmt;
@@ -259,6 +299,10 @@ public:
     bool subtitle_outline;
     int subtilte_bottom_margin;
     qreal subtitle_delay;
+
+    bool ass_force_font_file;
+    QString ass_font_file;
+    QString ass_fonts_dir;
 
     bool preview_enabled;
     QMap<QString, QVariant> weblinks;
@@ -298,7 +342,7 @@ Config::~Config()
 
 QString Config::defaultDir() const
 {
-    return mpData->dir;
+    return appDataDir();
 }
 
 bool Config::reset()
@@ -309,6 +353,7 @@ bool Config::reset()
         return false;
     }
     reload();
+    Q_EMIT changed();
     save();
     return true;
 }
@@ -335,6 +380,7 @@ Config& Config::setForceFrameRate(qreal value)
         return *this;
     mpData->force_fps = value;
     emit forceFrameRateChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -351,6 +397,7 @@ Config& Config::setDecoderPriorityNames(const QStringList &value)
     }
     mpData->video_decoders = value;
     emit decoderPriorityNamesChanged();
+    Q_EMIT changed();
     mpData->save();
     return *this;
 }
@@ -366,6 +413,7 @@ Config& Config::setCaptureDir(const QString& dir)
         return *this;
     mpData->capture_dir = dir;
     emit captureDirChanged(dir);
+    Q_EMIT changed();
     return *this;
 }
 
@@ -380,6 +428,7 @@ Config& Config::setCaptureFormat(const QString& format)
         return *this;
     mpData->capture_fmt = format;
     emit captureFormatChanged(format);
+    Q_EMIT changed();
     return *this;
 }
 
@@ -395,6 +444,7 @@ Config& Config::setCaptureQuality(int quality)
         return *this;
     mpData->capture_quality = quality;
     emit captureQualityChanged(quality);
+    Q_EMIT changed();
     return *this;
 }
 
@@ -409,6 +459,7 @@ Config& Config::setSubtitleEngines(const QStringList &value)
         return *this;
     mpData->subtitle_engines = value;
     emit subtitleEnginesChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -423,6 +474,7 @@ Config& Config::setSubtitleAutoLoad(bool value)
         return *this;
     mpData->subtitle_autoload = value;
     emit subtitleAutoLoadChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -437,6 +489,7 @@ Config& Config::setSubtitleEnabled(bool value)
         return *this;
     mpData->subtitle_enabled = value;
     emit subtitleEnabledChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -451,6 +504,7 @@ Config& Config::setSubtitleFont(const QFont& value)
         return *this;
     mpData->subtitle_font = value;
     emit subtitleFontChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -464,6 +518,7 @@ Config& Config::setSubtitleOutline(bool value)
         return *this;
     mpData->subtitle_outline = value;
     emit subtitleOutlineChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -471,12 +526,14 @@ QColor Config::subtitleColor() const
 {
     return mpData->subtitle_color;
 }
+
 Config& Config::setSubtitleColor(const QColor& value)
 {
     if (mpData->subtitle_color == value)
         return *this;
     mpData->subtitle_color = value;
     emit subtitleColorChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -490,6 +547,7 @@ Config& Config::setSubtitleOutlineColor(const QColor& value)
         return *this;
     mpData->subtitle_outline_color = value;
     emit subtitleOutlineColorChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -504,6 +562,7 @@ Config& Config::setSubtitleBottomMargin(int value)
         return *this;
     mpData->subtilte_bottom_margin = value;
     emit subtitleBottomMarginChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -521,6 +580,49 @@ Config& Config::setSubtitleDelay(qreal value)
     return *this;
 }
 
+QString Config::assFontFile() const
+{
+    return mpData->ass_font_file;
+}
+
+Config& Config::setAssFontFile(const QString &value)
+{
+    if (mpData->ass_font_file == value)
+        return *this;
+    mpData->ass_font_file = value;
+    Q_EMIT assFontFileChanged();
+    return *this;
+}
+
+
+QString Config::assFontsDir() const
+{
+    return mpData->ass_fonts_dir;
+}
+
+Config& Config::setAssFontsDir(const QString &value)
+{
+    if (mpData->ass_fonts_dir == value)
+        return *this;
+    mpData->ass_fonts_dir = value;
+    Q_EMIT assFontsDirChanged();
+    return *this;
+}
+
+bool Config::isAssFontFileForced() const
+{
+    return mpData->ass_force_font_file;
+}
+
+Config& Config::setAssFontFileForced(bool value)
+{
+    if (mpData->ass_force_font_file == value)
+        return *this;
+    mpData->ass_force_font_file = value;
+    Q_EMIT assFontFileForcedChanged();
+    return *this;
+}
+
 bool Config::previewEnabled() const
 {
     return mpData->preview_enabled;
@@ -532,6 +634,7 @@ Config& Config::setPreviewEnabled(bool value)
         return *this;
     mpData->preview_enabled = value;
     emit previewEnabledChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -561,6 +664,7 @@ Config& Config::setPreviewWidth(int value)
         return *this;
     mpData->preview_w = value;
     emit previewWidthChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -575,6 +679,7 @@ Config& Config::setPreviewHeight(int value)
         return *this;
     mpData->preview_h = value;
     emit previewHeightChanged();
+    Q_EMIT changed();
     return *this;
 }
 QVariantHash Config::avformatOptions() const
@@ -614,6 +719,7 @@ Config& Config::setAvformatOptionsEnabled(bool value)
         return *this;
     mpData->avformat_on = value;
     emit avformatOptionsEnabledChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -762,6 +868,7 @@ Config& Config::avfilterVideoOptions(const QString& options)
         return *this;
     mpData->avfilterVideo = options;
     emit avfilterVideoChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -776,6 +883,7 @@ Config& Config::avfilterVideoEnable(bool e)
         return *this;
     mpData->avfilterVideo_on = e;
     emit avfilterVideoChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -790,6 +898,7 @@ Config& Config::avfilterAudioOptions(const QString& options)
         return *this;
     mpData->avfilterAudio = options;
     emit avfilterAudioChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -804,6 +913,7 @@ Config& Config::avfilterAudioEnable(bool e)
         return *this;
     mpData->avfilterAudio_on = e;
     emit avfilterAudioChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -837,6 +947,7 @@ Config& Config::setOpenGLType(OpenGLType value)
         return *this;
     mpData->opengl = value;
     emit openGLTypeChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -852,6 +963,7 @@ Config& Config::setANGLEPlatform(const QString& value)
         return *this;
     mpData->angle_dx = value;
     emit ANGLEPlatformChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -872,6 +984,7 @@ Config& Config::setBufferValue(int value)
         return *this;
     mpData->buffer_value = value;
     emit bufferValueChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -910,6 +1023,7 @@ Config& Config::setTimeout(qreal value)
         return *this;
     mpData->timeout = value;
     emit timeoutChanged();
+    Q_EMIT changed();
     return *this;
 }
 
@@ -926,6 +1040,22 @@ Config& Config::setAbortOnTimeout(bool value)
         return *this;
     mpData->abort_timeout = value;
     emit abortOnTimeoutChanged();
+    Q_EMIT changed();
+    return *this;
+}
+
+QString Config::lastFile() const
+{
+    return mpData->last_file;
+}
+
+Config& Config::setLastFile(const QString &value)
+{
+    if (mpData->last_file == value)
+        return *this;
+    mpData->last_file = value;
+    Q_EMIT lastFileChanged();
+    Q_EMIT changed();
     return *this;
 }
 

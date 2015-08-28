@@ -152,6 +152,9 @@ Rectangle {
         autoLoad: PlayerConfig.subtitleAutoLoad
         engines: PlayerConfig.subtitleEngines
         delay: PlayerConfig.subtitleDelay
+        fontFile: PlayerConfig.assFontFile
+        fontFileForced: PlayerConfig.assFontFileForced
+        fontsDir: PlayerConfig.assFontsDir
 
         onContentChanged: { //already enabled
             if (!canRender || !subtitleItem.visible)
@@ -473,7 +476,9 @@ Rectangle {
     FileDialog {
         id: fileDialog
         title: "Please choose a media file"
+        folder: PlayerConfig.lastFile
         onAccepted: {
+            PlayerConfig.lastFile = fileUrl.toString()
             player.source = fileDialog.fileUrl
             //player.stop() //remove this if autoLoad works
             //player.play()

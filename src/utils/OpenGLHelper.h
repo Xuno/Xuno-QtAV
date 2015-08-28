@@ -102,6 +102,7 @@ typedef QGLBuffer QOpenGLBuffer;
 #define GL_TEXTURE_RECTANGLE 0x84F5
 #endif
 
+class QMatrix4x4;
 namespace QtAV {
 namespace OpenGLHelper {
 
@@ -114,7 +115,16 @@ bool isOpenGLES();
 bool hasExtension(const char* exts[]);
 bool isPBOSupported();
 void glActiveTexture(GLenum texture);
-bool videoFormatToGL(const VideoFormat& fmt, GLint* internal_format, GLenum* data_format, GLenum* data_type);
+/*!
+ * \brief videoFormatToGL
+ * \param fmt
+ * \param internal_format an array with size fmt.planeCount()
+ * \param data_format an array with size fmt.planeCount()
+ * \param data_type an array with size fmt.planeCount()
+ * \param mat channel reorder matrix used in glsl
+ * \return false if fmt is not supported
+ */
+bool videoFormatToGL(const VideoFormat& fmt, GLint* internal_format, GLenum* data_format, GLenum* data_type, QMatrix4x4* mat = NULL);
 int bytesOfGLFormat(GLenum format, GLenum dataType = GL_UNSIGNED_BYTE);
 GLint GetGLInternalFormat(GLint data_format, int bpp);
 

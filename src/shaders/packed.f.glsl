@@ -47,7 +47,6 @@ uniform vec2 u_pixeloffsetkernel[9];
 vec3 color;
 #ifdef PACKED_YUV
 uniform mat4 u_c;
-#endif //PACKED_YUV
 
 #ifdef BICUBIC_TRI
 float Triangular(float f) {
@@ -146,27 +145,31 @@ void main() {
   vec3 sum = vec3(0.0);
   for (int i=0;i<9;i++) {
 #else
-  int i=4;
+   int i=4;
 #endif //USED_FILTERS
 
 #if defined(USED_BiCubic)
-  vec4 c = BiCubic(u_Texture0, v_TexCoords0 + u_pixeloffsetkernel[i]);
+   vec4 c = BiCubic(u_Texture0, v_TexCoords0 + u_pixeloffsetkernel[i]);
 #else  //USED_BiCubic
-  vec4 c = texture2D(u_Texture0, v_TexCoords0 + u_pixeloffsetkernel[i]);
+   vec4 c = texture2D(u_Texture0, v_TexCoords0 + u_pixeloffsetkernel[i]);
 #endif //USED_BiCubic
 
 #ifdef PACKED_YUV
-  c = u_c * c;
-  c.a = 1.0;
+   c = u_c * c;
+   c.a = 1.0;
+   vec4 c = texture2D(u_Texture0, v_TexCoords0);
+   c = u_c * c;
+#ifdef PACKED_YUV
+   c.a = 1.0; // remove this, and in mat last line use 1,1,1,1
 #endif //PACKED_YUV
 
-  gl_FragColor = clamp(u_colorMatrix * c, 0.0, 1.0) * u_opacity;
+   gl_FragColor = clamp(u_colorMatrix * c, 0.0, 1.0) * u_opacity;
 
 #if defined(USED_FILTERS)
 //added filters
-  color = gl_FragColor.rgb;
-  sum += color * u_filterkernel[i];
- }
+   color = gl_FragColor.rgb;
+   sum += color * u_filterkernel[i];
+  }
   gl_FragColor.rgb = sum;
 #endif //USED_FILTERS
 

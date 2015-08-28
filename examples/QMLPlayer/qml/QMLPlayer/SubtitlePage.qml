@@ -8,7 +8,7 @@ Page {
     signal subtitleChanged(string file)
     signal subtitleTrackChanged(int track)
     property var supportedFormats: ["ass" , "ssa"]
-    height: titleHeight + tracksMenu.height + 8*Utils.kItemHeight + engine.contentHeight + Utils.kSpacing*7
+    height: titleHeight + tracksMenu.height + 6*Utils.kItemHeight + engine.contentHeight + Utils.kSpacing*5
     property var internalSubtitleTracks : "unkown"
     Column {
         anchors.fill: content
@@ -16,12 +16,13 @@ Page {
         Row {
             width: parent.width
             height: Utils.kItemHeight
+            spacing: Utils.kSpacing
             Text {
                 id: delayLabel
                 color: "white"
                 font.pixelSize: Utils.kFontSize
-                text: qsTr("Delay")
-                width: Utils.scaled(60)
+                text: qsTr("Delay") + " (" + qsTr("ms") + ")"
+                width: contentWidth
                 height: Utils.kItemHeight
             }
             TextInput {
@@ -38,21 +39,36 @@ Page {
             }
         }
 
-        Text {
-            color: "white"
-            text: qsTr("Engine")
-            font.pixelSize: Utils.kFontSize
-        }
-        Menu {
-            id: engine
+        Row {
             width: parent.width
-            itemWidth: parent.width
-            currentIndex: PlayerConfig.subtitleEngines[0] === "FFmpeg" ? 0 : 1
-            model: ListModel {
-                ListElement { name: "FFmpeg" }
-                ListElement { name: "LibASS" }
+            height: 2*Utils.kItemHeight // engine.contentHeight
+            spacing: Utils.kSpacing
+            Text {
+                color: "white"
+                text: qsTr("Engine")
+                font.pixelSize: Utils.kFontSize
+                width: contentWidth
+                height: parent.height
             }
-            onClicked: PlayerConfig.subtitleEngines = [ model.get(index).name ]
+            Menu {
+                id: engine
+                width: parent.width - Utils.kItemWidth
+                height: parent.height
+                itemWidth: width
+                currentIndex: PlayerConfig.subtitleEngines[0] === "FFmpeg" ? 0 : 1
+                model: ListModel {
+                    ListElement { name: "FFmpeg" }
+                    ListElement { name: "LibASS" }
+                }
+                onClicked: {
+                    PlayerConfig.subtitleEngines = [ model.get(index).name ]
+                    var e = model.get(index).name
+                    if (e === "FFmpeg")
+                        engineDetail.sourceComponent = ffmpeg
+                    else
+                        engineDetail.sourceComponent = libass
+                }
+            }
         }
         Row {
             Text {
@@ -68,141 +84,254 @@ Page {
                 wrapMode: Text.Wrap
             }
         }
-        Text {
-            color: "white"
-            text: qsTr("Style") + " (" + qsTr("Only for FFmpeg engine") + ")"
-            font.pixelSize: Utils.kFontSize
-        }
-        Row {
-            Text {
-                color: "white"
-                text: qsTr("Bottom margin")
-                font.pixelSize: Utils.kFontSize
+        Item {
+            width: parent.width
+            height: 2*Utils.kItemHeight
+            Loader {
+                id: engineDetail
+                anchors.fill: parent
             }
-            TextInput {
-                color: "orange"
-                font.pixelSize: Utils.kFontSize
-                width: Utils.scaled(40)
-                height: parent.height
-                validator: IntValidator{bottom: 0;}
-                text: PlayerConfig.subtitleBottomMargin
-                onTextChanged: PlayerConfig.subtitleBottomMargin = parseInt(text)
-            }
-            Button {
-                text: qsTr("Font")
-                width: Utils.scaled(60)
-                height: Utils.kItemHeight
-                onClicked: fontDialog.open()
-            }
-            Rectangle {
-                color: PlayerConfig.subtitleColor
-                width: Utils.kItemHeight
-                height: Utils.kItemHeight
-                MouseArea {
-                    anchors.fill: parent
-                    onPressed: colorDialog.open()
+            Component {
+                id: ffmpeg
+                Row {
+                    Text {
+                        color: "white"
+                        text: qsTr("Bottom margin")
+                        font.pixelSize: Utils.kFontSize
+                    }
+                    TextInput {
+                        color: "orange"
+                        font.pixelSize: Utils.kFontSize
+                        width: Utils.scaled(40)
+                        height: parent.height
+                        validator: IntValidator{bottom: 0;}
+                        text: PlayerConfig.subtitleBottomMargin
+                        onTextChanged: PlayerConfig.subtitleBottomMargin = parseInt(text)
+                    }
+                    Button {
+                        text: qsTr("Font")
+                        width: Utils.scaled(60)
+                        height: Utils.kItemHeight
+                        onClicked: fontDialog.open()
+                    }
+                    Rectangle {
+                        color: PlayerConfig.subtitleColor
+                        width: Utils.kItemHeight
+                        height: Utils.kItemHeight
+                        MouseArea {
+                            anchors.fill: parent
+                            onPressed: colorDialog.open()
+                        }
+                    }
+                    Button {
+                        text: qsTr("Outline")
+                        checkable: true
+                        checked:  PlayerConfig.subtitleOutline
+                        width: Utils.scaled(60)
+                        height: Utils.kItemHeight
+                        onCheckedChanged: PlayerConfig.subtitleOutline = checked
+                    }
+                    Rectangle {
+                        color: PlayerConfig.subtitleOutlineColor
+                        width: Utils.kItemHeight
+                        height: Utils.kItemHeight
+                        MouseArea {
+                            anchors.fill: parent
+                            onPressed: outlineColorDialog.open()
+                        }
+                    }
+                    Text {
+                        text: qsTr("Preview") + ":"
+                        color: "white"
+                        font.pixelSize: Utils.kFontSize
+                    }
+                    TextInput {
+                        color: "orange"
+                        font.pointSize: Utils.kFontSize
+                        width: Utils.scaled(50)
+                        height: parent.height
+                        text: "QtAV"
+                        onTextChanged: stylePreview.text = text
+                    }
+                    Text {
+                        id: stylePreview
+                        text: "QtAV"
+                        font: PlayerConfig.subtitleFont
+                        style: PlayerConfig.subtitleOutline ? Text.Outline : Text.Normal
+                        styleColor: PlayerConfig.subtitleOutlineColor
+                        color: PlayerConfig.subtitleColor
+                    }
                 }
             }
-            Button {
-                text: qsTr("Outline")
-                checkable: true
-                checked:  PlayerConfig.subtitleOutline
-                width: Utils.scaled(60)
-                height: Utils.kItemHeight
-                onCheckedChanged: PlayerConfig.subtitleOutline = checked
-            }
-            Rectangle {
-                color: PlayerConfig.subtitleOutlineColor
-                width: Utils.kItemHeight
-                height: Utils.kItemHeight
-                MouseArea {
-                    anchors.fill: parent
-                    onPressed: outlineColorDialog.open()
+            Component {
+                id: libass
+                Column {
+                    Item {
+                        width: parent.width
+                        height: Utils.kItemHeight
+                        Text {
+                            id: fontFile
+                            color: "orange"
+                            elide: Text.ElideMiddle
+                            font.pixelSize: Utils.kFontSize
+                            anchors.left: parent.left
+                            anchors.right: openFontFile.left
+                            height: parent.height
+                            text: PlayerConfig.assFontFile
+                        }
+                        Button {
+                            id: openFontFile
+                            text: qsTr("Font file")
+                            width: Utils.scaled(80)
+                            anchors.right: forceFontFile.left
+                            height: parent.height
+                            onClicked: fontFileDialog.open()
+                        }
+                        Button {
+                            id: forceFontFile
+                            text: qsTr("Force")
+                            width: Utils.scaled(50)
+                            anchors.right: clearFontFile.left
+                            height: parent.height
+                            checkable: true
+                            checked: PlayerConfig.assFontFileForced
+                            onCheckedChanged: PlayerConfig.assFontFileForced = checked
+                        }
+                        Button {
+                            id: clearFontFile
+                            text: qsTr("Clear")
+                            width: Utils.scaled(50)
+                            anchors.right: parent.right
+                            height: parent.height
+                            onClicked: {
+                                PlayerConfig.assFontFile = ""
+                                openFontFile.text = ""
+                            }
+                        }
+                    }
+                    Item {
+                        width: parent.width
+                        height: Utils.kItemHeight
+                        Text {
+                            id: fontsDir
+                            color: "orange"
+                            elide: Text.ElideMiddle
+                            font.pixelSize: Utils.kFontSize
+                            text: PlayerConfig.assFontsDir
+                            anchors.left: parent.left
+                            anchors.right: openFontsDir.left
+                            height: parent.height
+                        }
+                        Button {
+                            id: openFontsDir
+                            text: qsTr("Fonts dir")
+                            width: Utils.scaled(80)
+                            anchors.right: clearFontsDir.left
+                            height: parent.height
+                            onClicked: fontsDirDialog.open()
+                        }
+                        Button {
+                            id: clearFontsDir
+                            text: qsTr("Clear")
+                            width: Utils.scaled(50)
+                            anchors.right: parent.right
+                            height: parent.height
+                            onClicked: {
+                                PlayerConfig.assFontsDir = ""
+                                fontsDir.text = "" //why does it not update?
+                            }
+                        }
+                    }
                 }
             }
+        }
+
+
+        Item {
+            width: parent.width
+            height: tracksMenu.height
             Text {
-                text: qsTr("Preview") + ":"
+                id: intSubLabel
                 color: "white"
+                text: qsTr("Embedded Subtitles") + ": " + internalSubtitleTracks.length
                 font.pixelSize: Utils.kFontSize
-            }
-            TextInput {
-                color: "orange"
-                font.pointSize: Utils.kFontSize
-                width: Utils.scaled(50)
+                font.bold: true
+                wrapMode: Text.WrapAnywhere
+                width: Utils.scaled(110)
                 height: parent.height
-                text: "QtAV"
-                onTextChanged: stylePreview.text = text
+                visible: height > 0
             }
+            Menu {
+                id: tracksMenu
+                anchors.left: intSubLabel.right
+                anchors.right: parent.right
+                itemWidth: width
+                model: ListModel {
+                    id: tracksModel
+                }
+                onClicked: {
+                    console.log("subtitle track clikced: " + tracksModel.get(index).value)
+                    root.subtitleTrackChanged(tracksModel.get(index).value)
+                }
+            }
+        }
+
+        Row {
+            width: parent.width
+            height: 2*Utils.kItemHeight
+            spacing: Utils.kSpacing
             Text {
-                id: stylePreview
-                text: "QtAV"
-                font: PlayerConfig.subtitleFont
-                style: PlayerConfig.subtitleOutline ? Text.Outline : Text.Normal
-                styleColor: PlayerConfig.subtitleOutlineColor
-                color: PlayerConfig.subtitleColor
-            }
-        }
-        Text {
-            color: "white"
-            text: qsTr("Embedded Subtitles") + ": " + internalSubtitleTracks.length
-            font.pixelSize: Utils.kFontSize
-            font.bold: true
-        }
-        Menu {
-            id: tracksMenu
-            width: parent.width
-            itemWidth: parent.width
-            model: ListModel {
-                id: tracksModel
-            }
-            onClicked: {
-                console.log("subtitle track clikced: " + tracksModel.get(index).value)
-                root.subtitleTrackChanged(tracksModel.get(index).value)
-            }
-        }
-        Text {
-            color: "white"
-            text: qsTr("External Subtitle")
-            font.pixelSize: Utils.kFontSize
-            font.bold: true
-        }
-        Row {
-            width: parent.width
-            height: Utils.kItemHeight
-            Button {
-                text: qsTr("Enabled")
-                checkable: true
-                checked: PlayerConfig.subtitleEnabled
-                width: parent.width/2
-                height: Utils.kItemHeight
-                onCheckedChanged: PlayerConfig.subtitleEnabled = checked
-            }
-            Button {
-                id: autoLoad
-                text: qsTr("Auto load")
-                checkable: true
-                checked: PlayerConfig.subtitleAutoLoad
-                width: parent.width/2
-                height: Utils.scaled(30)
-                onCheckedChanged: PlayerConfig.subtitleAutoLoad = checked
-            }
-        }
-        Row {
-            width: parent.width
-            height: Utils.kItemHeight
-            TextEdit {
-                id: file
-                color: "orange"
+                id: extSubLabel
+                color: "white"
+                text: qsTr("External Subtitle")
+                wrapMode: Text.WrapAnywhere
                 font.pixelSize: Utils.kFontSize
-                width: parent.width - open.width
-                height: parent.height
+                font.bold: true
+                width: Utils.scaled(110)
             }
-            Button {
-                id: open
-                text: qsTr("Open")
-                width: Utils.scaled(60)
-                height: Utils.kItemHeight
-                onClicked: fileDialog.open()
+            Column {
+                width:parent.width - extSubLabel.width
+                height: parent.height
+                Row {
+                    width: parent.width
+                    height: Utils.kItemHeight
+                    Button {
+                        text: qsTr("Enabled")
+                        checkable: true
+                        checked: PlayerConfig.subtitleEnabled
+                        width: parent.width/2
+                        height: Utils.kItemHeight
+                        onCheckedChanged: PlayerConfig.subtitleEnabled = checked
+                    }
+                    Button {
+                        id: autoLoad
+                        text: qsTr("Auto load")
+                        checkable: true
+                        checked: PlayerConfig.subtitleAutoLoad
+                        width: parent.width/2
+                        height: Utils.kItemHeight
+                        onCheckedChanged: PlayerConfig.subtitleAutoLoad = checked
+                    }
+                }
+                Row {
+                    width: parent.width
+                    height: Utils.kItemHeight
+                    Text {
+                        id: file
+                        color: "orange"
+                        elide: Text.ElideMiddle
+                        font.pixelSize: Utils.kFontSize
+                        width: parent.width - open.width
+                        height: parent.height
+                    }
+                    Button {
+                        id: open
+                        text: qsTr("Open")
+                        width: Utils.scaled(60)
+                        height: Utils.kItemHeight
+                        onClicked: fileDialog.open()
+                    }
+                }
             }
         }
     }
@@ -210,7 +339,7 @@ Page {
     onInternalSubtitleTracksChanged: updateTracksMenu()
     function updateTracksMenu() {
         tracksModel.clear()
-        tracksMenu.height = Math.min(internalSubtitleTracks.length, 2)*tracksMenu.itemHeight
+        tracksMenu.height = Math.min(internalSubtitleTracks.length, 3)*tracksMenu.itemHeight
         for (var i = 0; i < internalSubtitleTracks.length; ++i) {
             var t = internalSubtitleTracks[i]
             var label = "#" + t.id
@@ -223,6 +352,27 @@ Page {
             tracksModel.append({name: label, value: t.id})
         }
     }
+    FileDialog {
+        id: fontFileDialog
+        title: qsTr("Choose a font file")
+        folder: PlayerConfig.assFontFile
+        onAccepted: {
+            fontFile.text = fileUrl
+            PlayerConfig.assFontFile = fileUrl
+        }
+    }
+
+    FileDialog {
+        id: fontsDirDialog
+        title: qsTr("Choose a fonts dir")
+        selectFolder: true
+        folder: PlayerConfig.assFontsDir
+        onAccepted: {
+            fontsDir.text = folder
+            PlayerConfig.assFontsDir = folder
+        }
+    }
+
     FileDialog {
         id: fileDialog
         title: qsTr("Open a subtitle file")
@@ -245,5 +395,11 @@ Page {
         id: outlineColorDialog
         color: PlayerConfig.subtitleOutlineColor
         onAccepted: PlayerConfig.subtitleOutlineColor = color
+    }
+    Component.onCompleted: {
+        if (PlayerConfig.subtitleEngines[0] === "FFmpeg")
+            engineDetail.sourceComponent = ffmpeg
+        else
+            engineDetail.sourceComponent = libass
     }
 }
