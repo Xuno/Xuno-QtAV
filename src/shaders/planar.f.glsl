@@ -33,14 +33,14 @@ precision mediump float;
 uniform sampler2D u_Texture0;
 uniform sampler2D u_Texture1;
 uniform sampler2D u_Texture2;
-#ifdef PLANE_4
+#ifdef HAS_ALPHA
 uniform sampler2D u_Texture3;
-#endif //PLANE_4
+#endif //HAS_ALPHA
 varying lowp vec2 v_TexCoords0;
 #ifdef MULTI_COORD
 varying lowp vec2 v_TexCoords1;
 varying lowp vec2 v_TexCoords2;
-#ifdef PLANE_4
+#ifdef HAS_ALPHA
 varying lowp vec2 v_TexCoords3;
 #endif
 #else
@@ -51,7 +51,7 @@ varying lowp vec2 v_TexCoords3;
 uniform float u_opacity;
 uniform float u_bpp;
 uniform mat4 u_colorMatrix;
-//added by xuno
+//added by xuno start
 uniform float u_gammaRGB;
 uniform vec2  u_pix;
 uniform float u_filterkernel[9];
@@ -65,15 +65,11 @@ vec3 color;
 #endif
 #define USED_FILTERS
 #define USED_GAMMA
-//added by xuno
+//added by xuno end
 
-#if defined(LA_16BITS_BE) || defined(LA_16BITS_LE)
-#define LA_16BITS 1
-#else
-#define LA_16BITS 0
+#ifndef CHANNEL_8BIT
+uniform vec2 u_to8;
 #endif
-//#define LA_16BITS  (defined(LA_16BITS_BE) || defined(LA_16BITS_LE)) // why may error?
-
 #if defined(YUV_MAT_GLSL)
 //http://en.wikipedia.org/wiki/YUV calculation used
 //http://www.fourcc.org/fccyvrgb.php
@@ -96,7 +92,7 @@ const mat4 yuv2rgbMatrix = mat4(1, 1, 1, 0,
                                0, -0.5, -0.5, 1);
 #endif
 
-//added by xuno
+//added by xuno start
 #ifdef BICUBIC_TRI
 float Triangular(float f) {
     f = f / 2.0;
@@ -187,49 +183,39 @@ vec4 BiCubic( sampler2D textureSampler, vec2 TexCoord )
     return nSum / nDenom;
 }
 #endif //USED_BiCubic
-//added by xuno
+//added by xuno end
 
 // 10, 16bit: http://msdn.microsoft.com/en-us/library/windows/desktop/bb970578%28v=vs.85%29.aspx
 void main()
 {
-    // FFmpeg supports 9, 10, 12, 14, 16 bits
-#if LA_16BITS
-    //http://stackoverflow.com/questions/22693169/opengl-es-2-0-glsl-compiling-fails-on-osx-when-using-const
-    float range = exp2(u_bpp) - 1.0; // why can not be const?
-#if defined(LA_16BITS_LE)
-    vec2 t = vec2(1.0, 256.0)*255.0/range;
-#else
-    vec2 t = vec2(256.0, 1.0)*255.0/range;
-#endif
-#endif //LA_16BITS
 
-//added by xuno
+//added by xuno start
 #if defined(USED_FILTERS)
   vec3 sum = vec3(0.0);
   for (int i=0;i<9;i++) {
 #else
   int i=4;
 #endif //USED_FILTERS
-//added by xuno
+//added by xuno end
 
     // 10p in little endian: yyyyyyyy yy000000 => (L, L, L, A)
     gl_FragColor = clamp(u_colorMatrix
                          * vec4(
-#if LA_16BITS
-//added by xuno
+#ifndef CHANNEL_8BIT
+//added by xuno start
 #if defined(USED_BiCubic)
-                             dot(BiCubic(u_Texture0, v_TexCoords0+u_pixeloffsetkernel[i]).ra, t),
-                             dot(BiCubic(u_Texture1, v_TexCoords1+u_pixeloffsetkernel[i]).ra, t),
-                             dot(BiCubic(u_Texture2, v_TexCoords2+u_pixeloffsetkernel[i]).ra, t),
+                             dot(BiCubic(u_Texture0, v_TexCoords0+u_pixeloffsetkernel[i]).ra, u_to8),
+                             dot(BiCubic(u_Texture1, v_TexCoords1+u_pixeloffsetkernel[i]).ra, u_to8),
+                             dot(BiCubic(u_Texture2, v_TexCoords2+u_pixeloffsetkernel[i]).ra, u_to8),
 #else  //USED_BiCubic
-                             dot(texture2D(u_Texture0, v_TexCoords0+u_pixeloffsetkernel[i]).ra, t),
-                             dot(texture2D(u_Texture1, v_TexCoords1+u_pixeloffsetkernel[i]).ra, t),
-                             dot(texture2D(u_Texture2, v_TexCoords2+u_pixeloffsetkernel[i]).ra, t),
+                             dot(texture2D(u_Texture0, v_TexCoords0+u_pixeloffsetkernel[i]).ra, u_to8),
+                             dot(texture2D(u_Texture1, v_TexCoords1+u_pixeloffsetkernel[i]).ra, u_to8),
+                             dot(texture2D(u_Texture2, v_TexCoords2+u_pixeloffsetkernel[i]).ra, u_to8),
 #endif //USED_BiCubic
-//added by xuno
-#else  //LA_16BITS
+//added by xuno end
+#else  //CHANNEL_8BIT
 // use r, g, a to work for both yv12 and nv12. idea from xbmc
-//added by xuno
+//added by xuno start
 #if defined(USED_BiCubic)
                              BiCubic(u_Texture0, v_TexCoords0 + u_pixeloffsetkernel[i]).r,
                              BiCubic(u_Texture1, v_TexCoords1 + u_pixeloffsetkernel[i]).g,
@@ -239,21 +225,21 @@ void main()
                              texture2D(u_Texture1, v_TexCoords1 + u_pixeloffsetkernel[i]).g,
                              texture2D(u_Texture2, v_TexCoords2 + u_pixeloffsetkernel[i]).a,
 #endif //USED_BiCubic
-//added by xuno
-#endif //LA_16BITS
+//added by xuno end
+#endif //CHANNEL_8BIT
                              1)
                          , 0.0, 1.0) * u_opacity ;
 
-#ifdef PLANE_4
-#if LA_16BITS
-    gl_FragColor.a *= dot(texture2D(u_Texture3, v_TexCoords3).ra, t); //GL_LUMINANCE_ALPHA
+#ifdef HAS_ALPHA
+#ifndef CHANNEL_8BIT
+    gl_FragColor.a *= dot(texture2D(u_Texture3, v_TexCoords3).ra, u_to8); //GL_LUMINANCE_ALPHA
 #else //8bit
     gl_FragColor.a *= texture2D(u_Texture3, v_TexCoords3).a; //GL_ALPHA
-#endif //LA_16BITS
-#endif //PLANE_4
+#endif //CHANNEL_8BIT
+#endif //HAS_ALPHA
 
 
-//added by xuno
+//added by xuno start
 #if defined(USED_FILTERS)
   color = gl_FragColor.rgb;
   sum += color * u_filterkernel[i];
@@ -265,12 +251,5 @@ void main()
   color = gl_FragColor.rgb;
   gl_FragColor.rgb = pow(color, 1.0 / vec3(u_gammaRGB));
 #endif //USED_GAMMA
-
-#if defined(USED_DEBUG)
-if (t == 1.0) {
- gl_FragColor.r = 255;
-}
-#endif //USED_DEBUG
-//added by xuno
-
+//added by xuno end
 }

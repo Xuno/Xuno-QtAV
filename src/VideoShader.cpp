@@ -198,8 +198,8 @@ const char* VideoShader::vertexShader() const
     if (textureTarget() == GL_TEXTURE_RECTANGLE && d.video_format.isPlanar()) {
         vert.prepend("#define MULTI_COORD\n");
 #if YUVA_DONE
-        if (d.video_format.planeCount() == 4)
-            vert.prepend("#define PLANE_4\n");
+        if (d.video_format.hasAlpha())
+            vert.prepend("#define HAS_ALPHA\n");
 #endif
     }
     return vert.constData();
@@ -219,22 +219,20 @@ const char* VideoShader::fragmentShader() const
         qWarning("Empty fragment shader!");
         return 0;
     }
-#if YUVA_DONE
-    if (d.video_format.planeCount() == 4) {
-        frag.prepend("#define PLANE_4\n");
-    }
-#endif
+    const bool has_alpha = d.video_format.hasAlpha();
     if (d.video_format.isPlanar()) {
-        if (d.video_format.bytesPerPixel(0) == 2) {
-            if (d.video_format.isBigEndian())
-                frag.prepend("#define LA_16BITS_BE\n");
-            else
-                frag.prepend("#define LA_16BITS_LE\n");
+        if (d.video_format.bytesPerPixel(0) == 1) {
+            frag.prepend("#define CHANNEL_8BIT\n");
         }
+#if YUVA_DONE
+        if (has_alpha)
+            frag.prepend("#define HAS_ALPHA\n");
+#endif
     } else {
-        if (d.video_format.hasAlpha())
+        if (has_alpha)
             frag.prepend("#define HAS_ALPHA\n");
     }
+
     if (d.texture_target == GL_TEXTURE_RECTANGLE) {
         frag.prepend("#extension GL_ARB_texture_rectangle : enable\n"
                      "#define texture2D texture2DRect\n"
@@ -264,7 +262,7 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
     d.u_MVP_matrix = shaderProgram->uniformLocation("u_MVP_matrix");
     // fragment shader
     d.u_colorMatrix = shaderProgram->uniformLocation("u_colorMatrix");
-    d.u_bpp = shaderProgram->uniformLocation("u_bpp");
+    d.u_to8 = shaderProgram->uniformLocation("u_to8");
     d.u_opacity = shaderProgram->uniformLocation("u_opacity");
     d.u_gammaRGB = shaderProgram->uniformLocation("u_gammaRGB");
     d.u_pix = shaderProgram->uniformLocation("u_pix");
@@ -285,8 +283,8 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
     qDebug("glGetUniformLocation(\"u_filterkernel\") = %d", d.u_filterkernel);
     if (d.u_c >= 0)
         qDebug("glGetUniformLocation(\"u_c\") = %d", d.u_c);
-    if (d.u_bpp >= 0)
-        qDebug("glGetUniformLocation(\"u_bpp\") = %d", d.u_bpp);
+    if (d.u_to8 >= 0)
+        qDebug("glGetUniformLocation(\"u_to8\") = %d", d.u_to8);
 }
 
 int VideoShader::textureLocationCount() const
@@ -313,11 +311,6 @@ int VideoShader::matrixLocation() const
 int VideoShader::colorMatrixLocation() const
 {
     return d_func().u_colorMatrix;
-}
-
-int VideoShader::bppLocation() const
-{
-    return d_func().u_bpp;
 }
 
 int VideoShader::opacityLocation() const
@@ -428,8 +421,8 @@ bool VideoShader::update(VideoMaterial *material)
     }
     //qDebug() << "color mat " << material->colorMatrix();
     program()->setUniformValue(colorMatrixLocation(), material->colorMatrix());
-    if (bppLocation() >= 0)
-        program()->setUniformValue(bppLocation(), (GLfloat)material->bpp());
+    if (d_func().u_to8 >= 0)
+        program()->setUniformValue(d_func().u_to8, material->vectorTo8bit());
     if (channelMapLocation() >= 0)
         program()->setUniformValue(channelMapLocation(), material->channelMap());
     //program()->setUniformValue(matrixLocation(), material->matrix()); //what about sgnode? state.combindMatrix()?
@@ -508,7 +501,17 @@ void VideoMaterial::setCurrentFrame(const VideoFrame &frame)
     }
 
     const VideoFormat fmt(frame.format());
+    const int bpp_old = d.bpp;
     d.bpp = fmt.bitsPerPixel(0);
+    if (d.bpp > 8 && d.bpp != bpp_old) {
+        const int range = (1 << d.bpp) - 1;
+        // FFmpeg supports 9, 10, 12, 14, 16 bits
+        // 10p in little endian: yyyyyyyy yy000000 => (L, L, L, A)  //(yyyyyyyy, 000000yy)?
+        if (fmt.isBigEndian())
+            d.vec_to8 = QVector2D(256.0, 1.0)*255.0/(float)range;
+        else
+            d.vec_to8 = QVector2D(1.0, 256.0)*255.0/(float)range;
+    }
     // http://forum.doom9.org/archive/index.php/t-160211.html
     ColorSpace cs = frame.colorSpace();// ColorSpace_RGB;
     if (cs == ColorSpace_Unknow) {
@@ -549,51 +552,23 @@ VideoShader* VideoMaterial::createShader() const
     return shader;
 }
 
-const char *VideoMaterial::type() const
+QString VideoMaterial::typeName(qint64 value)
+{
+    return QString("gl material 8bit channel: %1, planar: %2, has alpha: %3, 2d texture: %4")
+            .arg(!!(value&1))
+            .arg(!!(value&(1<<1)))
+            .arg(!!(value&(1<<2)))
+            .arg(!!(value&(1<<3)))
+            ;
+}
+
+qint64 VideoMaterial::type() const
 {
     DPTR_D(const VideoMaterial);
     const VideoFormat &fmt = d.video_format;
     const bool tex_2d = d.target == GL_TEXTURE_2D;
-    if (!fmt.isPlanar()) {
-        if (fmt.hasAlpha()) {
-            if (tex_2d)
-                return "packed rgb(a) material";
-            return "packed rgb(a) + rectangle texture material";
-        }
-        if (tex_2d)
-            return "packed rgb/yuv(no alpha) material";
-        return "packed rgb/yuv(no alpha) + rectangle texture material";
-    }
-    if (fmt.bytesPerPixel(0) == 1) {
-        if (fmt.planeCount() == 4) {
-            if (tex_2d)
-                return "8bit 4plane yuv material";
-            return "8bit 4plane yuv + rectangle texture material";
-        }
-        if (tex_2d)
-            return "8bit yuv material";
-        return "8bit yuv + rectangle texture material";
-    }
-    if (fmt.isBigEndian()) {
-        if (fmt.planeCount() == 4) {
-            if (tex_2d)
-                return "4plane 16bit-be material";
-            return "4plane 16bit-be + rectangle texture material";
-        }
-        if (tex_2d)
-            return "planar 16bit-be material";
-        return "planar 16bit-be + rectangle texture material";
-    } else {
-        if (fmt.planeCount() == 4) {
-            if (tex_2d)
-                return "4plane 16bit-le material";
-            return "4plane 16bit-le + rectangle texture material";
-        }
-        if (tex_2d)
-            return "planar 16bit-le material";
-        return "planar 16bit-le + rectangle texture material";
-    }
-    return "invalid material";
+    // 2d,alpha,planar,8bit
+    return (tex_2d<<3)|(fmt.hasAlpha()<<2)|(fmt.isPlanar()<<1)|(fmt.bytesPerPixel(0) == 1);
 }
 
 bool VideoMaterial::bind()
@@ -635,6 +610,11 @@ void VideoMaterial::bindPlane(int p, bool updateTexture)
         DYGL(glBindTexture(d.target, tex)); // glActiveTexture was called, but maybe bind to 0 in map
         return;
     }
+    if (!d.frame.constBits(0)) {
+        qWarning("map hw surface error");
+        return;
+    }
+    // TODO if a hw frame map() failed, do not upload. upload only for host memory surfaces
     // FIXME: why happens on win?
     if (d.frame.bytesPerLine(p) <= 0)
         return;
@@ -726,6 +706,11 @@ qreal VideoMaterial::gammaRGB() const
 qreal VideoMaterial::filterSharp() const
 {
     return d_func().filterSharp;
+}
+
+QVector2D VideoMaterial::vectorTo8bit() const
+{
+    return d_func().vec_to8;
 }
 
 int VideoMaterial::planeCount() const
