@@ -129,11 +129,12 @@ void Slider::addLimitBar()
 {
     line = new QFrame(this);
     line->setObjectName(QStringLiteral("line"));
-    line->setGeometry(QRect(0, 0, 0, 8));
+    line->setAttribute(Qt::WA_TransparentForMouseEvents);
+    //line->setGeometry(QRect(0, 8, 0, 3));
     line->setFrameShadow(QFrame::Plain);
     line->setLineWidth(3);
     line->setFrameShape(QFrame::HLine);
-    line->setContentsMargins(0,0,0,0);
+    //line->setContentsMargins(0,15,0,15);
     line->setStyleSheet("#line {color: #00FF00}"); //green
     //qDebug()<<"Slider::addVisualLimits"<<visualLimitsMin<<visualLimitsMax;
     setVisibleVisualLimit(false);
