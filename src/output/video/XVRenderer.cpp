@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -24,6 +24,7 @@
 */
 #include "QtAV/VideoRenderer.h"
 #include "QtAV/private/VideoRenderer_p.h"
+#include "QtAV/FilterContext.h"
 #include <QWidget>
 #include <QResizeEvent>
 #include <QtCore/qmath.h>
@@ -32,8 +33,7 @@
 #include <sys/shm.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xvlib.h>
-#include "QtAV/private/prepost.h"
-
+#include "QtAV/private/factory.h"
 //http://huangbster.i.sohu.com/blog/view/256490057.htm
 
 namespace QtAV {
@@ -68,15 +68,11 @@ public:
     virtual QWidget* widget() Q_DECL_OVERRIDE { return this; }
 protected:
     virtual bool receiveFrame(const VideoFrame& frame) Q_DECL_OVERRIDE;
-    virtual bool needUpdateBackground() const Q_DECL_OVERRIDE;
-    //called in paintEvent before drawFrame() when required
     virtual void drawBackground() Q_DECL_OVERRIDE;
-    virtual bool needDrawFrame() const Q_DECL_OVERRIDE;
-    //draw the current frame using the current paint engine. called by paintEvent()
     virtual void drawFrame() Q_DECL_OVERRIDE;
     virtual void paintEvent(QPaintEvent *) Q_DECL_OVERRIDE;
     virtual void resizeEvent(QResizeEvent *) Q_DECL_OVERRIDE;
-    //stay on top will change parent, hide then show(windows). we need GetDC() again
+    //stay on top will change parent, hide then show(windows)
     virtual void showEvent(QShowEvent *) Q_DECL_OVERRIDE;
 private:
     virtual bool onSetBrightness(qreal b) Q_DECL_OVERRIDE;
@@ -91,24 +87,67 @@ extern VideoRendererId VideoRendererId_XV;
 #if 0
 FACTORY_REGISTER_ID_AUTO(VideoRenderer, XV, "XVideo")
 #else
-VideoRenderer* __create_VideoRendererXV() { return new VideoRendererXV();}
-#endif
-
 void RegisterVideoRendererXV_Man()
 {
-    FACTORY_REGISTER_ID_MAN(VideoRenderer, XV, "XVideo")
+    VideoRenderer::Register<XVRenderer>(VideoRendererId_XV, "XVideo");
 }
+#endif
 
 VideoRendererId XVRenderer::id() const
 {
     return VideoRendererId_XV;
+}
+#define FOURCC(a,b,c,d) ((a) | ((b)<<8) | ((c)<<16) | ((unsigned)(d)<<24))
+static const struct xv_format_entry_t {
+    VideoFormat::PixelFormat format;
+    int fourcc;
+} xv_fmt[] = {
+{ VideoFormat::Format_YUV420P, FOURCC('Y', 'V', '1', '2')},
+{ VideoFormat::Format_YUV420P, FOURCC('I', '4', '2', '0')},
+{ VideoFormat::Format_UYVY, FOURCC('U', 'Y', 'V', 'Y')},
+{ VideoFormat::Format_YUYV, FOURCC('Y', 'U', 'Y', '2')},
+// split nv12 in xv to reduce copy times(no need to convert in sws)
+{ VideoFormat::Format_NV12, FOURCC('Y', 'V', '1', '2')},
+{ VideoFormat::Format_NV21, FOURCC('Y', 'V', '1', '2')},
+};
+#undef FOURCC
+int pixelFormatToXv(VideoFormat::PixelFormat fmt)
+{
+    for (int i = 0; i < sizeof(xv_fmt)/sizeof(xv_fmt[0]); ++i) {
+        if (xv_fmt[i].format == fmt)
+            return xv_fmt[i].fourcc;
+    }
+    return 0;
+}
+
+int xvFormatInPort(Display* disp, XvPortID port, VideoFormat::PixelFormat fmt) {
+    const int xv_id = pixelFormatToXv(fmt);
+    if (!xv_id)
+        return 0;
+    const int xv_type = VideoFormat::isRGB(fmt) ? XvRGB : XvYUV;
+    const int xv_plane = VideoFormat::isPlanar(fmt) ? XvPlanar : XvPacked;
+    int count = 0;
+    XvImageFormatValues *xvifmts = XvListImageFormats(disp, port, &count);
+    for (const XvImageFormatValues *xvifmt = xvifmts; xvifmt <  xvifmts+count; ++xvifmt) {
+        qDebug("XvImageFormatValues: %s", xvifmt->guid);
+        if (xvifmt->type == xv_type
+                && xvifmt->format == xv_plane
+                && xvifmt->id == xv_id
+                ) {
+            if (XvGrabPort(disp, port, 0) == Success) {
+                XFree(xvifmts);
+                return xv_id;
+            }
+        }
+    }
+    XFree(xvifmts);
+    return 0;
 }
 
 class XVRendererPrivate : public VideoRendererPrivate
 {
 public:
     DPTR_DECLARE_PUBLIC(XVRenderer)
-
     XVRendererPrivate():
         use_shm(true)
       , num_adaptors(0)
@@ -117,7 +156,10 @@ public:
       , xv_image_width(0)
       , xv_image_height(0)
       , xv_port(0)
+      , gc(NULL)
+      , format(VideoFormat::Format_Invalid)
     {
+        XInitThreads();
 #ifndef _XSHM_H_
         use_shm = false;
 #endif //_XSHM_H_
@@ -131,24 +173,6 @@ public:
         if (num_adaptors < 1) {
             available = false;
             qCritical("No adaptor found!");
-            return;
-        }
-        for (uint i = 0; i < num_adaptors; ++i) {
-            //??
-            if ((xv_adaptor_info[i].type & (XvInputMask | XvImageMask)) == (XvInputMask | XvImageMask)) {
-                //if ( !adaptorName.isEmpty() && adaptorName != ai[ i ].name )
-                //    continue;
-                for (XvPortID p = xv_adaptor_info[i].base_id; p < xv_adaptor_info[i].base_id + xv_adaptor_info[i].num_ports; ++p) {
-                    if (findYV12Port(p))
-                        break;
-                }
-            }
-            if (xv_port)
-                break;
-        }
-        if (!xv_port) {
-            available = false;
-            qCritical("YV12 port not found!");
             return;
         }
     }
@@ -188,23 +212,11 @@ public:
         xv_image_width = 0;
         xv_image_height = 0;
     }
-    bool findYV12Port(XvPortID port) {
-        int count = 0;
-        XvImageFormatValues *xv_image_formats = XvListImageFormats(display, port, &count);
-        for (int j = 0; j < count; ++j) {
-            if (xv_image_formats[j].type == XvYUV && QLatin1String(xv_image_formats[j].guid) == QLatin1String("YV12")) {
-                if (XvGrabPort(display, port, 0) == Success) {
-                    xv_port = port;
-                    format_id = xv_image_formats[j].id;
-                    XFree(xv_image_formats);
-                    return true;
-                }
-            }
-        }
-        XFree(xv_image_formats);
-        return false;
-    }
     bool prepareDeviceResource() {
+        if (gc) {
+            XFreeGC(display, gc);
+            gc = 0;
+        }
         gc = XCreateGC(display, q_func().winId(), 0, 0);
         if (!gc) {
             available = false;
@@ -212,13 +224,35 @@ public:
             return false;
         }
         XSetBackground(display, gc, BlackPixel(display, DefaultScreen(display)));
+        if (filter_context)
+            ((X11FilterContext*)filter_context)->resetX11((X11FilterContext::Display*)display, (X11FilterContext::GC)gc, (X11FilterContext::Drawable)q_func().winId());
         return true;
     }
 
-    bool prepareImage(int w, int h) {
-        if (xv_image_width == w && xv_image_height == h && xv_image)
+    bool ensureImage(int w, int h, VideoFormat::PixelFormat pixfmt) {
+        if (xv_image_width == w && xv_image_height == h && xv_image && format == pixfmt)
             return true;
         destroyXVImage();
+        qDebug("port count: %d", num_adaptors);
+        for (uint i = 0; i < num_adaptors; ++i) {
+            //??
+            if ((xv_adaptor_info[i].type & (XvInputMask | XvImageMask)) == (XvInputMask | XvImageMask)) {
+                for (XvPortID p = xv_adaptor_info[i].base_id; p < xv_adaptor_info[i].base_id + xv_adaptor_info[i].num_ports; ++p) {
+                    qDebug("XvAdaptorInfo: %s", xv_adaptor_info[i].name);
+                    format_id = xvFormatInPort(display, p, pixfmt);
+                    if (format_id) {
+                        xv_port = p;
+                        break;
+                    }
+                }
+            }
+            if (xv_port)
+                break;
+        }
+        if (!xv_port) {
+            qWarning("xv port not found!");
+        }
+        format = pixfmt;
         xv_image_width = w;
         xv_image_height = h;
 #ifdef _XSHM_H_
@@ -236,13 +270,18 @@ public:
             goto no_shm;
         }
         shm.shmaddr = (char *)shmat(shm.shmid, 0, 0);
+        if (shm.shmaddr == (char*)-1) {
+            XFree(xv_image);
+            qWarning("Shared memory error,disabling ( seg id error )");
+            goto no_shm;
+        }
         xv_image->data = shm.shmaddr;
-        shm.readOnly = 0;
+        shm.readOnly = False;
         if (!XShmAttach(display, &shm)) {
             qWarning("Attach to shm failed! try to use none shm");
             goto no_shm;
         }
-        XSync(display, false);
+        XSync(display, False);
         shmctl(shm.shmid, IPC_RMID, 0);
         return true;
 #endif //_XSHM_H_
@@ -272,6 +311,7 @@ no_shm:
 #ifdef _XSHM_H_
     XShmSegmentInfo shm;
 #endif //_XSHM_H_
+    VideoFormat::PixelFormat format;
 };
 
 bool XVRendererPrivate::XvSetPortAttributeIfExists(const char *key, int value)
@@ -297,6 +337,7 @@ XVRenderer::XVRenderer(QWidget *parent, Qt::WindowFlags f):
     QWidget(parent, f)
   , VideoRenderer(*new XVRendererPrivate())
 {
+    setPreferredPixelFormat(VideoFormat::Format_YUV420P);
     DPTR_INIT_PRIVATE(XVRenderer);
     setAcceptDrops(true);
     setFocusPolicy(Qt::StrongFocus);
@@ -309,60 +350,21 @@ XVRenderer::XVRenderer(QWidget *parent, Qt::WindowFlags f):
     //setAttribute(Qt::WA_NoSystemBackground);
     //setAutoFillBackground(false);
     setAttribute(Qt::WA_PaintOnScreen, true);
+    d_func().filter_context = VideoFilterContext::create(VideoFilterContext::X11);
+    if (!d_func().filter_context) {
+        qWarning("No filter context for X11");
+    } else {
+        d_func().filter_context->paint_device = this;
+    }
 }
 
-// TODO: add yuv support
 bool XVRenderer::isSupported(VideoFormat::PixelFormat pixfmt) const
 {
-    // TODO: NV12
+    // TODO: rgb use copyplane
     return pixfmt == VideoFormat::Format_YUV420P || pixfmt == VideoFormat::Format_YV12
-            ;//|| pixfmt == VideoFormat::Format_NV12|| pixfmt == VideoFormat::Format_NV21;
-}
-
-static void CopyPlane(void *dest, const uchar* src, unsigned dst_linesize, unsigned src_linesize, unsigned height )
-{
-    unsigned offset = 0;
-    unsigned char *dest_data = (unsigned char*)dest;
-    for (unsigned i = 0; i < height; ++i) {
-        memcpy(dest_data, src + offset, dst_linesize);
-        offset += src_linesize;
-        dest_data += dst_linesize;
-    }
-}
-
-static void CopyYV12(void *dest, const uchar* src[], unsigned luma_width, unsigned chroma_width, unsigned src_linesize[], unsigned height )
-{
-    unsigned offset = 0;
-    unsigned char *dest_data = (unsigned char*)dest;
-    for (unsigned i = 0; i < height; ++i) {
-        memcpy(dest_data, src[0] + offset, luma_width);
-        offset += src_linesize[0];
-        dest_data += luma_width;
-    }
-    offset = 0;
-    height >>= 1;
-    const unsigned wh = chroma_width * height;
-    for (unsigned i = 0; i < height; ++i) {
-        memcpy(dest_data, src[2] + offset, chroma_width);
-        memcpy(dest_data + wh, src[1] + offset, chroma_width);
-        offset += src_linesize[1];
-        dest_data += chroma_width;
-    }
-}
-
-static void CopyPlane(quint8 *dst, size_t dst_pitch,
-                      const quint8 *src, size_t src_pitch,
-                      unsigned width, unsigned height)
-{
-    if (dst_pitch == src_pitch && src_pitch == width) {
-        memcpy(dst, src, width*height);
-        return;
-    }
-    for (unsigned y = 0; y < height; y++) {
-        memcpy(dst, src, width);
-        src += src_pitch;
-        dst += dst_pitch;
-    }
+            || pixfmt == VideoFormat::Format_NV12|| pixfmt == VideoFormat::Format_NV21
+            || pixfmt == VideoFormat::Format_UYVY || pixfmt == VideoFormat::Format_YUYV
+            ;
 }
 
 static void SplitPlanes(quint8 *dstu, size_t dstu_pitch,
@@ -385,7 +387,7 @@ void CopyFromNv12(quint8 *dst[], size_t dst_pitch[],
                   const quint8 *src[2], size_t src_pitch[2],
                   unsigned width, unsigned height)
 {
-    CopyPlane(dst[0], dst_pitch[0], src[0], src_pitch[0], width, height);
+    VideoFrame::copyPlane(dst[0], dst_pitch[0], src[0], src_pitch[0], width, height);
     SplitPlanes(dst[2], dst_pitch[2], dst[1], dst_pitch[1], src[1], src_pitch[1], width/2, height/2);
 }
 
@@ -393,23 +395,48 @@ void CopyFromYv12(quint8 *dst[], size_t dst_pitch[],
                   const quint8 *src[3], size_t src_pitch[3],
                   unsigned width, unsigned height)
 {
-     CopyPlane(dst[0], dst_pitch[0], src[0], src_pitch[0], width, height);
-     CopyPlane(dst[1], dst_pitch[1], src[1], src_pitch[1], width/2, height/2);
-     CopyPlane(dst[2], dst_pitch[2], src[2], src_pitch[2], width/2, height/2);
+     VideoFrame::copyPlane(dst[0], dst_pitch[0], src[0], src_pitch[0], width, height);
+     VideoFrame::copyPlane(dst[1], dst_pitch[1], src[1], src_pitch[1], width/2, height/2);
+     VideoFrame::copyPlane(dst[2], dst_pitch[2], src[2], src_pitch[2], width/2, height/2);
+}
+
+void CopyFromYv12_2(quint8 *dst[], size_t dst_pitch[],
+                  const quint8 *src[3], size_t src_pitch[3],
+                  unsigned width, unsigned height)
+{
+     VideoFrame::copyPlane(dst[0], dst_pitch[0], src[0], src_pitch[0], width, height);
+     width /= 2;
+     height /= 2;
+     if (width == dst_pitch[1] && dst_pitch[1] == src_pitch[1]) {
+         VideoFrame::copyPlane(dst[1], dst_pitch[1], src[1], src_pitch[1], width, height);
+         VideoFrame::copyPlane(dst[2], dst_pitch[2], src[2], src_pitch[2], width, height);
+     } else {
+         for (unsigned i = 0; i < height; ++i) {
+             memcpy(dst[2], src[2], width);
+             memcpy(dst[1], src[1], width);
+             src[1] += src_pitch[1];
+             src[2] += src_pitch[2];
+             dst[1] += dst_pitch[1];
+             dst[2] += dst_pitch[2];
+         }
+     }
 }
 
 bool XVRenderer::receiveFrame(const VideoFrame& frame)
 {
     DPTR_D(XVRenderer);
-    if (frame.isValid()) {
-        if (!d.prepareImage(frame.width(), frame.height()))
-            return false;
+    if (!frame.isValid()) {
+        d.update_background = true;
+        d.video_frame = VideoFrame(); // fill background
+        updateUi();
+        return true;
     }
+    if (!d.ensureImage(frame.width(), frame.height(), frame.format().pixelFormat()))
+        return false;
     if (frame.constBits(0))
         d.video_frame = frame;
     else // FIXME: not work
         d.video_frame = frame.to(frame.pixelFormat()); // assume frame format is supported
-#if 1
     int nb_planes = d.video_frame.planeCount();
     QVector<size_t> src_linesize(nb_planes);
     QVector<const quint8*> src(nb_planes);
@@ -417,7 +444,6 @@ bool XVRenderer::receiveFrame(const VideoFrame& frame)
         src[i] = d.video_frame.constBits(i);
         src_linesize[i] = d.video_frame.bytesPerLine(i);
     }
-#endif
     //swap UV
     quint8* dst[] = {
         (quint8*)(d.xv_image->data + d.xv_image->offsets[0]),
@@ -429,32 +455,11 @@ bool XVRenderer::receiveFrame(const VideoFrame& frame)
         (size_t)d.xv_image->pitches[2],
         (size_t)d.xv_image->pitches[1]
     };
+    // TODO: if not using shm and linesizes match, no copy is required. but seems no benefit
     switch (d.video_frame.pixelFormat()) {
     case VideoFormat::Format_YUV420P:
-    case VideoFormat::Format_YV12: {
-#if 1
-        CopyFromYv12(dst, dst_linesize, src.data(), src_linesize.data(), dst_linesize[0], d.xv_image->height);
-#else
-        const uchar *src[] = {
-            d.video_frame.constBits(0),
-            d.video_frame.constBits(1),
-            d.video_frame.constBits(2)
-        };
-        unsigned src_linesize[] = {
-            (unsigned)d.video_frame.bytesPerLine(0),
-            (unsigned)d.video_frame.bytesPerLine(1),
-            (unsigned)d.video_frame.bytesPerLine(2)
-        };
-#define COPY_YV12 1
-#if COPY_YV12
-        CopyYV12(d.xv_image->data, src, d.xv_image->pitches[0],d.xv_image->pitches[1], src_linesize, d.xv_image->height);
-#else
-        CopyPlane(d.xv_image->data + d.xv_image->offsets[0], src[0], d.xv_image->pitches[0], src_linesize[0], d.xv_image->height);
-        CopyPlane(d.xv_image->data + d.xv_image->offsets[2], src[1], d.xv_image->pitches[2], src_linesize[1], d.xv_image->height/2);
-        CopyPlane(d.xv_image->data + d.xv_image->offsets[1], src[2], d.xv_image->pitches[1], src_linesize[2], d.xv_image->height/2);
-#endif
-#endif
-    }
+    case VideoFormat::Format_YV12:
+        CopyFromYv12_2(dst, dst_linesize, src.data(), src_linesize.data(), dst_linesize[0], d.xv_image->height);
         break;
     case VideoFormat::Format_NV12:
         std::swap(dst[1], dst[2]);
@@ -463,6 +468,12 @@ bool XVRenderer::receiveFrame(const VideoFrame& frame)
         break;
     case VideoFormat::Format_NV21:
         CopyFromNv12(dst, dst_linesize, src.data(), src_linesize.data(), dst_linesize[0], d.xv_image->height);
+        break;
+    case VideoFormat::Format_UYVY:
+    case VideoFormat::Format_YUYV:
+        VideoFrame::copyPlane(dst[0], dst_linesize[0], src[0], src_linesize[0], dst_linesize[0], d.xv_image->height);
+        break;
+    case VideoFormat::Format_BGR24:
         break;
     default:
         break;
@@ -476,37 +487,18 @@ QPaintEngine* XVRenderer::paintEngine() const
     return 0; //use native engine
 }
 
-bool XVRenderer::needUpdateBackground() const
-{
-    DPTR_D(const XVRenderer);
-    return d.update_background && d.out_rect != rect();/* || d.data.isEmpty()*/ //data is always empty because we never copy it now.
-}
-
 void XVRenderer::drawBackground()
 {
-    if (autoFillBackground())
+    const QRegion bgRegion(backgroundRegion());
+    if (bgRegion.isEmpty())
         return;
     DPTR_D(XVRenderer);
-    if (d.video_frame.isValid()) {
-        if (d.out_rect.width() < width()) {
-            XFillRectangle(d.display, winId(), d.gc, 0, 0, (width() - d.out_rect.width())/2, height());
-            XFillRectangle(d.display, winId(), d.gc, d.out_rect.right(), 0, (width() - d.out_rect.width())/2, height());
-        }
-        if (d.out_rect.height() < height()) {
-            XFillRectangle(d.display, winId(), d.gc, 0, 0,  width(), (height() - d.out_rect.height())/2);
-            XFillRectangle(d.display, winId(), d.gc, 0, d.out_rect.bottom(), width(), (height() - d.out_rect.height())/2);
-        }
-    } else {
-        XFillRectangle(d.display, winId(), d.gc, 0, 0, width(), height());
+    // TODO: set color
+    const QVector<QRect> bg(bgRegion.rects());
+    foreach (const QRect& r, bg) {
+        XFillRectangle(d.display, winId(), d.gc, r.x(), r.y(), r.width(), r.height());
     }
-    //FIXME: xv should always draw the background.
-    d.update_background = true;
-}
-
-bool XVRenderer::needDrawFrame() const
-{
-    DPTR_D(const XVRenderer);
-    return  d.xv_image || d.video_frame.isValid();
+    XFlush(d.display);
 }
 
 void XVRenderer::drawFrame()
@@ -539,7 +531,7 @@ void XVRenderer::resizeEvent(QResizeEvent *e)
     DPTR_D(XVRenderer);
     d.update_background = true;
     resizeRenderer(e->size());
-    update();
+    update(); //update background
 }
 
 void XVRenderer::showEvent(QShowEvent *event)

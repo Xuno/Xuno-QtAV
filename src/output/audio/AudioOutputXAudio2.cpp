@@ -21,12 +21,11 @@
 
 #include "QtAV/private/AudioOutputBackend.h"
 #include "QtAV/private/mkid.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 #include <QtCore/QLibrary>
 #include <QtCore/QSemaphore>
 #include "QtAV/private/AVCompat.h"
 #include "utils/Logger.h"
-
 #define DX_LOG_COMPONENT "XAudio2"
 #include "utils/DirectXHelper.h"
 #include "xaudio2_compat.h"
@@ -73,6 +72,7 @@ public:
 
 private:
     bool xaudio2_winsdk;
+    bool uninit_com;
     // TODO: com ptr
     IXAudio2SourceVoice* source_voice;
     union {
@@ -94,16 +94,12 @@ private:
 
 typedef AudioOutputXAudio2 AudioOutputBackendXAudio2;
 static const AudioOutputBackendId AudioOutputBackendId_XAudio2 = mkid::id32base36_6<'X', 'A', 'u', 'd', 'i', 'o'>::value;
-FACTORY_REGISTER_ID_AUTO(AudioOutputBackend, XAudio2, kName)
-
-void RegisterAudioOutputXAudio2_Man()
-{
-    FACTORY_REGISTER_ID_MAN(AudioOutputBackend, XAudio2, kName)
-}
+FACTORY_REGISTER(AudioOutputBackend, XAudio2, kName)
 
 AudioOutputXAudio2::AudioOutputXAudio2(QObject *parent)
     : AudioOutputBackend(AudioOutput::DeviceFeatures()|AudioOutput::SetVolume, parent)
     , xaudio2_winsdk(true)
+    , uninit_com(false)
     , source_voice(NULL)
     , queue_data_write(0)
 {
@@ -112,11 +108,12 @@ AudioOutputXAudio2::AudioOutputXAudio2(QObject *parent)
     //setDeviceFeatures(AudioOutput::DeviceFeatures()|AudioOutput::SetVolume);
 #ifdef Q_OS_WINRT
     qDebug("XAudio2 for WinRT");
+    // winrt can only load package dlls
+    DX_ENSURE(XAudio2Create(&winsdk.xaudio, 0, XAUDIO2_DEFAULT_PROCESSOR));
 #else
-    //required by XAudio2. This simply starts up the COM library on this thread
-    // TODO: in my tests, it's not required by xp, win7, win8.1, winrt
-    CoInitializeEx(NULL, COINIT_MULTITHREADED);
-#endif //Q_OS_WINRT
+    // https://github.com/wang-bin/QtAV/issues/518
+    // already initialized in qtcore for main thread. If RPC_E_CHANGED_MODE no ref is added, CoUninitialize can lead to crash
+    uninit_com = CoInitializeEx(NULL, COINIT_MULTITHREADED) != RPC_E_CHANGED_MODE;
     // load dll. <win8: XAudio2_7.DLL, <win10: XAudio2_8.DLL, win10: XAudio2_9.DLL. also defined by XAUDIO2_DLL_A in xaudio2.h
     int ver = 9;
     for (; ver >= 0; ver--) {
@@ -159,6 +156,7 @@ AudioOutputXAudio2::AudioOutputXAudio2(QObject *parent)
             break;
         dll.unload();
     }
+#endif //Q_OS_WINRT
     qDebug("xaudio2: %p", winsdk.xaudio);
     available = !!(winsdk.xaudio);
 }
@@ -172,7 +170,8 @@ AudioOutputXAudio2::~AudioOutputXAudio2()
         SafeRelease(&dxsdk.xaudio);
 #ifndef Q_OS_WINRT
     //again, for COM. not for winrt
-    CoUninitialize();
+    if (uninit_com)
+        CoUninitialize();
 #endif //Q_OS_WINRT
 }
 
@@ -252,15 +251,14 @@ bool AudioOutputXAudio2::isSupported(const AudioFormat& format) const
 
 bool AudioOutputXAudio2::isSupported(AudioFormat::SampleFormat sampleFormat) const
 {
-    return !AudioFormat::isPlanar(sampleFormat);
+    return !AudioFormat::isPlanar(sampleFormat) && sampleFormat != AudioFormat::SampleFormat_Double;
 }
 
 // FIXME:
 bool AudioOutputXAudio2::isSupported(AudioFormat::ChannelLayout channelLayout) const
 {
-    return channelLayout == AudioFormat::ChannelLayout_Mono || channelLayout == AudioFormat::ChannelLayout_Stero;
+    return channelLayout == AudioFormat::ChannelLayout_Mono || channelLayout == AudioFormat::ChannelLayout_Stereo;
 }
-
 
 AudioOutputBackend::BufferControl AudioOutputXAudio2::bufferControl() const
 {

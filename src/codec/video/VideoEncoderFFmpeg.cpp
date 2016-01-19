@@ -23,7 +23,7 @@
 #include "QtAV/private/AVEncoder_p.h"
 #include "QtAV/private/AVCompat.h"
 #include "QtAV/private/mkid.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 #include "QtAV/version.h"
 #include "utils/Logger.h"
 
@@ -46,12 +46,7 @@ public:
 };
 
 static const VideoEncoderId VideoEncoderId_FFmpeg = mkid::id32base36_6<'F', 'F', 'm', 'p', 'e', 'g'>::value;
-FACTORY_REGISTER_ID_AUTO(VideoEncoder, FFmpeg, "FFmpeg")
-
-void RegisterVideoEncoderFFmpeg_Man()
-{
-    FACTORY_REGISTER_ID_MAN(VideoEncoder, FFmpeg, "FFmpeg")
-}
+FACTORY_REGISTER(VideoEncoder, FFmpeg, "FFmpeg")
 
 class VideoEncoderFFmpegPrivate Q_DECL_FINAL: public VideoEncoderPrivate
 {
@@ -126,12 +121,12 @@ bool VideoEncoderFFmpegPrivate::open()
         av_dict_set(&dict, "tune", "zerolatency", 0);
         av_dict_set(&dict, "profile", "main", 0);
     }
-#ifdef AV_CODEC_ID_H265
-    if(avctx->codec_id == AV_CODEC_ID_H265){
+#ifdef FF_PROFILE_HEVC_MAIN
+    if(avctx->codec_id == AV_CODEC_ID_HEVC){
         av_dict_set(&dict, "preset", "ultrafast", 0);
         av_dict_set(&dict, "tune", "zero-latency", 0);
     }
-#endif //AV_CODEC_ID_H265
+#endif //FF_PROFILE_HEVC_MAIN
 #endif
     applyOptionsForContext();
     AV_ENSURE_OK(avcodec_open2(avctx, codec, &dict), false);
@@ -205,7 +200,9 @@ bool VideoEncoderFFmpeg::encode(const VideoFrame &frame)
     d.nb_encoded++;
     if (!got_packet) {
         qWarning("no packet got");
-        return false; //false
+        d.packet = Packet();
+        // invalid frame means eof
+        return frame.isValid();
     }
    // qDebug("enc avpkt.pts: %lld, dts: %lld.", pkt.pts, pkt.dts);
     d.packet = Packet::fromAVPacket(&pkt, av_q2d(d.avctx->time_base));

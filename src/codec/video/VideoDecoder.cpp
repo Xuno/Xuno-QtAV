@@ -19,51 +19,61 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
 
-#include <QtAV/VideoDecoder.h>
-#include <QtAV/private/AVDecoder_p.h>
-#include <QtCore/QSize>
+#include "QtAV/VideoDecoder.h"
+#include "QtAV/private/AVDecoder_p.h"
 #include "QtAV/private/factory.h"
 #include "utils/Logger.h"
 
 namespace QtAV {
-
 FACTORY_DEFINE(VideoDecoder)
-
-extern void RegisterVideoDecoderFFmpeg_Man();
-extern void RegisterVideoDecoderDXVA_Man();
-extern void RegisterVideoDecoderCUDA_Man();
-extern void RegisterVideoDecoderVAAPI_Man();
-extern void RegisterVideoDecoderVDA_Man();
-extern void RegisterVideoDecoderCedarv_Man();
 
 void VideoDecoder_RegisterAll()
 {
+    extern bool RegisterVideoDecoderFFmpeg_Man();
     RegisterVideoDecoderFFmpeg_Man();
 #if QTAV_HAVE(DXVA)
+    extern bool RegisterVideoDecoderDXVA_Man();
     RegisterVideoDecoderDXVA_Man();
 #endif //QTAV_HAVE(DXVA)
 #if QTAV_HAVE(CUDA)
+    extern bool RegisterVideoDecoderCUDA_Man();
     RegisterVideoDecoderCUDA_Man();
 #endif //QTAV_HAVE(CUDA)
 #if QTAV_HAVE(VAAPI)
+    extern bool RegisterVideoDecoderVAAPI_Man();
     RegisterVideoDecoderVAAPI_Man();
 #endif //QTAV_HAVE(VAAPI)
+#if QTAV_HAVE(VIDEOTOOLBOX)
+    extern bool RegisterVideoDecoderVideoToolbox_Man();
+    RegisterVideoDecoderVideoToolbox_Man();
+#endif //QTAV_HAVE(VIDEOTOOLBOX)
 #if QTAV_HAVE(VDA)
+    extern bool RegisterVideoDecoderVDA_Man();
     RegisterVideoDecoderVDA_Man();
 #endif //QTAV_HAVE(VDA)
 #if QTAV_HAVE(CEDARV)
+    extern bool RegisterVideoDecoderCedarv_Man();
     RegisterVideoDecoderCedarv_Man();
 #endif //QTAV_HAVE(CEDARV)
 }
-
-VideoDecoder* VideoDecoder::create(VideoDecoderId id)
+QVector<VideoDecoderId> VideoDecoder::registered()
 {
-    return VideoDecoderFactory::create(id);
+    return QVector<VideoDecoderId>::fromStdVector(VideoDecoderFactory::Instance().registeredIds());
 }
 
-VideoDecoder* VideoDecoder::create(const QString& name)
+QStringList VideoDecoder::supportedCodecs()
 {
-    return VideoDecoderFactory::create(VideoDecoderFactory::id(name.toUtf8().constData(), false));
+    static QStringList codecs;
+    if (!codecs.isEmpty())
+        return codecs;
+    avcodec_register_all();
+    AVCodec* c = NULL;
+    while ((c=av_codec_next(c))) {
+        if (!av_codec_is_decoder(c) || c->type != AVMEDIA_TYPE_VIDEO)
+            continue;
+        codecs.append(QString::fromLatin1(c->name));
+    }
+    return codecs;
 }
 
 VideoDecoder::VideoDecoder(VideoDecoderPrivate &d):
@@ -73,33 +83,6 @@ VideoDecoder::VideoDecoder(VideoDecoderPrivate &d):
 
 QString VideoDecoder::name() const
 {
-    return QLatin1String(VideoDecoderFactory::name(id()).c_str());
+    return QLatin1String(VideoDecoder::name(id()));
 }
-
-void VideoDecoder::resizeVideoFrame(const QSize &size)
-{
-    resizeVideoFrame(size.width(), size.height());
-}
-
-/*
- * width, height: the decoded frame size
- * 0, 0 to reset to original video frame size
- */
-void VideoDecoder::resizeVideoFrame(int width, int height)
-{
-    DPTR_D(VideoDecoder);
-    d.width = width;
-    d.height = height;
-}
-
-int VideoDecoder::width() const
-{
-    return d_func().width;
-}
-
-int VideoDecoder::height() const
-{
-    return d_func().height;
-}
-
 } //namespace QtAV

@@ -23,10 +23,26 @@
 #include "QtAV/AudioFormat.h"
 #include "QtAV/private/AudioResampler_p.h"
 #include "QtAV/private/factory.h"
+#include "utils/Logger.h"
 
 namespace QtAV {
-
 FACTORY_DEFINE(AudioResampler)
+
+extern bool RegisterAudioResamplerFF_Man();
+extern bool RegisterAudioResamplerLibav_Man();
+void AudioResampler::registerAll()
+{
+    static bool done = false;
+    if (done)
+        return;
+    done = true;
+#if QTAV_HAVE(SWRESAMPLE)
+    RegisterAudioResamplerFF_Man();
+#endif
+#if QTAV_HAVE(AVRESAMPLE)
+    RegisterAudioResamplerLibav_Man();
+#endif
+}
 
 AudioResampler::AudioResampler()
 {

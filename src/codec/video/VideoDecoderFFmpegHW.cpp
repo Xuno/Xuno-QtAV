@@ -57,13 +57,8 @@ static int ffmpeg_get_va_buffer2(struct AVCodecContext *ctx, AVFrame *frame, int
         frame->buf[i] = NULL;
     }
     //frame->reordered_opaque = ctx->reordered_opaque; //?? xbmc
+    // va must be available here
     VideoDecoderFFmpegHWPrivate *va = (VideoDecoderFFmpegHWPrivate*)ctx->opaque;
-    /* hwaccel_context is not present in old ffmpeg version */
-    // not coded_width. assume coded_width is 6 aligned of width. ??
-    if (!va->setup(ctx)) {
-        qWarning("va Setup failed");
-        return -1;
-    }
     if (!va->getBuffer(&frame->opaque, &frame->data[0])) {
         qWarning("va->getBuffer failed");
         return -1;
@@ -95,11 +90,7 @@ static int ffmpeg_get_va_buffer(struct AVCodecContext *c, AVFrame *ff)//vlc_va_t
     ff->age = 256*256*256*64;
 #endif
     /* hwaccel_context is not present in old ffmpeg version */
-    // not coded_width. assume coded_width is 6 aligned of width. ??
-    if (!va->setup(c)) {
-        qWarning("va Setup failed");
-        return -1;
-    }
+    // va must be available here
     if (!va->getBuffer(&ff->opaque, &ff->data[0]))
         return -1;
 
@@ -138,14 +129,7 @@ bool VideoDecoderFFmpegHWPrivate::prepare()
             break;
     }
     //// From vlc end
-    //TODO: neccesary?
-#if 0
-    if (!setup(codec_ctx)) {
-        qWarning("Setup va failed.");
-        return false;
-    }
-#endif
-    codec_ctx->opaque = this; //is it ok?
+    codec_ctx->opaque = this;
 
     pixfmt = codec_ctx->pix_fmt;
     get_format = codec_ctx->get_format;
@@ -182,44 +166,24 @@ AVPixelFormat VideoDecoderFFmpegHWPrivate::getFormat(struct AVCodecContext *p_co
         if (hwaccel)
             can_hwaccel = true;
     }
-
     if (!can_hwaccel)
         goto end;
-
-    /* Profile and level information is needed now.
-     * TODO: avoid code duplication with avcodec.c */
-#if 0
-    if (p_context->profile != FF_PROFILE_UNKNOWN)
-        p_dec->fmt_in.i_profile = p_context->profile;
-    if (p_context->level != FF_LEVEL_UNKNOWN)
-        p_dec->fmt_in.i_level = p_context->level;
-#endif
-    for (size_t i = 0; pi_fmt[i] != PIX_FMT_NONE; i++) {
+    for (size_t i = 0; pi_fmt[i] != QTAV_PIX_FMT_C(NONE); i++) {
         if (vaPixelFormat() != pi_fmt[i])
             continue;
-
-        /* We try to call vlc_va_Setup when possible to detect errors when
-         * possible (later is too late) */
+        /* We try to call setup when possible to detect errors when possible (later is too late) */
         if (p_context->width > 0 && p_context->height > 0
          && !setup(p_context)) {
             qWarning("acceleration setup failure");
             break;
         }
-
         qDebug("Using %s for hardware decoding.", qPrintable(description));
-
-        /* FIXME this will disable direct rendering
-         * even if a new pixel format is renegotiated
-         */
-        //p_sys->b_direct_rendering = false;
-        p_context->draw_horiz_band = NULL;
+        p_context->draw_horiz_band = NULL; //??
         return pi_fmt[i];
     }
-
     close();
-    //vlc_va_Delete(p_va);
 end:
-    qWarning("acceleration not available" );
+    qWarning("hardware acceleration is not available" );
     /* Fallback to default behaviour */
     return avcodec_default_get_format(p_context, pi_fmt);
 }
@@ -261,6 +225,31 @@ VideoDecoderFFmpegHW::VideoDecoderFFmpegHW(VideoDecoderFFmpegHWPrivate &d):
                 .arg(tr("Not implemented for all codecs"))
                 .arg(tr("OptimizedCopy: copy from USWC memory optimized by SSE4.1"))
                 .arg(tr("GenericCopy: slowest. Generic cpu copy")));
+    setProperty("detail_threads", QString("%1\n%2\n%3")
+                .arg(tr("Number of decoding threads. Set before open. Maybe no effect for some decoders"))
+                .arg(tr("0: auto"))
+                .arg(tr("1: single thread decoding")));
+    Q_UNUSED(QObject::tr("ZeroCopy"));
+    Q_UNUSED(QObject::tr("OptimizedCopy"));
+    Q_UNUSED(QObject::tr("LazyCopy"));
+    Q_UNUSED(QObject::tr("GenericCopy"));
+    Q_UNUSED(QObject::tr("copyMode"));
+}
+
+void VideoDecoderFFmpegHW::setThreads(int value)
+{
+    DPTR_D(VideoDecoderFFmpegHW);
+    if (d.threads == value)
+        return;
+    d.threads = value;
+    if (d.codec_ctx)
+        av_opt_set_int(d.codec_ctx, "threads", (int64_t)value, 0);
+    Q_EMIT threadsChanged();
+}
+
+int VideoDecoderFFmpegHW::threads() const
+{
+    return d_func().threads;
 }
 
 void VideoDecoderFFmpegHW::setCopyMode(CopyMode value)
@@ -293,7 +282,7 @@ VideoFrame VideoDecoderFFmpegHW::copyToFrame(const VideoFormat& fmt, int surface
         if (!src[i])
             src[i] = src[i-1] + pitch[i-1]*h[i-1];
     }
-    if (swapUV) {
+    if (swapUV && nb_planes > 2) {
         std::swap(src[1], src[2]);
         std::swap(pitch[1], pitch[2]);
     }
@@ -316,11 +305,11 @@ VideoFrame VideoDecoderFFmpegHW::copyToFrame(const VideoFormat& fmt, int surface
             plane_ptr += pitch[i] * h[i];
             d.gpu_mem.copyFrame(src[i], dst[i], pitch[i], h[i], pitch[i]);
         }
-        frame = VideoFrame(buf, width(), height(), fmt);
+        frame = VideoFrame(d.width, d.height, fmt, buf);
         frame.setBits(dst);
         frame.setBytesPerLine(pitch);
     } else {
-        frame = VideoFrame(width(), height(), fmt);
+        frame = VideoFrame(d.width, d.height, fmt);
         frame.setBits(src);
         frame.setBytesPerLine(pitch);
         // TODO: why clone is faster()?

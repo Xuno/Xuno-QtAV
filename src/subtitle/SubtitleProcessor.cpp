@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -20,7 +20,6 @@
 ******************************************************************************/
 
 #include "QtAV/private/SubtitleProcessor.h"
-#include "QtAV/FactoryDefine.h"
 #include "QtAV/private/factory.h"
 #include <QtCore/QFile>
 #include "utils/Logger.h"
@@ -29,10 +28,26 @@ namespace QtAV {
 
 FACTORY_DEFINE(SubtitleProcessor)
 
+// can not declare in class member
+extern bool RegisterSubtitleProcessorFFmpeg_Man();
+extern bool RegisterSubtitleProcessorLibASS_Man();
+void SubtitleProcessor::registerAll()
+{
+    static bool done = false;
+    if (done)
+        return;
+    done = true;
+    RegisterSubtitleProcessorFFmpeg_Man();
+#if QTAV_HAVE(LIBASS)
+    RegisterSubtitleProcessorLibASS_Man();
+#endif
+}
+
 SubtitleProcessor::SubtitleProcessor()
     : m_width(0)
     , m_height(0)
-{}
+{
+}
 
 bool SubtitleProcessor::process(const QString &path)
 {

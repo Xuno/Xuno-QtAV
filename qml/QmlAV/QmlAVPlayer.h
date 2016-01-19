@@ -107,11 +107,11 @@ public:
     };
     // currently supported channels<3.
     enum ChannelLayout {
-        ChannelLayoutAuto, //the same as source if channels<=2. otherwise resamples to stero
+        ChannelLayoutAuto, //the same as source if channels<=2. otherwise resamples to stereo
         Left,
         Right,
         Mono,
-        Stero
+        Stereo
     };
 
     explicit QmlAVPlayer(QObject *parent = 0);
@@ -210,7 +210,8 @@ public Q_SLOTS:
     void play();
     void pause();
     void stop();
-    void nextFrame();
+    void stepForward();
+    void stepBackward();
     void seek(int offset);
     void seekForward();
     void seekBackward();

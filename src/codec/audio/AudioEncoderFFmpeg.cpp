@@ -23,7 +23,7 @@
 #include "QtAV/private/AVEncoder_p.h"
 #include "QtAV/private/AVCompat.h"
 #include "QtAV/private/mkid.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 #include "QtAV/version.h"
 #include "utils/Logger.h"
 
@@ -46,12 +46,7 @@ public:
 };
 
 static const AudioEncoderId AudioEncoderId_FFmpeg = mkid::id32base36_6<'F', 'F', 'm', 'p', 'e', 'g'>::value;
-FACTORY_REGISTER_ID_AUTO(AudioEncoder, FFmpeg, "FFmpeg")
-
-void RegisterAudioEncoderFFmpeg_Man()
-{
-    FACTORY_REGISTER_ID_MAN(AudioEncoder, FFmpeg, "FFmpeg")
-}
+FACTORY_REGISTER(AudioEncoder, FFmpeg, "FFmpeg")
 
 class AudioEncoderFFmpegPrivate Q_DECL_FINAL: public AudioEncoderPrivate
 {
@@ -118,11 +113,13 @@ bool AudioEncoderFFmpegPrivate::open()
     }
     if (format.channelLayout() == AudioFormat::ChannelLayout_Unsupported) {
         if (codec->channel_layouts) {
-            qDebug("use first supported channel layout: %lld", codec->channel_layouts[0]);
+            char cl[128];
+            av_get_channel_layout_string(cl, sizeof(cl), -1, codec->channel_layouts[0]); //TODO: ff version
+            qDebug("use first supported channel layout: %lld", cl);
             format_used.setChannelLayoutFFmpeg((qint64)codec->channel_layouts[0]);
         } else {
-            qWarning("channel layout and supported channel layout are not set. use stero");
-            format_used.setChannelLayout(AudioFormat::ChannelLayout_Stero);
+            qWarning("channel layout and supported channel layout are not set. use stereo");
+            format_used.setChannelLayout(AudioFormat::ChannelLayout_Stereo);
         }
     }
     avctx->sample_fmt = (AVSampleFormat)format_used.sampleFormatFFmpeg();
@@ -138,6 +135,8 @@ bool AudioEncoderFFmpegPrivate::open()
     avctx->bit_rate = bit_rate;
     qDebug() << format_used;
 
+    /** Allow the use of the experimental AAC encoder */
+    avctx->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
     av_dict_set(&dict, "strict", "-2", 0); //aac, vorbis
     applyOptionsForContext();
     // avctx->frame_size will be set in avcodec_open2
@@ -211,11 +210,14 @@ bool AudioEncoderFFmpeg::encode(const AudioFrame &frame)
     av_frame_free(&f);
     if (ret < 0) {
         //qWarning("error avcodec_encode_audio2: %s" ,av_err2str(ret));
+        //av_packet_unref(&pkt); //FIXME
         return false; //false
     }
     if (!got_packet) {
         qWarning("no packet got");
-        return false; //false
+        d.packet = Packet();
+        // invalid frame means eof
+        return frame.isValid();
     }
    // qDebug("enc avpkt.pts: %lld, dts: %lld.", pkt.pts, pkt.dts);
     d.packet = Packet::fromAVPacket(&pkt, av_q2d(d.avctx->time_base));

@@ -22,9 +22,8 @@
 #include "QtAV/MediaIO.h"
 #include "QtAV/private/MediaIO_p.h"
 #include "QtAV/private/mkid.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 #include <QtCore/QFile>
-#include <QtCore/QMetaType>
 #ifndef TEST_QTAV_QIODeviceIO
 #include "utils/Logger.h"
 #else
@@ -61,10 +60,10 @@ Q_SIGNALS:
 protected:
     QIODeviceIO(QIODeviceIOPrivate &d);
 };
-
+typedef QIODeviceIO MediaIOQIODevice;
 static const MediaIOId MediaIOId_QIODevice = mkid::id32base36_6<'Q','I','O','D','e','v'>::value;
 static const char kQIODevName[] = "QIODevice";
-FACTORY_REGISTER_ID_TYPE(MediaIO, MediaIOId_QIODevice, QIODeviceIO, kQIODevName)
+FACTORY_REGISTER(MediaIO, QIODevice, kQIODevName)
 
 class QIODeviceIOPrivate : public MediaIOPrivate
 {
@@ -127,9 +126,9 @@ bool QIODeviceIO::seek(qint64 offset, int from)
     DPTR_D(QIODeviceIO);
     if (!d.dev)
         return false;
-    if (from == 2) {
+    if (from == SEEK_END) {
         offset = d.dev->size() - offset;
-    } else if (from == 1) {
+    } else if (from == SEEK_CUR) {
         offset = d.dev->pos() + offset;
     }
     return d.dev->seek(offset);
@@ -161,7 +160,7 @@ public:
     QString name() const Q_DECL_OVERRIDE { return QLatin1String(kQFileName);}
     const QStringList& protocols() const Q_DECL_OVERRIDE
     {
-        static QStringList p = QStringList() << QStringLiteral("") << QStringLiteral("qrc");
+        static QStringList p = QStringList() << QStringLiteral("") << QStringLiteral("qrc") << QStringLiteral("qfile");
         return p;
     }
 protected:
@@ -169,9 +168,9 @@ protected:
 private:
     using QIODeviceIO::setDevice;
 };
-
+typedef QFileIO MediaIOQFile;
 static const MediaIOId MediaIOId_QFile = mkid::id32base36_5<'Q','F','i','l','e'>::value;
-FACTORY_REGISTER_ID_TYPE(MediaIO, MediaIOId_QFile, QFileIO, kQFileName)
+FACTORY_REGISTER(MediaIO, QFile, kQFileName)
 
 class QFileIOPrivate Q_DECL_FINAL: public QIODeviceIOPrivate
 {
@@ -196,8 +195,36 @@ void QFileIO::onUrlChanged()
     if (d.file.isOpen())
         d.file.close();
     QString path(url());
-    if (path.startsWith(QLatin1String("qrc:")))
+    if (path.startsWith(QLatin1String("qrc:"))) {
         path = path.mid(3);
+    } else if (path.startsWith(QLatin1String("qfile:"))) {
+        path = path.mid(6);
+#ifdef Q_OS_WIN
+        int p = path.indexOf(QLatin1Char(':'));
+        if (p < 1) {
+            qWarning("invalid path. ':' wrong position");
+            return;
+        }
+        p -= 1;
+        QChar c = path.at(p).toUpper();
+        if (c < QLatin1Char('A') || c > QLatin1Char('Z')) {
+            qWarning("invalid path. wrong driver");
+            return;
+        }
+        const QString path_maybe = path.mid(p);
+        qDebug() << path_maybe;
+        --p;
+        while (p > 0) {
+            c = path.at(p);
+            if (c != QLatin1Char('\\') && c != QLatin1Char('/')) {
+                qWarning("invalid path. wrong dir seperator");
+                return;
+            }
+            --p;
+        }
+        path = path_maybe;
+#endif
+    }
     d.file.setFileName(path);
     if (path.isEmpty())
         return;

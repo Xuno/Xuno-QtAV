@@ -30,7 +30,7 @@ namespace QtAV {
 class AudioEncodeFilterPrivate Q_DECL_FINAL : public AudioFilterPrivate
 {
 public:
-    AudioEncodeFilterPrivate() : enc(0) {}
+    AudioEncodeFilterPrivate() : enc(0), start_time(0) {}
     ~AudioEncodeFilterPrivate() {
         if (enc) {
             enc->close();
@@ -39,6 +39,7 @@ public:
     }
 
     AudioEncoder* enc;
+    qint64 start_time;
 };
 
 AudioEncodeFilter::AudioEncodeFilter(QObject *parent)
@@ -53,13 +54,27 @@ AudioEncoder* AudioEncodeFilter::createEncoder(const QString &name)
         d.enc->close();
         delete d.enc;
     }
-    d.enc = AudioEncoder::create(name);
+    d.enc = AudioEncoder::create(name.toLatin1().constData());
     return d.enc;
 }
 
 AudioEncoder* AudioEncodeFilter::encoder() const
 {
     return d_func().enc;
+}
+
+qint64 AudioEncodeFilter::startTime() const
+{
+    return d_func().start_time;
+}
+
+void AudioEncodeFilter::setStartTime(qint64 value)
+{
+    DPTR_D(AudioEncodeFilter);
+    if (d.start_time == value)
+        return;
+    d.start_time = value;
+    Q_EMIT startTimeChanged(value);
 }
 
 void AudioEncodeFilter::process(Statistics *statistics, AudioFrame *frame)
@@ -75,17 +90,30 @@ void AudioEncodeFilter::encode(const AudioFrame& frame)
         return;
     // encode delayed frames can pass an invalid frame
     if (!d.enc->isOpen() && frame.isValid()) {
+#if 0 //TODO: if set the input format, check whether it is supported in open()
+        if (!d.enc->audioFormat().isValid()) {
+            AudioFormat af(frame.format());
+            //if (af.isPlanar())
+              //  af.setSampleFormat(AudioFormat::packedSampleFormat(af.sampleFormat()));
+            af.setSampleFormat(AudioFormat::SampleFormat_Unknown);
+            d.enc->setAudioFormat(af);
+        }
+#endif
         if (!d.enc->open()) { // TODO: error()
-            qWarning("Failed to open encoder");
+            qWarning("Failed to open audio encoder");
             return;
         }
         Q_EMIT readyToEncode();
     }
+    if (frame.timestamp()*1000.0 < startTime())
+        return;
     // TODO: async
     AudioFrame f(frame);
     if (f.format() != d.enc->audioFormat())
         f = f.to(d.enc->audioFormat());
     if (!d.enc->encode(f))
+        return;
+    if (!d.enc->encoded().isValid())
         return;
     Q_EMIT frameEncoded(d.enc->encoded());
 }
@@ -94,7 +122,7 @@ void AudioEncodeFilter::encode(const AudioFrame& frame)
 class VideoEncodeFilterPrivate Q_DECL_FINAL : public VideoFilterPrivate
 {
 public:
-    VideoEncodeFilterPrivate() : enc(0) {}
+    VideoEncodeFilterPrivate() : enc(0), start_time(0) {}
     ~VideoEncodeFilterPrivate() {
         if (enc) {
             enc->close();
@@ -103,6 +131,7 @@ public:
     }
 
     VideoEncoder* enc;
+    qint64 start_time;
 };
 
 VideoEncodeFilter::VideoEncodeFilter(QObject *parent)
@@ -117,13 +146,27 @@ VideoEncoder* VideoEncodeFilter::createEncoder(const QString &name)
         d.enc->close();
         delete d.enc;
     }
-    d.enc = VideoEncoder::create(name);
+    d.enc = VideoEncoder::create(name.toLatin1().constData());
     return d.enc;
 }
 
 VideoEncoder* VideoEncodeFilter::encoder() const
 {
     return d_func().enc;
+}
+
+qint64 VideoEncodeFilter::startTime() const
+{
+    return d_func().start_time;
+}
+
+void VideoEncodeFilter::setStartTime(qint64 value)
+{
+    DPTR_D(VideoEncodeFilter);
+    if (d.start_time == value)
+        return;
+    d.start_time = value;
+    Q_EMIT startTimeChanged(value);
 }
 
 void VideoEncodeFilter::process(Statistics *statistics, VideoFrame *frame)
@@ -142,7 +185,7 @@ void VideoEncodeFilter::encode(const VideoFrame& frame)
         d.enc->setWidth(frame.width());
         d.enc->setHeight(frame.height());
         if (!d.enc->open()) { // TODO: error()
-            qWarning("Failed to open encoder");
+            qWarning("Failed to open video encoder");
             return;
         }
         Q_EMIT readyToEncode();
@@ -151,11 +194,15 @@ void VideoEncodeFilter::encode(const VideoFrame& frame)
         qWarning("Frame size (%dx%d) and video encoder size (%dx%d) mismatch! Close encoder please.", d.enc->width(), d.enc->height(), frame.width(), frame.height());
         return;
     }
+    if (frame.timestamp()*1000.0 < startTime())
+        return;
     // TODO: async
     VideoFrame f(frame);
     if (f.pixelFormat() != d.enc->pixelFormat())
         f = f.to(d.enc->pixelFormat());
     if (!d.enc->encode(f))
+        return;
+    if (!d.enc->encoded().isValid())
         return;
     Q_EMIT frameEncoded(d.enc->encoded());
 }

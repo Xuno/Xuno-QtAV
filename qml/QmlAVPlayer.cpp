@@ -23,37 +23,21 @@
 #include <QtAV/AVPlayer.h>
 #include <QtAV/AudioOutput.h>
 #include <QtAV/VideoCapture.h>
-#include <QDebug>
 
-template<typename ID, typename Factory>
+template<typename ID, typename T>
 static QStringList idsToNames(QVector<ID> ids) {
     QStringList decs;
-    foreach (ID id, ids) {
-        decs.append(QString::fromUtf8(Factory::name(id).c_str()));
-    }
-    return decs;
-}
-
-template<typename ID, typename Factory>
-static QVector<ID> idsFromNames(const QStringList& names) {
-    QVector<ID> decs;
-    foreach (const QString& name, names) {
-        if (name.isEmpty())
-            continue;
-        ID id = Factory::id(name.toStdString(), false);
-        if (id == 0)
-            continue;
-        decs.append(id);
+    if (!ids.isEmpty()) {
+        decs.reserve(ids.size());
+        foreach (ID id, ids) {
+            decs.append(QString::fromLatin1(T::name(id)));
+        }
     }
     return decs;
 }
 
 static inline QStringList VideoDecodersToNames(QVector<QtAV::VideoDecoderId> ids) {
-    return idsToNames<QtAV::VideoDecoderId, VideoDecoderFactory>(ids);
-}
-
-static inline QVector<VideoDecoderId> VideoDecodersFromNames(const QStringList& names) {
-    return idsFromNames<QtAV::VideoDecoderId, VideoDecoderFactory>(names);
+    return idsToNames<QtAV::VideoDecoderId, VideoDecoder>(ids);
 }
 
 QmlAVPlayer::QmlAVPlayer(QObject *parent) :
@@ -227,7 +211,7 @@ VideoCapture *QmlAVPlayer::videoCapture() const
 
 QStringList QmlAVPlayer::videoCodecs() const
 {
-    return VideoDecodersToNames(QtAV::GetRegistedVideoDecoderIds());
+    return VideoDecodersToNames(VideoDecoder::registered());
 }
 
 void QmlAVPlayer::setVideoCodecPriority(const QStringList &p)
@@ -236,9 +220,11 @@ void QmlAVPlayer::setVideoCodecPriority(const QStringList &p)
         qWarning("player not ready");
         return;
     }
+    if (mVideoCodecs == p)
+        return;
     mVideoCodecs = p;
-    mpPlayer->setPriority(VideoDecodersFromNames(p));
-    emit videoCodecPriorityChanged();
+    mpPlayer->setVideoDecoderPriority(p);
+    Q_EMIT videoCodecPriorityChanged();
 }
 
 QVariantMap QmlAVPlayer::videoCodecOptions() const
@@ -289,7 +275,7 @@ static AudioFormat::ChannelLayout toAudioFormatChannelLayout(QmlAVPlayer::Channe
     { QmlAVPlayer::Left, AudioFormat::ChannelLayout_Left },
     { QmlAVPlayer::Right, AudioFormat::ChannelLayout_Right },
     { QmlAVPlayer::Mono, AudioFormat::ChannelLayout_Mono },
-    { QmlAVPlayer::Stero, AudioFormat::ChannelLayout_Stero },
+    { QmlAVPlayer::Stereo, AudioFormat::ChannelLayout_Stereo },
     };
     for (uint i = 0; i < sizeof(map)/sizeof(map[0]); ++i) {
         if (map[i].ch == ch)
@@ -605,11 +591,18 @@ void QmlAVPlayer::stop()
     setPlaybackState(StoppedState);
 }
 
-void QmlAVPlayer::nextFrame()
+void QmlAVPlayer::stepForward()
 {
     if (!mpPlayer)
         return;
-    mpPlayer->playNextFrame();
+    mpPlayer->stepForward();
+}
+
+void QmlAVPlayer::stepBackward()
+{
+    if (!mpPlayer)
+        return;
+    return mpPlayer->stepBackward();
 }
 
 void QmlAVPlayer::seek(int offset)

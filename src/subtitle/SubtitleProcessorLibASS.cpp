@@ -26,8 +26,8 @@
 #include <QtCore/QFile>
 #include <QtCore/QMutex>
 #include <QtCore/QThread>
-#include "QtAV/private/prepost.h"
 #include "QtAV/Packet.h"
+#include "QtAV/private/factory.h"
 #include "PlainText.h"
 #include "utils/internal.h"
 #include "utils/Logger.h"
@@ -36,7 +36,7 @@
 //#define CAPI_LINK_ASS
 #include "ass_api.h"
 #include <stdarg.h>
-#include <string>  //include after ass_api.h, stdio.h is included there in a different namespace
+//#include <string>  //include after ass_api.h, stdio.h is included there in a different namespace
 
 namespace QtAV {
 
@@ -87,14 +87,9 @@ private:
 
 static const SubtitleProcessorId SubtitleProcessorId_LibASS = QStringLiteral("qtav.subtitle.processor.libass");
 namespace {
-static const std::string kName("LibASS");
+static const char kName[] = "LibASS";
 }
-FACTORY_REGISTER_ID_AUTO(SubtitleProcessor, LibASS, kName)
-
-void RegisterSubtitleProcessorLibASS_Man()
-{
-    FACTORY_REGISTER_ID_MAN(SubtitleProcessor, LibASS, kName)
-}
+FACTORY_REGISTER(SubtitleProcessor, LibASS, kName)
 
 // log level from ass_utils.h
 #define MSGL_FATAL 0
@@ -170,7 +165,7 @@ SubtitleProcessorId SubtitleProcessorLibASS::id() const
 
 QString SubtitleProcessorLibASS::name() const
 {
-    return QLatin1String(kName.c_str());//SubtitleProcessorFactory::name(id());
+    return QLatin1String(kName);//SubtitleProcessorFactory::name(id());
 }
 
 QStringList SubtitleProcessorLibASS::supportedTypes() const
@@ -450,11 +445,11 @@ void SubtitleProcessorLibASS::updateFontCache()
         return;
     // appdir/fonts/fonts.conf => appfontsdir/fonts.conf
     // TODO: modify fontconfig cache dir in fonts.conf <dir></dir> then save to conf
-    static QString conf; //FC_CONFIG_FILE?
-    if (conf.isEmpty()) {
+    static QString conf(0, QChar()); //FC_CONFIG_FILE?
+    if (conf.isEmpty() && !conf.isNull()) {
         conf = qApp->applicationDirPath().append(QLatin1String("/fonts/fonts.conf"));
         if (!QFile(conf).exists()) {
-            conf =  Internal::Path::appFontsDir().append(QStringLiteral("/fonts.conf"));
+            conf = Internal::Path::appFontsDir().append(QStringLiteral("/fonts.conf"));
             QFile fc(conf);
             if (!fc.exists()) {
                 QFile qrc_fc(QStringLiteral(":/fonts/fonts.conf"));
@@ -464,79 +459,92 @@ void SubtitleProcessorLibASS::updateFontCache()
                             qWarning("Failed to create fonts dir: %s", Internal::Path::appFontsDir().toUtf8().constData());
                         }
                     }
-                    qrc_fc.open(QIODevice::ReadOnly);
-                    fc.open(QIODevice::WriteOnly);
-                    fc.write(qrc_fc.readAll());
-                    qrc_fc.close();
-                    fc.close();
+                    qrc_fc.copy(conf);
                 }
             }
         }
+        if (!QFile(conf).exists())
+            conf.clear();
         qDebug() << "FontConfig: " << conf;
     }
-
     // TODO: let user choose default font or FC
     /*
-     * appdir/fonts has fonts
-     * - has default.ttf: use default.ttf and disable FC.
-     * - no default.ttf: appdir/fonts as FC fonts dir
-     * appFontsDir (appdir/fonts has no fonts)
-     * - no fonts:
-     *      - has qrc:/fonts/default.ttf: disable FC, save to appFontsDir and use the font
-     * - has fonts:
-     *      - has default.ttf and size>0: disable FC, save to appFontsDir and use the font
-     *      - no default.ttf: appFontsDir as FC fonts dir
-     * fontsDir if it has font files (appFontsDir has no fonts and qrc has no default.ttf): as FC fonts dir
+     * Fonts dir look up:
+     * - appdir/fonts has fonts
+     * - assets:/fonts, qrc:/fonts: copy fonts to appFontsDir
+     * - appFontsDir (appdir/fonts has no fonts)
+     * - fontsDir if it has font files
+     * If defaults.ttf exists in fonts dir(for 'assets:' and 'qrc:' appFontsDir is checked), use it as default font and disable font provider
+     * (for example fontconfig) to speed up(skip) libass font look up.
      * Skip setting fonts dir
      */
-    static QString font; // if exists, fontconfig will be disabled and directly use this font
-    static QString fontsdir;
-    if (fontsdir.isEmpty()) {
-        fontsdir = qApp->applicationDirPath().append(QLatin1String("/fonts"));
-        QDir d(fontsdir);
+    static QString sFont(0, QChar()); // if exists, fontconfig will be disabled and directly use this font
+    static QString sFontsDir(0, QChar());
+    if (sFontsDir.isEmpty() && !sFontsDir.isNull()) {
+        // fonts in assets and qrc may change. so check before appFontsDir
+        static const QStringList kFontsDirs = QStringList()
+                << qApp->applicationDirPath().append(QLatin1String("/fonts"))
+                << QStringLiteral("assets:/fonts")
+                << QStringLiteral(":/fonts")
+                << Internal::Path::appFontsDir()
+#ifndef Q_OS_WINRT
+                << Internal::Path::fontsDir()
+#endif
+                   ;
+        static const QString kDefaultFontName(QStringLiteral("default.ttf"));
         static const QStringList ft_filters = QStringList() << QStringLiteral("*.ttf") << QStringLiteral("*.otf") << QStringLiteral("*.ttc");
-        QStringList fonts = d.entryList(ft_filters, QDir::Files);
-        if (fonts.isEmpty()) {
-            fontsdir = Internal::Path::appFontsDir();
-            d = QDir(fontsdir);
+        QStringList fonts;
+        foreach (const QString& fdir, kFontsDirs) {
+            qDebug() << "looking up fonts in: " << fdir;
+            QDir d(fdir);
+            if (!d.exists()) //avoid winrt crash (system fonts dir)
+                continue;
             fonts = d.entryList(ft_filters, QDir::Files);
-            if (fonts.isEmpty()) {
-                QFile qrc_ft(QStringLiteral(":/fonts/default.ttf"));
-                if (qrc_ft.exists() && qrc_ft.size() > 0) {
-                    if (!QDir(Internal::Path::appFontsDir()).exists()) {
-                        if (!QDir().mkpath(Internal::Path::appFontsDir())) {
-                            qWarning("Failed to create fonts dir: %s", Internal::Path::appFontsDir().toUtf8().constData());
-                        }
-                    }
-                    font = fontsdir.append(QStringLiteral("/default.ttf"));
-                    QFile ft(font);
-                    qrc_ft.open(QIODevice::ReadOnly);
-                    ft.open(QIODevice::WriteOnly);
-                    ft.write(qrc_ft.readAll());
-                    qrc_ft.close();
-                    ft.close();
-                } else {
-                    qDebug() << "No fonts in appFontsDir '" << fontsdir << "'' and no default font in qrc";
-                    fontsdir = Internal::Path::fontsDir(); //maybe empty (winrt)
-                    d = QDir(fontsdir);
-                    fonts = d.entryList(ft_filters, QDir::Files);
-                    if (fonts.isEmpty())
-                        fontsdir = QString();
-                    //if (fontsdir.isEmpty())
-                      //  fontsdir = Internal::Path::appFontsDir();
-                }
-            } else {
-                // check appFontsDir/default.ttf
-                qDebug() << "fonts dir: " << fontsdir << "  font files: " << fonts;
-                if (fonts.contains(QLatin1String("default.ttf"), Qt::CaseInsensitive)) {
-                    font = fontsdir.append(QStringLiteral("/default.ttf"));
+            if (fonts.isEmpty())
+                continue;
+            if (fonts.contains(kDefaultFontName)) {
+                QFile ff(QStringLiteral("%1/%2").arg(fdir).arg(kDefaultFontName));
+                if (ff.exists() && ff.size() == 0) {
+                    qDebug("invalid default font");
+                    fonts.clear();
+                    continue;
                 }
             }
+            sFontsDir = fdir;
+            break;
+        }
+        if (fonts.isEmpty()) {
+            sFontsDir.clear();
         } else {
-            // check appdir/fonts/default.ttf
-            qDebug() << "fonts dir: " << fontsdir << "  font files: " << fonts;
-            if (fonts.contains(QLatin1String("default.ttf"), Qt::CaseInsensitive)) {
-                font = fontsdir.append(QStringLiteral("/default.ttf"));
+            qDebug() << "fonts dir: " << sFontsDir << "  font files: " << fonts;
+            if (sFontsDir.isEmpty()
+                    || sFontsDir.startsWith(QLatin1String("assets:"), Qt::CaseInsensitive)
+                    || sFontsDir.startsWith(QLatin1String(":"), Qt::CaseInsensitive)
+                    || sFontsDir.startsWith(QLatin1String("qrc:"), Qt::CaseInsensitive)
+                    ) {
+                const QString fontsdir_in(sFontsDir);
+                sFontsDir = Internal::Path::appFontsDir();
+                qDebug() << "Fonts dir is not supported by libass. Copy fonts to app fonts dir: " << sFontsDir;
+                if (!QDir(Internal::Path::appFontsDir()).exists()) {
+                    if (!QDir().mkpath(Internal::Path::appFontsDir())) {
+                        qWarning("Failed to create fonts dir: %s", Internal::Path::appFontsDir().toUtf8().constData());
+                    }
+                }
+                foreach (const QString& f, fonts) {
+                    QFile ff(QStringLiteral("%1/%2").arg(fontsdir_in).arg(f));
+                    const QString kOut(QStringLiteral("%1/%2").arg(sFontsDir).arg(f));
+                    QFile ffout(kOut);
+                    if (ffout.exists() && ffout.size() != ff.size()) { // TODO:
+                        qDebug() << "new font with the same name. remove old: " << ffout.fileName();
+                        ffout.remove();
+                    }
+                    if (!ffout.exists() && !ff.copy(kOut))
+                        qWarning() << "Copy font file [" << ff.fileName() <<  "] error: " << ff.errorString();
+                }
+            }
+            if (fonts.contains(kDefaultFontName)) {
+                sFont = QStringLiteral("%1/%2").arg(sFontsDir).arg(kDefaultFontName);
+                qDebug() << "default font file: " << sFont << "; fonts dir: " << sFontsDir;
             }
         }
     }
@@ -548,25 +556,31 @@ void SubtitleProcessorLibASS::updateFontCache()
             family = QByteArrayLiteral("Arial");
     }
     // prefer user settings
-    if (!font_file.isEmpty())
-        font = font_file;
-    if (!fonts_dir.isEmpty())
-        fontsdir = fonts_dir;
+    const QString kFont = font_file.isEmpty() ? sFont : font_file;
+    const QString kFontsDir = fonts_dir.isEmpty() ? sFontsDir : fonts_dir;
+    qDebug() << "font file: " << kFont << "; fonts dir: " << kFontsDir;
     // setup libass
-    if (!fontsdir.isEmpty())
-        ass_set_fonts_dir(m_ass, fontsdir.toUtf8().constData());
+#ifdef Q_OS_WINRT
+    if (!kFontsDir.isEmpty())
+        qDebug("BUG: winrt libass set a valid fonts dir results in crash. skip fonts dir setup.");
+#else
+    // will call strdup, so safe to use temp array .toUtf8().constData()
+    ass_set_fonts_dir(m_ass, kFontsDir.isEmpty() ? 0 : kFontsDir.toUtf8().constData()); // look up fonts in fonts dir can be slow. force font file to skip lookup
+#endif
     /* ass_set_fonts:
      * fc/dfp=false(auto font provider): Prefer font provider to find a font(FC needs fonts.conf) in font_dir, or provider's configuration. If failed, try the given font
      * fc/dfp=true(no font provider): only try the given font
      */
     // user can prefer font provider(force_font_file=false), or disable font provider to force the given font
     // if provider is enabled, libass can fallback to the given font if provider can not provide a font
-    if (font.isEmpty()) { // always use font provider if not font file is set
+    const QByteArray a_conf(conf.toUtf8());
+    const char* kConf = conf.isEmpty() ? 0 : a_conf.constData();
+    if (kFont.isEmpty()) { // TODO: always use font provider if no font file is set, i.e. ignore force_font_file
         qDebug("No font file is set, use font provider");
-        ass_set_fonts(m_renderer, NULL, family.constData(), !force_font_file, conf.toUtf8().constData(), 1);
+        ass_set_fonts(m_renderer, NULL, family.constData(), !force_font_file, kConf, 1);
     } else {
         qDebug("Font file is set. force font file: %d", force_font_file);
-        ass_set_fonts(m_renderer, font.toUtf8().constData(), family.constData(), !force_font_file, conf.toUtf8().constData(), 1);
+        ass_set_fonts(m_renderer, kFont.toUtf8().constData(), family.constData(), !force_font_file, kConf, 1);
     }
     //ass_fonts_update(m_renderer); // update in ass_set_fonts(....,1)
     m_update_cache = false; //TODO: set true if user set a new font or fonts dir
@@ -688,6 +702,7 @@ void SubtitleProcessorLibASS::renderASS32(QImage *image, ASS_Image *img, int dst
                 ARGB32_SET(c, r, g, b, k);
 #endif //USE_QRGBA
             } else {
+                // c=k*dc/255=k*dc/256 * (1-1/256), -1<err(c) = k*dc/256^2<1, -1 is bad!
 #if USE_QRGBA
                 // no need to &0xff because always be 0~255
                 dst[x] += qRgba2(k*(r-qRed(dst[x]))/255, k*(g-qGreen(dst[x]))/255, k*(b-qBlue(dst[x]))/255, k*(a-A)/255);

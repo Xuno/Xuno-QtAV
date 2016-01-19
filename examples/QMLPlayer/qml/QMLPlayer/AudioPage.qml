@@ -7,14 +7,13 @@ Page {
     id: root
     title: qsTr("Audio")
     signal channelChanged(int channel)
-    signal muteChanged(bool value)
     signal externalAudioChanged(string file)
     signal audioTrackChanged(int track)
     property var internalAudioTracks : "unkown"
     property var externalAudioTracks : "unkown"
     property alias isExternal: externalCheck.checked
-    height: titleHeight + channelLabel.height + channels.contentHeight
-            + Utils.kItemHeight*2 + trackLabel.height + tracksMenu.contentHeight + Utils.kSpacing*6
+    height: titleHeight + channelLabel.height + (channels.visible ? channels.contentHeight : 0)
+            + Utils.kItemHeight + trackLabel.height + tracksMenu.contentHeight + Utils.kSpacing*5
     Column {
         anchors.fill: content
         spacing: Utils.kSpacing
@@ -24,8 +23,10 @@ Page {
             text: qsTr("Channel layout")
             font.pixelSize: Utils.kFontSize
             width: parent.width
+            visible: Qt.platform.os !== "winphone" && Qt.platform.os !== "winrt"
         }
         Menu {
+            visible: channelLabel.visible
             id: channels
             width: parent.width
             itemWidth: parent.width
@@ -35,14 +36,6 @@ Page {
             onClicked: {
                 root.channelChanged(model.get(index).value)
             }
-        }
-        Button {
-            text: qsTr("Mute")
-            checked: false
-            checkable: true
-            width: parent.width
-            height: Utils.kItemHeight
-            onCheckedChanged: root.muteChanged(checked)
         }
         Text {
             id: trackLabel
@@ -88,6 +81,8 @@ Page {
                 width: parent.width - externalCheck.width
                 height: parent.height
                 wrapMode: Text.Wrap
+                verticalAlignment: Text.AlignVCenter
+                text: qsTr("Click here to select a file")
                 MouseArea {
                     anchors.fill: parent
                     onClicked: fileDialog.open()
@@ -96,7 +91,7 @@ Page {
         }
     }
     Component.onCompleted: {
-        channelModel.append({name: qsTr("Stero"), value: MediaPlayer.Stero })
+        channelModel.append({name: qsTr("Stereo"), value: MediaPlayer.Stereo })
         channelModel.append({name: qsTr("Mono"), value: MediaPlayer.Mono })
         channelModel.append({name: qsTr("Left"), value: MediaPlayer.Left })
         channelModel.append({name: qsTr("Right"), value: MediaPlayer.Right })

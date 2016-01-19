@@ -20,18 +20,19 @@
 ******************************************************************************/
 
 #include "QtAV/AudioDecoder.h"
+#include "QtAV/Packet.h"
 #include "QtAV/private/AVDecoder_p.h"
 #include "QtAV/private/AVCompat.h"
 #include "QtAV/AudioResamplerTypes.h"
 #include "QtAV/private/mkid.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 #include "QtAV/version.h"
 #include "utils/Logger.h"
 
 namespace QtAV {
 
 class AudioDecoderFFmpegPrivate;
-class Q_AV_EXPORT AudioDecoderFFmpeg : public AudioDecoder
+class AudioDecoderFFmpeg : public AudioDecoder
 {
     Q_OBJECT
     Q_DISABLE_COPY(AudioDecoderFFmpeg)
@@ -54,12 +55,7 @@ Q_SIGNALS:
 };
 
 AudioDecoderId AudioDecoderId_FFmpeg = mkid::id32base36_6<'F','F','m','p','e','g'>::value;
-FACTORY_REGISTER_ID_AUTO(AudioDecoder, FFmpeg, "FFmpeg")
-
-void RegisterAudioDecoderFFmpeg_Man()
-{
-    FACTORY_REGISTER_ID_MAN(AudioDecoder, FFmpeg, "FFmpeg")
-}
+FACTORY_REGISTER(AudioDecoder, FFmpeg, "FFmpeg")
 
 class AudioDecoderFFmpegPrivate Q_DECL_FINAL: public AudioDecoderPrivate
 {
@@ -194,6 +190,7 @@ AudioFrame AudioDecoderFFmpeg::frame()
     f.setBits(d.frame->extended_data); // TODO: ref
     f.setBytesPerLine(d.frame->linesize[0], 0); // for correct alignment
     f.setSamplesPerChannel(d.frame->nb_samples);
+    // TODO: ffplay check AVFrame.pts, pkt_pts, last_pts+nb_samples. move to AudioFrame::from(AVFrame*)
     f.setTimestamp((double)d.frame->pkt_pts/1000.0);
     f.setAudioResampler(d.resampler); // TODO: remove. it's not safe if frame is shared. use a pool or detach if ref >1
     return f;

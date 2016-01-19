@@ -57,22 +57,26 @@ int main(int argc, char *argv[])
     qDebug("vo: %s", vo.toUtf8().constData());
     bool opt_has_file = argc > idx + 2;
     vo = vo.toLower();
-    if (vo != QLatin1String("gl") && vo != QLatin1String("d2d") && vo != QLatin1String("gdi") && vo != QLatin1String("xv"))
+    if (vo != QLatin1String("gl") && vo != QLatin1String("d2d") && vo != QLatin1String("gdi") && vo != QLatin1String("xv") && vo != QLatin1String("x11"))
         vo = QString::fromLatin1("qpainter");
     QString title = QString::fromLatin1("QtAV %1 wbsecg1@gmail.com").arg(QtAV_Version_String_Long());
     VideoRenderer *renderer = 0;
     bool textfilter = false;
     if (vo == QLatin1String("gl")) {
-        renderer = VideoRendererFactory::create(VideoRendererId_GLWidget);
+        renderer = VideoRenderer::create(VideoRendererId_GLWidget);
         textfilter = true;
     } else if (vo == QLatin1String("d2d")) {
-        renderer = VideoRendererFactory::create(VideoRendererId_Direct2D);
+        renderer = VideoRenderer::create(VideoRendererId_Direct2D);
     } else if (vo == QLatin1String("gdi")) {
-        renderer = VideoRendererFactory::create(VideoRendererId_GDI);
+        renderer = VideoRenderer::create(VideoRendererId_GDI);
     } else if (vo == QLatin1String("xv")) {
-        renderer = VideoRendererFactory::create(VideoRendererId_XV);
+        renderer = VideoRenderer::create(VideoRendererId_XV);
+        textfilter = true;
+    } else if (vo == QLatin1String("x11")) {
+        renderer = VideoRenderer::create(VideoRendererId_X11);
+        textfilter = true;
     } else {
-        renderer = VideoRendererFactory::create(VideoRendererId_Widget);
+        renderer = VideoRenderer::create(VideoRendererId_Widget);
         textfilter = true;
     }
     if (!renderer) {

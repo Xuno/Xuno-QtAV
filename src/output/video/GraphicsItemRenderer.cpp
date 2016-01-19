@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -118,14 +118,13 @@ bool GraphicsItemRenderer::receiveFrame(const VideoFrame& frame)
     DPTR_D(GraphicsItemRenderer);
     if (isOpenGL()) {
         d.video_frame = frame;
-        if (d.checkGL())
-            d.glv.setCurrentFrame(frame);
+        d.glv.setCurrentFrame(frame);
     } else
 #endif
     {
         prepareFrame(frame);
     }
-    scene()->update(sceneBoundingRect());
+    scene()->update(sceneBoundingRect()); //TODO: thread?
     //update(); //does not cause an immediate paint. my not redraw.
     return true;
 }
@@ -170,18 +169,18 @@ void GraphicsItemRenderer::paint(QPainter *painter, const QStyleOptionGraphicsIt
         ctx->painter = 0;
 }
 
-bool GraphicsItemRenderer::needUpdateBackground() const
-{
-    DPTR_D(const GraphicsItemRenderer);
-    return d.out_rect != boundingRect() || !d.video_frame.isValid();
-}
-
 void GraphicsItemRenderer::drawBackground()
 {
     DPTR_D(GraphicsItemRenderer);
-    if (!d.painter)
+#if QTAV_HAVE(OPENGL)
+    if (d.checkGL()) {
+       // d.glv.fill(QColor(0, 0, 0)); //FIXME: fill boundingRect
         return;
-    d.painter->fillRect(boundingRect(), QColor(0, 0, 0));
+    } else
+#endif
+    {
+        QPainterRenderer::drawBackground();
+    }
 }
 
 void GraphicsItemRenderer::drawFrame()
@@ -210,7 +209,7 @@ bool GraphicsItemRenderer::onSetOrientation(int value)
 {
     Q_UNUSED(value);
     d_func().setupAspectRatio();
-    update();
+    update(); //TODO: thread?
     return true;
 }
 

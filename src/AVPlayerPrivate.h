@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2014-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -156,6 +156,8 @@ public:
     // <0: auto compute internally, |notify_interval| is the real interval
     int notify_interval;
     MediaStatus status; // status changes can be from demuxer or demux thread
+    AVPlayer::State state;
+    MediaEndAction end_action;
     QMutex load_mutex;
 };
 

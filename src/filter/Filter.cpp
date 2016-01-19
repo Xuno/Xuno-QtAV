@@ -92,7 +92,7 @@ AudioFilter::AudioFilter(AudioFilterPrivate& d, QObject *parent)
 /*TODO: move to AVPlayer.cpp to reduce dependency?*/
 bool AudioFilter::installTo(AVPlayer *player)
 {
-    return player->installAudioFilter(this);
+    return player->installFilter(this);
 }
 
 void AudioFilter::apply(Statistics *statistics, AudioFrame *frame)
@@ -112,7 +112,8 @@ VideoFilterContext *VideoFilter::context()
 {
     DPTR_D(VideoFilter);
     if (!d.context) {
-        d.context = VideoFilterContext::create(contextType());
+        //fake. only to store some parameters at the beginnig. it will be destroyed and set to a new instance if context type mismatch in prepareContext, with old parameters
+        d.context = VideoFilterContext::create(VideoFilterContext::QtPainter);
     }
     return d.context;
 }
@@ -122,9 +123,15 @@ VideoFilterContext::Type VideoFilter::contextType() const
     return VideoFilterContext::None;
 }
 
+bool VideoFilter::isSupported(VideoFilterContext::Type ct) const
+{
+    // TODO: return false
+    return contextType() == ct;
+}
+
 bool VideoFilter::installTo(AVPlayer *player)
 {
-    return player->installVideoFilter(this);
+    return player->installFilter(this);
 }
 
 /*TODO: move to AVOutput.cpp to reduce dependency?*/
@@ -133,30 +140,40 @@ bool VideoFilter::installTo(AVOutput *output)
     return output->installFilter(this);
 }
 
-//copy qpainter if context nut null
-void VideoFilter::prepareContext(VideoFilterContext *&context, Statistics *statistics, VideoFrame* frame)
+bool VideoFilter::prepareContext(VideoFilterContext *&ctx, Statistics *statistics, VideoFrame *frame)
 {
-    if (contextType() == VideoFilterContext::None)
-        return;
     DPTR_D(VideoFilter);
-    if (!d.context) {
-        d.context = VideoFilterContext::create(contextType());
-        d.context->video_width = statistics->video_only.width;
-        d.context->video_height = statistics->video_only.height;
+    if (!ctx || !isSupported(ctx->type())) {
+        //qDebug("no context: %p, or context type %d is not supported", ctx, ctx? ctx->type() : 0);
+        return isSupported(VideoFilterContext::None);
     }
-    // TODO: reduce mem allocation
-    if (!context || context->type() != contextType()) {
-        if (context) {
-            delete context;
+    if (!d.context || d.context->type() != ctx->type()) {
+        VideoFilterContext* c = VideoFilterContext::create(ctx->type());//each filter has it's own context instance, but share the common parameters
+        if (d.context) {
+            c->pen = d.context->pen;
+            c->brush = d.context->brush;
+            c->clip_path = d.context->clip_path;
+            c->rect = d.context->rect;
+            c->transform = d.context->transform;
+            c->font = d.context->font;
+            c->opacity = d.context->opacity;
+            c->paint_device = d.context->paint_device;
         }
-        context = VideoFilterContext::create(contextType());
-        context->video_width = statistics->video_only.width;
-        context->video_height = statistics->video_only.height;
+        if (d.context) {
+            delete d.context;
+        }
+        d.context = c;
     }
+    d.context->video_width = statistics->video_only.width;
+    d.context->video_height = statistics->video_only.height;
+    ctx->video_width = statistics->video_only.width;
+    ctx->video_height = statistics->video_only.height;
+
     // share common data
-    d.context->shareFrom(context);
+    d.context->shareFrom(ctx);
     d.context->initializeOnFrame(frame);
-    context->shareFrom(d.context);
+    ctx->shareFrom(d.context);
+    return true;
 }
 
 void VideoFilter::apply(Statistics *statistics, VideoFrame *frame)

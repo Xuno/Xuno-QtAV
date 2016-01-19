@@ -19,7 +19,9 @@ Rectangle {
     property string mediaSource
     property int duration: 0
     property real volume: 1
+    property alias mute: volBtn.checked
     property bool hiding: false
+    property int previewHeight: preview.height
     signal seek(int ms)
     signal seekForward(int ms)
     signal seekBackward(int ms)
@@ -61,9 +63,9 @@ Rectangle {
     }
 
     gradient: Gradient {
-        GradientStop { position: 0.0; color: "#aa445566" }
-        GradientStop { position: 0.618; color: "#bb1a2b3a" }
-        GradientStop { position: 1.0; color: "#ff000000" }
+        GradientStop { position: 0.0; color: "#88445566" }
+        GradientStop { position: 0.618; color: "#cc1a2b3a" }
+        GradientStop { position: 1.0; color: "#ee000000" }
     }
 
     MouseArea {
@@ -123,6 +125,8 @@ Rectangle {
               //  return
             if (playState == "stop")
                 return
+            if (pos.y > -previewText.height && pos.y <= height/2)
+                return
             preview.state = dpos.y > 0 ? "out" : "out_"
         }
         onHoverAt: {
@@ -133,35 +137,10 @@ Rectangle {
             showPreview(value)
         }
     }
-    Text {
-        id: now
-        text: Utils.msec2string(progress.value*duration)
-        anchors {
-            top: progress.bottom
-            topMargin: Utils.scaled(2)
-            left: progress.left
-        }
-        color: "white"
-        font {
-            pixelSize: Utils.scaled(12) //or point size?
-        }
-    }
-    Text {
-        id: life
-        text: Utils.msec2string(duration)
-        anchors {
-            top: progress.bottom
-            topMargin: Utils.scaled(2)
-            right: progress.right
-        }
-        color: "white"
-        font {
-            pixelSize: Utils.scaled(12)
-        }
-    }
     Rectangle {
         id: preview
-        opacity: 0.8
+        layer.enabled: true
+        //opacity: 0.8
         anchors.left: progress.left
         anchors.bottom: progress.top
         width: PlayerConfig.previewEnabled ? Utils.scaled(180) : previewText.contentWidth + 2*Utils.kSpacing
@@ -195,13 +174,33 @@ Rectangle {
         MouseArea {
             anchors.fill: parent
             propagateComposedEvents: true
+            property int gPos: 0
+            property int moved: 0
             onClicked: {
+                if (moved) //why press+move+release is click?
+                    return
                 if (preview.opacity === 0 || root.opacity === 0) {
                     mouse.accepted = false
                     return
                 }
                 mouse.accepted = true
                 seek(preview.timestamp)
+            }
+            onPressed: {
+                gPos = mapToItem(progress, mouseX, 0).x
+                moved = 0
+            }
+            onMouseXChanged: {
+                if (!pressed) {
+                    mouse.accepted = false
+                    return
+                }
+                mouse.accepted = true
+                var x1 = mapToItem(progress, mouseX, 0).x
+                var dx = x1 - gPos
+                gPos = x1
+                moved += dx
+                showPreview(preview.timestamp/duration+dx/progress.width)
             }
         }
 
@@ -211,7 +210,7 @@ Rectangle {
                 PropertyChanges {
                     target: preview
                     anchors.bottomMargin: 2
-                    opacity: 0.9
+                    opacity: 1.0//0.9
                 }
             },
             State {
@@ -226,7 +225,7 @@ Rectangle {
                 name: "out_"
                 PropertyChanges {
                     target: preview
-                    anchors.bottomMargin: -preview.height
+                    anchors.bottomMargin: -(preview.height + progress.height)
                     opacity: 0
                 }
             }
@@ -261,12 +260,41 @@ Rectangle {
         ]
     }
     Item {
+        layer.enabled: true
+        property int volBarPos: volBtn.x + volBtn.width/2 + x
         anchors {
             top: progress.bottom
             bottom: parent.bottom
             left: parent.left
             right: parent.right
             margins: Utils.scaled(8)
+        }
+
+        Text {
+            id: now
+            text: Utils.msec2string(progress.value*duration)
+            anchors {
+                top: parent.top
+                topMargin: Utils.scaled(2)
+                left: parent.left
+            }
+            color: "white"
+            font {
+                pixelSize: Utils.scaled(12) //or point size?
+            }
+        }
+        Text {
+            id: life
+            text: Utils.msec2string(duration)
+            anchors {
+                top: parent.top
+                topMargin: Utils.scaled(2)
+                right: parent.right
+            }
+            color: "white"
+            font {
+                pixelSize: Utils.scaled(12)
+            }
         }
         Button {
             id: playBtn
@@ -296,91 +324,87 @@ Rectangle {
                 */
             }
         }
-        Row {
+        Button {
+            id: backwardBtn
             anchors.right: playBtn.left
             anchors.verticalCenter: playBtn.verticalCenter
-            spacing: Utils.scaled(4)
-            Button {
-                id: stopBtn
-                bgColor: "transparent"
-                bgColorSelected: "transparent"
-                width: Utils.scaled(35)
-                height: Utils.scaled(35)
-                icon: Utils.resurl("theme/default/stop.svg")
-                onClicked: {
-                    //player.stop()
-                    stop()
-                }
-            }
-            Button {
-                id: backwardBtn
-                bgColor: "transparent"
-                bgColorSelected: "transparent"
-                width: Utils.scaled(35)
-                height: Utils.scaled(35)
-                icon: Utils.resurl("theme/default/backward.svg")
-                onClicked: {
-                    //player.seek(player.position-10000)
-                    seekBackward(10000)
-                }
+            bgColor: "transparent"
+            bgColorSelected: "transparent"
+            width: Utils.scaled(35)
+            height: Utils.scaled(35)
+            icon: Utils.resurl("theme/default/backward.svg")
+            onClicked: {
+                //player.seek(player.position-10000)
+                seekBackward(10000)
             }
         }
-        Row {
+        Button {
+            id: stopBtn
+            anchors.verticalCenter: playBtn.verticalCenter
+            anchors.right: backwardBtn.left
+            bgColor: "transparent"
+            bgColorSelected: "transparent"
+            width: Utils.scaled(35)
+            height: Utils.scaled(35)
+            icon: Utils.resurl("theme/default/stop.svg")
+            onClicked: {
+                //player.stop()
+                stop()
+            }
+        }
+        Button {
+            id: forwardBtn
             anchors.left: playBtn.right
             anchors.verticalCenter: playBtn.verticalCenter
-            spacing: Utils.scaled(4)
-            Button {
-                id: forwardBtn
-                bgColor: "transparent"
-                bgColorSelected: "transparent"
-                width: Utils.scaled(35)
-                height: Utils.scaled(35)
-                icon: Utils.resurl("theme/default/forward.svg")
-                onClicked: {
-                    //player.seek(player.position+10000)
-                    seekForward(10000)
-                }
+            bgColor: "transparent"
+            bgColorSelected: "transparent"
+            width: Utils.scaled(35)
+            height: Utils.scaled(35)
+            icon: Utils.resurl("theme/default/forward.svg")
+            onClicked: {
+                //player.seek(player.position+10000)
+                seekForward(10000)
             }
         }
-        Row {
+        Button {
+            id: fullScreenBtn
             anchors.left: parent.left
             anchors.leftMargin: Utils.scaled(50)
             anchors.verticalCenter: parent.verticalCenter
-            Button {
-                id: fullScreenBtn
-                checkable: true
-                checked: false
-                bgColor: "transparent"
-                bgColorSelected: "transparent"
-                width: Utils.scaled(25)
-                height: Utils.scaled(25)
-                icon: Utils.resurl("theme/default/fullscreen.svg")
-                iconChecked: Utils.resurl("theme/default/fullscreen.svg")
-                visible: true
-                onCheckedChanged: {
-                    if (checked)
-                        requestFullScreen()
-                    else
-                        requestNormalSize()
-                }
-            }
-            Slider { //volume
-                width: Utils.scaled(80)
-                height: Utils.scaled(30)
-                opacity: 0.9
-                value: volume/2
-                onValueChanged: {
-                    //player.volume = 2*value
-                    volume = 2*value
-                }
-                Text {
-                    color: "white"
-                    id: voltext
-                    text: Math.round(10*volume)/10
-                }
+            checkable: true
+            checked: false
+            bgColor: "transparent"
+            bgColorSelected: "transparent"
+            width: Utils.scaled(25)
+            height: Utils.scaled(25)
+            icon: Utils.resurl("theme/default/fullscreen.svg")
+            iconChecked: Utils.resurl("theme/default/fullscreen.svg")
+            visible: true
+            onCheckedChanged: {
+                if (checked)
+                    requestFullScreen()
+                else
+                    requestNormalSize()
             }
         }
-
+        Button {
+            id: volBtn
+            anchors.left: fullScreenBtn.right
+            anchors.verticalCenter: parent.verticalCenter
+            checkable: true
+            checked: false
+            bgColor: "transparent"
+            bgColorSelected: "transparent"
+            width: Utils.scaled(25)
+            height: Utils.scaled(25)
+            icon: Utils.resurl("theme/default/volume.svg")
+            iconChecked: Utils.resurl("theme/default/mute.svg")
+            onHoveredChanged: {
+                volBar.anchors.bottom = parent.top
+                volBar.anchors.bottomMargin = -(y + 2)//height/2)
+                volBar.x = parent.volBarPos - volBar.width/2
+            }
+        }
         Row {
             anchors.right: parent.right
             anchors.rightMargin: Utils.scaled(50)
@@ -413,6 +437,28 @@ Rectangle {
                 icon: Utils.resurl("theme/default/help.svg")
                 onClicked: showHelp()
             }
+        }
+    }
+
+    Slider { //volume
+        id: volBar
+        width:Utils.scaled(60)
+        height: Utils.scaled(140)
+        visible: hovered || volBtn.hovered
+        opacity: 0.9
+        value: volume > 1 ? 0.5 - (volume - 1)/4 : 1 - volume/2
+        orientation: Qt.Vertical
+        onValueChanged: {
+            if (value < 0.5)
+                volume = 1 + 4*(0.5-value)
+            else
+                volume = 2*(1-value)
+        }
+        Text {
+            color: "white"
+            id: voltext
+            // Math.floor(10*volume)/10 //why display 1.100000001?
+            text: Math.floor(volume) + "." + Math.floor((volume - Math.floor(volume))*10)
         }
     }
     Timer {
@@ -460,6 +506,8 @@ Rectangle {
             aniHide()
     }
     function showPreview(value) {
+        if (value < 0)
+            return
         preview.visible = true
         preview.state = "in"
         if (PlayerConfig.previewEnabled && preview.video.file) {
@@ -470,5 +518,8 @@ Rectangle {
         preview.timestamp = value*duration
         previewText.text = Utils.msec2string(preview.timestamp)
         //console.log("hover: "+value + " duration: " + player.duration)
+    }
+    function hidePreview() {
+        preview.state = "out_"
     }
 }

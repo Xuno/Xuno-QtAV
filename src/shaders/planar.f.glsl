@@ -1,6 +1,6 @@
-/*** planar.f.glsl ****************************************************************
+/******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -28,6 +28,12 @@ precision mediump float;
 #define mediump
 #define lowp
 #endif
+// >=1.40: texture(sampler2DRect,...). 'texture' is define in header
+#if __VERSION__ < 130
+#ifndef texture
+#define texture texture2D
+#endif
+#endif
 
 // u_TextureN: yuv. use array?
 uniform sampler2D u_Texture0;
@@ -51,23 +57,7 @@ varying lowp vec2 v_TexCoords3;
 uniform float u_opacity;
 uniform float u_bpp;
 uniform mat4 u_colorMatrix;
-//added by xuno start
-uniform float u_gammaRGB;
-uniform vec2  u_pix;
-uniform float u_filterkernel[9];
-uniform vec2 u_pixeloffsetkernel[9];
-vec3 color;
-
-//#define USED_DEBUG
-//#define USED_BiCubic //moved contol to VideoShader.cpp
-#ifdef USED_BiCubic
-#define BICUBIC_BSPLINE  //BICUBIC_TRI, BICUBIC_BELL, BICUBIC_BSPLINE, BICUBIC_CAT
-#endif
-#define USED_FILTERS
-#define USED_GAMMA
-//added by xuno end
-
-#ifndef CHANNEL_8BIT
+#ifdef CHANNEL16_TO8
 uniform vec2 u_to8;
 #endif
 #if defined(YUV_MAT_GLSL)
@@ -91,165 +81,61 @@ const mat4 yuv2rgbMatrix = mat4(1, 1, 1, 0,
                                0, 0, 1, 0,
                                0, -0.5, -0.5, 1);
 #endif
-
-//added by xuno start
-#ifdef BICUBIC_TRI
-float Triangular(float f) {
-    f = f / 2.0;
-    if (f < 0.0) {
-        return ( f + 1.0 );
-    } else {
-        return ( 1.0 - f );
-    }
-    return 0.0;
-}
-#elif defined(BICUBIC_BELL)
-float BellFunc(float x) {
-    float f = ( x / 2.0 ) * 1.5; // Converting -2 to +2 to -1.5 to +1.5
-    if (f > -1.5 && f < -0.5) {
-        return( 0.5 * pow(f + 1.5, 2.0));
-    } else if ( f > -0.5 && f < 0.5 ) {
-        return 3.0 / 4.0 - ( f * f );
-    } else if ( ( f > 0.5 && f < 1.5 ) ) {
-        return( 0.5 * pow(f - 1.5, 2.0));
-    }
-    return 0.0;
-}
-#elif defined(BICUBIC_BSPLINE)
-float BSpline(float x) {
-    float f = x;
-    if ( f < 0.0 ){
-        f = -f;
-    }
-    if (f >= 0.0 && f <= 1.0){
-        return ( 2.0 / 3.0 ) + ( 0.5 ) * ( f* f * f ) - (f*f);
-    } else if ( f > 1.0 && f <= 2.0 ) {
-        return 1.0 / 6.0 * pow(( 2.0 - f  ), 3.0);
-    }
-    return 1.0;
-}
-#elif defined(BICUBIC_CAT)
-float CatMullRom(float x)
+// matrixCompMult for convolution
+/***User Sampler code here***%1***/
+#ifndef USER_SAMPLER
+vec4 sample(sampler2D tex, vec2 pos)
 {
-    const float B = 0.0;
-    const float C = 0.5;
-    float f = x;
-    if (f < 0.0) {
-        f = -f;
-    }
-    if (f < 1.0) {
-        return ( ( 12 - 9 * B - 6 * C ) * ( f * f * f ) + ( -18 + 12 * B + 6 *C ) * ( f * f ) + ( 6 - 2 * B ) ) / 6.0;
-    } else if ( f >= 1.0 && f < 2.0 ) {
-        return ( ( -B - 6 * C ) * ( f * f * f ) + ( 6 * B + 30 * C ) * ( f *f ) + ( - ( 12 * B ) - 48 * C  ) * f + 8 * B + 24 * C)/ 6.0;
-    } else {
-        return 0.0;
-    }
+    return texture(tex, pos);
 }
-#endif //CatMullRom
-#if defined(USED_BiCubic)
-//used it : http://www.codeproject.com/Articles/236394/Bi-Cubic-and-Bi-Linear-Interpolation-with-GLSL
-vec4 BiCubic( sampler2D textureSampler, vec2 TexCoord )
-{
-    float texelSizeX = u_pix.x;
-    float texelSizeY = u_pix.y;
-    float fWidth = 1.0 / texelSizeX;
-    float fHeight = 1.0 / texelSizeY;
-    vec4 nSum = vec4( 0.0, 0.0, 0.0, 0.0 );
-    vec4 nDenom = vec4( 0.0, 0.0, 0.0, 0.0 );
-    float a = fract( TexCoord.x * fWidth ); // get the decimal part
-    float b = fract( TexCoord.y * fHeight ); // get the decimal part
-    for (int m=-1; m<=2;m++) {
-        for (int n=-1; n<=2;n++) {
-            vec4 vecData = texture2D(textureSampler,TexCoord + vec2(texelSizeX * float(m),texelSizeY * float(n)));
-#if defined(BICUBIC_TRI)
-            float f  = Triangular(float(m) - a);
-            float f1 = Triangular ( -( float( n ) - b ) );
-#elif defined(BICUBIC_BELL)
-            float f  = BellFunc(float(m) - a);
-            float f1 = BellFunc ( -( float( n ) - b ) );
-#elif defined(BICUBIC_BSPLINE)
-            float f  = BSpline(float(m) - a);
-            float f1 = BSpline ( -( float( n ) - b ) );
-#elif defined(BICUBIC_CAT)
-            float f  = CatMullRom(float(m) - a);
-            float f1 = CatMullRom ( -( float( n ) - b ) );
 #endif
-            vec4 vecCooef1 = vec4( f,f,f,f );
-            vec4 vecCoeef2 = vec4( f1, f1, f1, f1 );
-            nSum = nSum + ( vecData * vecCoeef2 * vecCooef1  );
-            nDenom = nDenom + (( vecCoeef2 * vecCooef1 ));
-        }
-    }
-    return nSum / nDenom;
-}
-#endif //USED_BiCubic
-//added by xuno end
 
 // 10, 16bit: http://msdn.microsoft.com/en-us/library/windows/desktop/bb970578%28v=vs.85%29.aspx
 void main()
 {
-
-//added by xuno start
-#if defined(USED_FILTERS)
-  vec3 sum = vec3(0.0);
-  for (int i=0;i<9;i++) {
-#else
-  int i=4;
-#endif //USED_FILTERS
-//added by xuno end
-
-    // 10p in little endian: yyyyyyyy yy000000 => (L, L, L, A)
     gl_FragColor = clamp(u_colorMatrix
                          * vec4(
-#ifndef CHANNEL_8BIT
-//added by xuno start
-#if defined(USED_BiCubic)
-                             dot(BiCubic(u_Texture0, v_TexCoords0+u_pixeloffsetkernel[i]).ra, u_to8),
-                             dot(BiCubic(u_Texture1, v_TexCoords1+u_pixeloffsetkernel[i]).ra, u_to8),
-                             dot(BiCubic(u_Texture2, v_TexCoords2+u_pixeloffsetkernel[i]).ra, u_to8),
-#else  //USED_BiCubic
-                             dot(texture2D(u_Texture0, v_TexCoords0+u_pixeloffsetkernel[i]).ra, u_to8),
-                             dot(texture2D(u_Texture1, v_TexCoords1+u_pixeloffsetkernel[i]).ra, u_to8),
-                             dot(texture2D(u_Texture2, v_TexCoords2+u_pixeloffsetkernel[i]).ra, u_to8),
-#endif //USED_BiCubic
-//added by xuno end
-#else  //CHANNEL_8BIT
+#ifdef CHANNEL16_TO8
+#ifdef USE_RG
+                             dot(sample(u_Texture0, v_TexCoords0).rg, u_to8),
+                             dot(sample(u_Texture1, v_TexCoords1).rg, u_to8),
+                             dot(sample(u_Texture2, v_TexCoords2).rg, u_to8),
+#else
+                             dot(sample(u_Texture0, v_TexCoords0).ra, u_to8),
+                             dot(sample(u_Texture1, v_TexCoords1).ra, u_to8),
+                             dot(sample(u_Texture2, v_TexCoords2).ra, u_to8),
+#endif //USE_RG
+#else
+#ifdef USE_RG
+                             sample(u_Texture0, v_TexCoords0).r,
+                             sample(u_Texture1, v_TexCoords1).r,
+#ifdef IS_BIPLANE
+                             sample(u_Texture2, v_TexCoords2).g,
+#else
+                             sample(u_Texture2, v_TexCoords2).r,
+#endif //IS_BIPLANE
+#else
 // use r, g, a to work for both yv12 and nv12. idea from xbmc
-//added by xuno start
-#if defined(USED_BiCubic)
-                             BiCubic(u_Texture0, v_TexCoords0 + u_pixeloffsetkernel[i]).r,
-                             BiCubic(u_Texture1, v_TexCoords1 + u_pixeloffsetkernel[i]).g,
-                             BiCubic(u_Texture2, v_TexCoords2 + u_pixeloffsetkernel[i]).a,
-#else  //USED_BiCubic
-                             texture2D(u_Texture0, v_TexCoords0 + u_pixeloffsetkernel[i]).r,
-                             texture2D(u_Texture1, v_TexCoords1 + u_pixeloffsetkernel[i]).g,
-                             texture2D(u_Texture2, v_TexCoords2 + u_pixeloffsetkernel[i]).a,
-#endif //USED_BiCubic
-//added by xuno end
-#endif //CHANNEL_8BIT
+                             sample(u_Texture0, v_TexCoords0).r,
+                             sample(u_Texture1, v_TexCoords1).g,
+                             sample(u_Texture2, v_TexCoords2).a,
+#endif //USE_RG
+#endif //CHANNEL16_TO8
                              1)
-                         , 0.0, 1.0) * u_opacity ;
-
+                         , 0.0, 1.0) * u_opacity;
 #ifdef HAS_ALPHA
-#ifndef CHANNEL_8BIT
-    gl_FragColor.a *= dot(texture2D(u_Texture3, v_TexCoords3).ra, u_to8); //GL_LUMINANCE_ALPHA
+#ifdef CHANNEL16_TO8
+#ifdef USE_RG
+    gl_FragColor.a *= dot(sample(u_Texture3, v_TexCoords3).rg, u_to8); //GL_RG
+#else
+    gl_FragColor.a *= dot(sample(u_Texture3, v_TexCoords3).ra, u_to8); //GL_LUMINANCE_ALPHA
+#endif //USE_RG
 #else //8bit
-    gl_FragColor.a *= texture2D(u_Texture3, v_TexCoords3).a; //GL_ALPHA
-#endif //CHANNEL_8BIT
+#ifdef USE_RG
+    gl_FragColor.a *= sample(u_Texture3, v_TexCoords3).r;
+#else
+    gl_FragColor.a *= sample(u_Texture3, v_TexCoords3).a; //GL_ALPHA
+#endif //USE_RG
+#endif //CHANNEL16_TO8
 #endif //HAS_ALPHA
-
-
-//added by xuno start
-#if defined(USED_FILTERS)
-  color = gl_FragColor.rgb;
-  sum += color * u_filterkernel[i];
- }
-  gl_FragColor.rgb = sum;
-#endif //USED_FILTERS
-
-#if defined(USED_GAMMA)
-  color = gl_FragColor.rgb;
-  gl_FragColor.rgb = pow(color, 1.0 / vec3(u_gammaRGB));
-#endif //USED_GAMMA
-//added by xuno end
 }

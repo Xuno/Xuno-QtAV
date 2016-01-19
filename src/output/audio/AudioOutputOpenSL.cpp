@@ -28,7 +28,7 @@
 #include <SLES/OpenSLES_AndroidConfiguration.h>
 #endif
 #include "QtAV/private/mkid.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 #include "utils/Logger.h"
 
 namespace QtAV {
@@ -87,12 +87,7 @@ private:
 
 typedef AudioOutputOpenSL AudioOutputBackendOpenSL;
 static const AudioOutputBackendId AudioOutputBackendId_OpenSL = mkid::id32base36_6<'O', 'p', 'e', 'n', 'S', 'L'>::value;
-FACTORY_REGISTER_ID_AUTO(AudioOutputBackend, OpenSL, kName)
-
-void RegisterAudioOutputOpenSL_Man()
-{
-    FACTORY_REGISTER_ID_MAN(AudioOutputBackend, OpenSL, kName)
-}
+FACTORY_REGISTER(AudioOutputBackend, OpenSL, kName)
 
 #define SL_ENSURE_OK(FUNC, ...) \
     do { \
@@ -199,7 +194,7 @@ bool AudioOutputOpenSL::isSupported(AudioFormat::SampleFormat sampleFormat) cons
 
 bool AudioOutputOpenSL::isSupported(AudioFormat::ChannelLayout channelLayout) const
 {
-    return channelLayout == AudioFormat::ChannelLayout_Mono || channelLayout == AudioFormat::ChannelLayout_Stero;
+    return channelLayout == AudioFormat::ChannelLayout_Mono || channelLayout == AudioFormat::ChannelLayout_Stereo;
 }
 
 AudioFormat::SampleFormat AudioOutputOpenSL::preferredSampleFormat() const
@@ -209,7 +204,7 @@ AudioFormat::SampleFormat AudioOutputOpenSL::preferredSampleFormat() const
 
 AudioFormat::ChannelLayout AudioOutputOpenSL::preferredChannelLayout() const
 {
-    return AudioFormat::ChannelLayout_Stero;
+    return AudioFormat::ChannelLayout_Stereo;
 }
 
 AudioOutputBackend::BufferControl AudioOutputOpenSL::bufferControl() const

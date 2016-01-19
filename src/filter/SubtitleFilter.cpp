@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -58,7 +58,7 @@ public:
         // nomalized width, height <= 1. If 1 is normalized value iff |x|<1 || |y| < 1
         if (qAbs(rect.width()) < 1)
             r.setWidth(rect.width()*qreal(width));
-        if (qAbs(rect.height() < 1))
+        if (qAbs(rect.height()) < 1)
             r.setHeight(rect.height()*qreal(height));
         if (rect.width() == 1.0 && normalized) {
             r.setWidth(width);
@@ -158,10 +158,7 @@ void SubtitleFilter::process(Statistics *statistics, VideoFrame *frame)
     Q_UNUSED(statistics);
     Q_UNUSED(frame);
     DPTR_D(SubtitleFilter);
-    QPainterFilterContext* ctx = static_cast<QPainterFilterContext*>(d.context);
-    if (!ctx)
-        return;
-    if (!ctx->paint_device) {
+    if (!context()->paint_device) {
         qWarning("no paint device!");
         return;
     }
@@ -175,16 +172,16 @@ void SubtitleFilter::process(Statistics *statistics, VideoFrame *frame)
          * if use renderer's resolution, we have to map bounding rect from video frame coordinate to renderer's
          */
         //QImage img = d.player_sub->subtitle()->getImage(statistics->video_only.width, statistics->video_only.height, &rect);
-        QImage img = d.player_sub->subtitle()->getImage(ctx->paint_device->width(), ctx->paint_device->height(), &rect);
+        QImage img = d.player_sub->subtitle()->getImage(context()->paint_device->width(), context()->paint_device->height(), &rect);
         if (img.isNull())
             return;
-        ctx->drawImage(rect, img);
+        context()->drawImage(rect, img);
         return;
     }
-    ctx->font = d.font;
-    ctx->pen.setColor(d.color);
-    ctx->rect = d.realRect(ctx->paint_device->width(), ctx->paint_device->height());
-    ctx->drawPlainText(ctx->rect, Qt::AlignHCenter | Qt::AlignBottom, d.player_sub->subtitle()->getText());
+    context()->font = d.font;
+    context()->pen.setColor(d.color);
+    context()->rect = d.realRect(context()->paint_device->width(), context()->paint_device->height());
+    context()->drawPlainText(context()->rect, Qt::AlignHCenter | Qt::AlignBottom, d.player_sub->subtitle()->getText());
 }
 
 } //namespace QtAV

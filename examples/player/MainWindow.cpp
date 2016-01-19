@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV Player Demo:  this file is part of QtAV examples
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -103,9 +103,9 @@ MainWindow::MainWindow(QWidget *parent) :
   , mControlOn(false)
   , mShowControl(2)
   , mRepeateMax(0)
+  , mpVOAction(0)
   , mpPlayer(0)
   , mpRenderer(0)
-  , mpTempRenderer(0)
   , mpVideoFilter(0)
   , mpAudioFilter(0)
   , mpStatisticsView(0)
@@ -118,7 +118,7 @@ MainWindow::MainWindow(QWidget *parent) :
     XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
     XUNOpresetUrl=XUNOserverUrl+QString::fromLatin1("/getpreset.php?");
     setWindowIcon(QIcon(QString::fromLatin1(":/Xuno-QtAV.ico")));
-    mpOSD = new OSDFilterQPainter(this);
+    mpOSD = new OSDFilter(this);
     mpSubtitle = new SubtitleFilter(this);
     mpChannelAction = 0;
     mpChannelMenu = 0;
@@ -157,6 +157,11 @@ void MainWindow::initPlayer()
 {
     mpPlayer = new AVPlayer(this);
     mIsReady = true;
+    VideoRenderer *vo = VideoRenderer::create((VideoRendererId)property("rendererId").toInt());
+    if (!vo || !vo->isAvailable() || !vo->widget()) {
+        QMessageBox::critical(0, QString::fromLatin1("QtAV"), tr("Video renderer is ") + tr("not availabe on your platform!"));
+    }
+    setRenderer(vo);
     //mpSubtitle->installTo(mpPlayer); //filter on frame
     mpSubtitle->setPlayer(mpPlayer);
     //mpPlayer->setAudioOutput(AudioOutputFactory::create(AudioOutputId_OpenAL));
@@ -222,7 +227,7 @@ void MainWindow::setupUi()
 {
     QVBoxLayout *mainLayout = new QVBoxLayout();
     mainLayout->setSpacing(0);
-    mainLayout->setMargin(0);
+    mainLayout->setContentsMargins(QMargins());
     setLayout(mainLayout);
 
     mpPlayerLayout = new QVBoxLayout();
@@ -278,18 +283,18 @@ void MainWindow::setupUi()
                                 mpTimeSlider->addVisualLimits();
             mpCurrent = new QLabel(mpControl);
     mpCurrent->setToolTip(tr("Current time"));
-    mpCurrent->setMargin(2);
+    mpCurrent->setContentsMargins(QMargins(2, 2, 2, 2));
     mpCurrent->setText(QString::fromLatin1("00:00:00"));
     mpEnd = new QLabel(mpControl);
     mpEnd->setToolTip(tr("Duration"));
-    mpEnd->setMargin(2);
+    mpEnd->setContentsMargins(QMargins(2, 2, 2, 2));
     mpEnd->setText(QString::fromLatin1("00:00:00"));
     //    mpTitle = new QLabel(mpControl);
     //    mpTitle->setToolTip(tr("Render engine"));
     //    mpTitle->setText("QPainter");
     //    mpTitle->setIndent(8);
     mpSpeed = new QLabel(QString::fromLatin1("1.00"));
-    mpSpeed->setMargin(1);
+    mpSpeed->setContentsMargins(QMargins(1, 1, 1, 1));
     mpSpeed->setToolTip(tr("Speed. Ctrl+Up/Down"));
 
     mpPlayPauseBtn = new QToolButton(mpControl);
@@ -561,7 +566,7 @@ void MainWindow::setupUi()
     mpChannelMenu = subMenu;
     connect(subMenu, SIGNAL(triggered(QAction*)), SLOT(changeChannel(QAction*)));
     subMenu->addAction(tr("As input"))->setData(AudioFormat::ChannelLayout_Unsupported); //will set to input in resampler if not supported.
-    subMenu->addAction(tr("Stero"))->setData(AudioFormat::ChannelLayout_Stero);
+    subMenu->addAction(tr("Stereo"))->setData(AudioFormat::ChannelLayout_Stereo);
     subMenu->addAction(tr("Mono (center)"))->setData(AudioFormat::ChannelLayout_Center);
     subMenu->addAction(tr("Left"))->setData(AudioFormat::ChannelLayout_Left);
     subMenu->addAction(tr("Right"))->setData(AudioFormat::ChannelLayout_Right);
@@ -608,20 +613,19 @@ void MainWindow::setupUi()
     mpMenu->addMenu(subMenu);
     connect(subMenu, SIGNAL(triggered(QAction*)), SLOT(changeVO(QAction*)));
     //TODO: AVOutput.name,detail(description). check whether it is available
-    mpVOAction = subMenu->addAction(QString::fromLatin1("QPainter"));
-    mpVOAction->setData(VideoRendererId_Widget);
-    subMenu->addAction(QString::fromLatin1("OpenGLWidget"))->setData(VideoRendererId_OpenGLWidget);
-    subMenu->addAction(QString::fromLatin1("GLWidget 2"))->setData(VideoRendererId_GLWidget2);
-    subMenu->addAction(QString::fromLatin1("GLWidget"))->setData(VideoRendererId_GLWidget);
-    subMenu->addAction(QString::fromLatin1("GDI+"))->setData(VideoRendererId_GDI);
-    subMenu->addAction(QString::fromLatin1("Direct2D"))->setData(VideoRendererId_Direct2D);
-    subMenu->addAction(QString::fromLatin1("XV"))->setData(VideoRendererId_XV);
-    mVOActions = subMenu->actions();
-    foreach(QAction* action, subMenu->actions()) {
-        action->setCheckable(true);
+    VideoRendererId *vo = NULL;
+    while ((vo = VideoRenderer::next(vo))) {
+        // skip non-widget renderers
+        if (*vo == VideoRendererId_OpenGLWindow || *vo == VideoRendererId_GraphicsItem)
+            continue;
+        QAction *voa = subMenu->addAction(QString::fromLatin1(VideoRenderer::name(*vo)));
+        voa->setData(*vo);
+        voa->setCheckable(true);
+        if (!mpVOAction)
+            mpVOAction = voa;
     }
     mpVOAction->setChecked(true);
-
+    mVOActions = subMenu->actions();
 
     //mpImgSeqExtract->hide();
     mainLayout->addLayout(mpPlayerLayout);
@@ -643,8 +647,8 @@ void MainWindow::setupUi()
 
     QHBoxLayout *controlLayout = new QHBoxLayout();
     controlLayout->setSpacing(0);
-    controlLayout->setMargin(1);
-    mpControl->setLayout(controlVLayout);
+    controlLayout->setContentsMargins(QMargins(1, 1, 1, 1));
+    mpControl->setLayout(controlLayout);
     controlLayout->addWidget(mpCurrent);
     //controlLayout->addWidget(mpTitle);
     //QSpacerItem *space = new QSpacerItem(mpPlayPauseBtn->width(), mpPlayPauseBtn->height(), QSizePolicy::MinimumExpanding);
@@ -778,10 +782,10 @@ void MainWindow::changeVO(QAction *action)
         return;
     }
     VideoRendererId vid = (VideoRendererId)action->data().toInt();
-    VideoRenderer *vo = VideoRendererFactory::create(vid);
+    VideoRenderer *vo = VideoRenderer::create(vid);
     if (vo && vo->isAvailable()) {
-
-        setRenderer(vo);
+        if (!setRenderer(vo))
+            action->toggle();
     } else {
         action->toggle(); //check state changes if clicked
         QMessageBox::critical(0, QString::fromLatin1("QtAV"), tr("not availabe on your platform!"));
@@ -791,10 +795,6 @@ void MainWindow::changeVO(QAction *action)
 
 void MainWindow::processPendingActions()
 {
-    if (!mpTempRenderer)
-        return;
-    setRenderer(mpTempRenderer);
-    mpTempRenderer = 0;
     if (mHasPendingPlay) {
         mHasPendingPlay = false;
         play(mFile);
@@ -806,14 +806,14 @@ void MainWindow::setAudioBackends(const QStringList& backends)
     mAudioBackends = backends;
 }
 
-void MainWindow::setRenderer(QtAV::VideoRenderer *renderer)
+bool MainWindow::setRenderer(QtAV::VideoRenderer *renderer)
 {
-    if (!mIsReady) {
-        mpTempRenderer = renderer;
-        return;
-    }
     if (!renderer)
-        return;
+        return false;
+    if (!renderer->widget()) {
+        QMessageBox::warning(0, QString::fromLatin1("QtAV"), tr("Can not use this renderer"));
+        return false;
+    }
     mpOSD->uninstall();
     mpSubtitle->uninstall();
     renderer->widget()->setMouseTracking(true); //mouseMoveEvent without press.
@@ -866,6 +866,7 @@ void MainWindow::setRenderer(QtAV::VideoRenderer *renderer)
     onVideoEQEngineChanged();
     mpOSD->installTo(mpRenderer);
     mpSubtitle->installTo(mpRenderer);
+    return true;
 }
 
 void MainWindow::play(const QString &name)
@@ -888,6 +889,7 @@ void MainWindow::play(const QString &name)
     }
 
     setWindowTitle(mTitle);
+    mpPlayer->stop(); //if no stop, in setPriority decoder will reopen
     mpPlayer->setFrameRate(Config::instance().forceFrameRate());
     if (!mAudioBackends.isEmpty())
         mpPlayer->audio()->setBackends(mAudioBackends);
@@ -998,7 +1000,7 @@ void MainWindow::setVideoDecoderNames(const QStringList &vd)
         vdnames << v.toLower();
     }
     QStringList vidp;
-    QStringList vids = idsToNames(GetRegistedVideoDecoderIds());
+    QStringList vids = idsToNames(VideoDecoder::registered());
     foreach (const QString& v, vids) {
         if (vdnames.contains(v.toLower())) {
             vidp.append(v);
@@ -1243,6 +1245,7 @@ void MainWindow::onPositionChange(qint64 pos)
         mpImgSeqExtract->setStartTime(QTime(0, 0, 0).addMSecs(pos));
         if (mpImgSeqExtract->regionPlaying() && mpImgSeqExtract->EndPosExtract() && pos >= mpImgSeqExtract->EndPosExtract()) pause();
     }
+    //setWindowTitle(QString::number(mpPlayer->statistics().video_only.currentDisplayFPS(), 'f', 2).append(" ").append(mTitle));
 }
 
 void MainWindow::repeatAChanged(const QTime& t)
@@ -1354,10 +1357,10 @@ void MainWindow::wheelEvent(QWheelEvent *e)
         fp.setX(0);
     if (fp.y() < 0)
         fp.setY(0);
-    if (fp.x() > mpRenderer->frameSize().width())
-        fp.setX(mpRenderer->frameSize().width());
-    if (fp.y() > mpRenderer->frameSize().height())
-        fp.setY(mpRenderer->frameSize().height());
+    if (fp.x() > mpRenderer->videoFrameSize().width())
+        fp.setX(mpRenderer->videoFrameSize().width());
+    if (fp.y() > mpRenderer->videoFrameSize().height())
+        fp.setY(mpRenderer->videoFrameSize().height());
 
     QRectF viewport = QRectF(mpRenderer->mapToFrame(QPointF(0, 0)), mpRenderer->mapToFrame(QPointF(mpRenderer->rendererWidth(), mpRenderer->rendererHeight())));
     //qDebug("vo: (%.1f, %.1f)=> frame: (%.1f, %.1f)", p.x(), p.y(), fp.x(), fp.y());
@@ -1369,7 +1372,7 @@ void MainWindow::wheelEvent(QWheelEvent *e)
     m.scale(1.0/zoom, 1.0/zoom);
     m.translate(-fp.x(), -fp.y());
     QRectF r = m.mapRect(mpRenderer->realROI());
-    mpRenderer->setRegionOfInterest((r | m.mapRect(viewport))&QRectF(QPointF(0,0), mpRenderer->frameSize()));
+    mpRenderer->setRegionOfInterest((r | m.mapRect(viewport))&QRectF(QPointF(0,0), mpRenderer->videoFrameSize()));
 }
 
 void MainWindow::about()
@@ -1634,7 +1637,11 @@ void MainWindow::handleError(const AVError &e)
 void MainWindow::onMediaStatusChanged()
 {
     QString status;
-    AVPlayer *player = qobject_cast<AVPlayer*>(sender());
+    AVPlayer *player = reinterpret_cast<AVPlayer*>(sender());
+    if (!player) { //why it happens? reinterpret_cast  works.
+        qWarning() << "invalid sender() " << sender() << player;
+        return;
+    }
     switch (player->mediaStatus()) {
     case NoMedia:
         status = tr("No media");
@@ -1668,14 +1675,26 @@ void MainWindow::onMediaStatusChanged()
 
 void MainWindow::onBufferProgress(qreal percent)
 {
-    setWindowTitle(QString::fromLatin1("Buffering... %1% ").arg(percent*100.0, 0, 'f', 1) + mTitle);
+    const qreal bs = mpPlayer->bufferSpeed();
+    QString s;
+    if (bs > 1024*1024*1024)
+        s = QString("%1G/s").arg(bs/1024.0/1024.0/1024.0, 6, 'f', 1);
+    else if (bs > 1024*1024)
+        s = QString("%1M/s").arg(bs/1024.0/1024.0, 6, 'f', 1);
+    else if (bs > 1024)
+        s = QString("%1K/s").arg(bs/1024.0, 6, 'f', 1);
+    else
+        s = QString("%1B/s").arg(bs, 6, 'f', 1);
+    setWindowTitle(QString::fromLatin1("Buffering... %1% @%2 ").arg(percent*100.0, 5, 'f', 1).arg(s) + mTitle);
 }
 
 void MainWindow::onVideoEQEngineChanged()
 {
     VideoRenderer *vo = mpPlayer->renderer();
     VideoEQConfigPage::Engine e = mpVideoEQ->engine();
-    if (e == VideoEQConfigPage::SWScale) {
+    if (e == VideoEQConfigPage::SWScale
+            && vo->id() != VideoRendererId_X11 // X11 scales in the renderer
+            ) {
         vo->forcePreferredPixelFormat(true);
         vo->setPreferredPixelFormat(VideoFormat::Format_RGB32);
     } else {
@@ -1784,36 +1803,28 @@ void MainWindow::onCaptureConfigChanged()
 
 void MainWindow::onAVFilterVideoConfigChanged()
 {
-    if (Config::instance().avfilterVideoEnable()) {
-        if (!mpVideoFilter) {
-            mpVideoFilter = new LibAVFilterVideo(this);
-        }
-        mpVideoFilter->setEnabled(true);
-        mpPlayer->installFilter(mpVideoFilter);
-        mpVideoFilter->setOptions(Config::instance().avfilterVideoOptions());
-    } else {
-        if (mpVideoFilter) {
-            mpVideoFilter->setEnabled(false);
-        }
-        mpPlayer->uninstallFilter(mpVideoFilter);
+    if (mpVideoFilter) {
+        mpVideoFilter->uninstall();
+        delete mpVideoFilter;
+        mpVideoFilter = 0;
     }
+    mpVideoFilter = new LibAVFilterVideo(this);
+    mpVideoFilter->setEnabled(Config::instance().avfilterVideoEnable());
+    mpPlayer->installFilter(mpVideoFilter);
+    mpVideoFilter->setOptions(Config::instance().avfilterVideoOptions());
 }
 
 void MainWindow::onAVFilterAudioConfigChanged()
 {
-    if (Config::instance().avfilterAudioEnable()) {
-        if (!mpAudioFilter) {
-            mpAudioFilter = new LibAVFilterAudio(this);
-        }
-        mpAudioFilter->setEnabled(true);
-        mpPlayer->installFilter(mpAudioFilter);
-        mpAudioFilter->setOptions(Config::instance().avfilterAudioOptions());
-    } else {
-        if (mpAudioFilter) {
-            mpAudioFilter->setEnabled(false);
-        }
-        mpPlayer->uninstallFilter(mpAudioFilter);
+    if (mpAudioFilter) {
+        mpAudioFilter->uninstall();
+        delete mpAudioFilter;
+        mpAudioFilter = 0;
     }
+    mpAudioFilter = new LibAVFilterAudio(this);
+    mpAudioFilter->setEnabled(Config::instance().avfilterAudioEnable());
+    mpAudioFilter->installTo(mpPlayer);
+    mpAudioFilter->setOptions(Config::instance().avfilterAudioOptions());
 }
 
 void MainWindow::donate()

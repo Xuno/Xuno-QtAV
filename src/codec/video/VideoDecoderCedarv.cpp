@@ -24,7 +24,7 @@
 #include "QtAV/private/AVDecoder_p.h"
 #include "QtAV/Packet.h"
 #include "QtAV/private/AVCompat.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 #include <libavcodec/avcodec.h>
 extern "C" {
 #include <libcedarv/libcedarv.h>
@@ -78,14 +78,8 @@ Q_SIGNALS:
     void neonChanged();
     void outputPixelFormatChanged();
 };
-
 extern VideoDecoderId VideoDecoderId_Cedarv;
-FACTORY_REGISTER_ID_AUTO(VideoDecoder, Cedarv, "Cedarv")
-
-void RegisterVideoDecoderCedarv_Man()
-{
-    FACTORY_REGISTER_ID_MAN(VideoDecoder, Cedarv, "Cedarv")
-}
+FACTORY_REGISTER(VideoDecoder, Cedarv, "Cedarv")
 
 // source data is colum major. every block is 32x32
 static void map32x32_to_yuv_Y(void* srcY, void* tarY, unsigned int dst_pitch, unsigned int coded_width, unsigned int coded_height)
@@ -514,7 +508,7 @@ VideoFrame VideoDecoderCedarv::frame()
         d.map_c(d.cedarPicture.u, plane[1], plane[2], pitch[1], display_w_align, display_h_align/2); //vdpau use w, h/2
 
     const VideoFormat fmt(nv12 ? VideoFormat::Format_NV12 : VideoFormat::Format_YUV420P);
-    VideoFrame frame(buf, display_w_align, display_h_align, fmt);
+    VideoFrame frame(display_w_align, display_h_align, fmt, buf);
     frame.setBits(plane);
     frame.setBytesPerLine(pitch);
     frame.setTimestamp(qreal(d.cedarPicture.pts)/1000.0);

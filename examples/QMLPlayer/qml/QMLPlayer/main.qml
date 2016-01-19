@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2013-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2013-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -65,7 +65,7 @@ Rectangle {
             color: PlayerConfig.subtitleColor
             anchors.fill: parent
             anchors.bottomMargin: PlayerConfig.subtitleBottomMargin
-        }
+        }    
     }
 
     MediaPlayer {
@@ -81,6 +81,9 @@ Rectangle {
             onSaved: {
                 msg.info("capture saved at: " + path)
             }
+        }
+        onSourceChanged: {
+            msg.info("url: " + source)
         }
 
         onDurationChanged: control.duration = duration
@@ -122,6 +125,7 @@ Rectangle {
                 msg.error(errorString)
             }
         }
+        muted: control.mute // TODO: control from system
         volume: control.volume
         onVolumeChanged: { //why need this? control.volume = player.volume is not enough?
             if (Math.abs(control.volume - volume) >= 0.01) {
@@ -173,7 +177,6 @@ Rectangle {
             subtitleItem.visible = canRender
             subtitleLabel.visible = !canRender
         }
-
         onEnabledChanged: {
             subtitleItem.visible = enabled
             subtitleLabel.visible = enabled
@@ -181,7 +184,7 @@ Rectangle {
     }
 
     MultiPointTouchArea {
-        mouseEnabled: true
+        //mouseEnabled: true //not available on qt5.2(ubuntu14.04)
         anchors.fill: parent
         onGestureStarted: {
             if (player.playbackState == MediaPlayer.StoppedState)
@@ -201,38 +204,35 @@ Rectangle {
                 } else {
                     player.seekBackward()
                 }
-            } else {
-                if (dy > 0) {// left hand coord
-//                    player.volume = Math.max(0, player.volume-0.05)
-                } else {
-//                    player.volume = Math.min(2, player.volume+0.05)
-                }
             }
-
         }
         MouseArea {
             anchors.fill: parent
-            onClicked: {
+            hoverEnabled: true
+            onDoubleClicked: {
                 control.toggleVisible()
-                if (root.width - mouseX < Utils.scaled(60)) {
+            }
+            onMouseXChanged: {
+                if (root.width - mouseX < configPanel.width) {
                     configPanel.state = "show"
                 } else {
                     configPanel.state = "hide"
                 }
-            }
-            onDoubleClicked: {
-                player.muted = !player.muted
-            }
-
-            onMouseXChanged: {
                 if (player.playbackState == MediaPlayer.StoppedState || !player.hasVideo)
                     return;
-                control.showPreview(mouseX/parent.width)
+                if (mouseY < control.y - control.previewHeight) {
+                    control.hidePreview() // TODO: check previw hovered too
+                } else {
+                    if (pressed) {
+                        control.showPreview(mouseX/parent.width)
+                    }
+                }
             }
         }
     }
     Text {
         id: msg
+        objectName: "msg"
         horizontalAlignment: Text.AlignHCenter
         font.pixelSize: Utils.scaled(20)
         style: Text.Outline
@@ -260,43 +260,6 @@ Rectangle {
             text = txt
         }
     }
-    ControlPanel {
-        id: control
-        anchors {
-            left: parent.left
-            bottom: parent.bottom
-            right: parent.right
-            margins: Utils.scaled(12)
-        }
-        mediaSource: player.source
-        duration: player.duration
-
-        onSeek: {
-            player.fastSeek = false
-            player.seek(ms)
-        }
-        onSeekForward: {
-            player.fastSeek = false
-            player.seek(player.position + ms)
-        }
-        onSeekBackward: {
-            player.fastSeek = false
-            player.seek(player.position - ms)
-        }
-        onPlay: player.play()
-        onStop: player.stop()
-        onTogglePause: {
-            if (player.playbackState == MediaPlayer.PlayingState) {
-                player.pause()
-            } else {
-                player.play()
-            }
-        }
-        volume: player.volume
-        onOpenFile: fileDialog.open()
-        onShowInfo: pageLoader.source = "MediaInfoPage.qml"
-        onShowHelp: pageLoader.source = "About.qml"
-    }
 
     Item {
         anchors.fill: parent
@@ -304,7 +267,7 @@ Rectangle {
         Keys.onPressed: {
             switch (event.key) {
             case Qt.Key_M:
-                player.muted = !player.muted
+                control.mute = !control.mute
                 break
             case Qt.Key_Right:
                 player.fastSeek = event.isAutoRepeat
@@ -358,8 +321,16 @@ Rectangle {
             case Qt.Key_O:
                 fileDialog.open()
                 break;
+            case Qt.Key_N:
+                player.stepForward()
+                break
+            case Qt.Key_B:
+                player.stepBackward()
+                break;
+            //case Qt.Key_Back:
             case Qt.Key_Q:
                 Qt.quit()
+                break
             }
         }
     }
@@ -378,7 +349,7 @@ Rectangle {
         anchors.right: configPanel.left
         //anchors.bottom: control.top
         y: Math.max(0, Math.min(configPanel.selectedY, root.height - pageLoader.height - control.height))
-        width: parent.width - 2*configPanel.width
+        width: parent.width < 4*configPanel.width ? parent.width - configPanel.width : parent.width/2 + configPanel.width
         height: Utils.scaled(200)
         Loader {
             id: pageLoader
@@ -396,11 +367,11 @@ Rectangle {
                         metaData: player.metaData
                     }
                 }
-                if (typeof(item.internalAudioTracks) != "undefined")
+                if (item.hasOwnProperty("internalAudioTracks"))
                     item.internalAudioTracks = player.internalAudioTracks
                 if (typeof(item.externalAudioTracks) != "undefined")
                     item.externalAudioTracks = player.externalAudioTracks
-                if (typeof(item.internalSubtitleTracks) != "undefined")
+                if ("internalSubtitleTracks" in item)
                     item.internalSubtitleTracks = player.internalSubtitleTracks
             }
         }
@@ -412,7 +383,6 @@ Rectangle {
             }
             onChannelChanged: player.channelLayout = channel
             onSubtitleChanged: subtitle.file = file
-            onMuteChanged: player.muted = value
             onExternalAudioChanged: player.externalAudio = file
             onAudioTrackChanged: player.audioTrack = track
             onSubtitleTrackChanged: player.internalSubtitleTrack = track
@@ -473,6 +443,43 @@ Rectangle {
             }
         ]
     }
+    ControlPanel {
+        id: control
+        anchors {
+            left: parent.left
+            bottom: parent.bottom
+            right: parent.right
+            margins: Utils.scaled(12)
+        }
+        mediaSource: player.source
+        duration: player.duration
+
+        onSeek: {
+            player.fastSeek = false
+            player.seek(ms)
+        }
+        onSeekForward: {
+            player.fastSeek = false
+            player.seek(player.position + ms)
+        }
+        onSeekBackward: {
+            player.fastSeek = false
+            player.seek(player.position - ms)
+        }
+        onPlay: player.play()
+        onStop: player.stop()
+        onTogglePause: {
+            if (player.playbackState == MediaPlayer.PlayingState) {
+                player.pause()
+            } else {
+                player.play()
+            }
+        }
+        volume: player.volume
+        onOpenFile: fileDialog.open()
+        onShowInfo: pageLoader.source = "MediaInfoPage.qml"
+        onShowHelp: pageLoader.source = "About.qml"
+    }
     FileDialog {
         id: fileDialog
         title: "Please choose a media file"
@@ -482,6 +489,22 @@ Rectangle {
             player.source = fileDialog.fileUrl
             //player.stop() //remove this if autoLoad works
             //player.play()
+        }
+    }
+    Connections {
+        target: Qt.application
+        onStateChanged: { //since 5.1
+            if (Qt.platform.os !== "android")
+                return
+            // winrt is handled by system
+            switch (Qt.application.state) {
+            case Qt.ApplicationSuspended:
+            case Qt.ApplicationHidden:
+                player.pause()
+                break
+            default:
+                break
+            }
         }
     }
 }

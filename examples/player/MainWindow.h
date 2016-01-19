@@ -67,7 +67,7 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     void setAudioBackends(const QStringList& backends);
-    void setRenderer(QtAV::VideoRenderer* renderer);
+    bool setRenderer(QtAV::VideoRenderer* renderer);
     void setVideoDecoderNames(const QStringList& vd);
     void loadRemoteUrlPresset(const QString& url);
     void setStartSequenceFrame(const quint32 sf);
@@ -232,7 +232,7 @@ private:
 
     QtAV::AVClock *mpClock;
     QtAV::AVPlayer *mpPlayer;
-    QtAV::VideoRenderer *mpRenderer, *mpTempRenderer;
+    QtAV::VideoRenderer *mpRenderer;
     QtAV::LibAVFilterVideo *mpVideoFilter;
     QtAV::LibAVFilterAudio *mpAudioFilter;
     QString mFile;

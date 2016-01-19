@@ -21,7 +21,7 @@
 
 #include "VideoDecoderFFmpegBase.h"
 #include "QtAV/private/AVCompat.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 #include "QtAV/version.h"
 #include "utils/Logger.h"
 
@@ -139,17 +139,11 @@ public:
     void setBugFlags(BugFlags value);
     BugFlags bugFlags() const;
 Q_SIGNALS:
-    void codecNameChanged();
+    void codecNameChanged() Q_DECL_OVERRIDE;
 };
 
 extern VideoDecoderId VideoDecoderId_FFmpeg;
-FACTORY_REGISTER_ID_AUTO(VideoDecoder, FFmpeg, "FFmpeg")
-
-void RegisterVideoDecoderFFmpeg_Man()
-{
-    FACTORY_REGISTER_ID_MAN(VideoDecoder, FFmpeg, "FFmpeg")
-}
-
+FACTORY_REGISTER(VideoDecoder, FFmpeg, "FFmpeg")
 
 class VideoDecoderFFmpegPrivate Q_DECL_FINAL: public VideoDecoderFFmpegBasePrivate
 {
@@ -227,6 +221,10 @@ VideoDecoderFFmpeg::VideoDecoderFFmpeg():
     setProperty("detail_skip_idct", tr("Force skipping of idct to speed up decoding for frame types (-1=None, "
                                        "0=Default, 1=B-frames, 2=P-frames, 3=B+P frames, 4=all frames)"));
     setProperty("detail_skip_frame", tr("Force skipping frames for speed up decoding."));
+    setProperty("detail_threads", QString("%1\n%2\n%3")
+                .arg(tr("Number of decoding threads. Set before open. Maybe no effect for some decoders"))
+                .arg(tr("0: auto"))
+                .arg(tr("1: single thread decoding")));
 }
 
 VideoDecoderId VideoDecoderFFmpeg::id() const
@@ -248,7 +246,8 @@ VideoFrame VideoDecoderFFmpeg::frame()
     frame.setDisplayAspectRatio(d.getDAR(d.frame));
     frame.setBits(d.frame->data);
     frame.setBytesPerLine(d.frame->linesize);
-    frame.setTimestamp((double)d.frame->pkt_pts/1000.0); // in s. what about AVFrame.pts?
+    // in s. TODO: what about AVFrame.pts? av_frame_get_best_effort_timestamp? move to VideoFrame::from(AVFrame*)
+    frame.setTimestamp((double)d.frame->pkt_pts/1000.0);
     frame.setMetaData(QStringLiteral("avbuf"), QVariant::fromValue(AVFrameBuffersRef(new AVFrameBuffers(d.frame))));
     d.updateColorDetails(&frame);
     return frame;
@@ -358,8 +357,9 @@ VideoDecoderFFmpeg::BugFlags VideoDecoderFFmpeg::bugFlags() const
     return (BugFlags)d_func().bug;
 }
 
-namespace {
+//namespace {
 void i18n() {
+    QObject::tr("codecName");
     QObject::tr("skip_loop_filter");
     QObject::tr("skip_idct");
     QObject::tr("strict");
@@ -369,7 +369,7 @@ void i18n() {
     QObject::tr("vismv");
     QObject::tr("bug");
 }
-}
+//}
 } //namespace QtAV
 
 #include "VideoDecoderFFmpeg.moc"

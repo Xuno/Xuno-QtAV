@@ -62,6 +62,8 @@ import QtAV 1.5
 Item {
     id: video
 
+    property alias backgroundColor: videoOut.backgroundColor
+    property alias frameSize: videoOut.frameSize
     property alias sourceAspectRatio: videoOut.sourceAspectRatio
     property alias opengl: videoOut.opengl
     property alias fastSeek: player.fastSeek
@@ -359,6 +361,14 @@ Item {
         onStopped: video.stopped()
         onPlaying: video.playing()
         onSeekFinished: video.seekFinished()
+    }
+
+    function stepForward() {
+        player.stepForward()
+    }
+
+    function stepBackward() {
+        player.stepBackward()
     }
 
     /*!

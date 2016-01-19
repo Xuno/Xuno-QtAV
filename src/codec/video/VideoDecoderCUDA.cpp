@@ -20,8 +20,9 @@
 ******************************************************************************/
 
 #include "QtAV/VideoDecoder.h"
+#include "QtAV/Packet.h"
 #include "QtAV/private/AVDecoder_p.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 #include <QtCore/QQueue>
 #if QTAV_HAVE(DLLAPI_CUDA)
 #include "dllapi.h"
@@ -90,7 +91,7 @@ public:
     void flush() Q_DECL_OVERRIDE;
     QTAV_DEPRECATED bool decode(const QByteArray &encoded) Q_DECL_FINAL;
     bool decode(const Packet &packet) Q_DECL_OVERRIDE Q_DECL_FINAL;
-    virtual VideoFrame frame();
+    virtual VideoFrame frame() Q_DECL_OVERRIDE;
 
     // properties
     int surfaces() const;
@@ -104,15 +105,8 @@ public:
 Q_SIGNALS:
     void copyModeChanged(CopyMode value);
 };
-
-
 extern VideoDecoderId VideoDecoderId_CUDA;
-FACTORY_REGISTER_ID_AUTO(VideoDecoder, CUDA, "CUDA")
-
-void RegisterVideoDecoderCUDA_Man()
-{
-    FACTORY_REGISTER_ID_MAN(VideoDecoder, CUDA, "CUDA")
-}
+FACTORY_REGISTER(VideoDecoder, CUDA, "CUDA")
 
 static struct {
     AVCodecID ffCodec;
@@ -125,8 +119,7 @@ static struct {
     { QTAV_CODEC_ID(H264),       cudaVideoCodec_H264  },
     { QTAV_CODEC_ID(H264),       cudaVideoCodec_H264_SVC},
     { QTAV_CODEC_ID(H264),       cudaVideoCodec_H264_MVC},
-    // AV_CODEC_ID_H265 is a macro defined as AV_CODEC_ID_HEVC. so we can avoid libavcodec version check. (from ffmpeg 2.1)
-#if defined(AV_CODEC_ID_H265) && (CUDA_VERSION >= 6050)
+#if defined(FF_PROFILE_HEVC_MAIN) && (CUDA_VERSION >= 6050)
     { QTAV_CODEC_ID(HEVC),       cudaVideoCodec_HEVC },
 #endif //
     { QTAV_CODEC_ID(VP8),        cudaVideoCodec_VP8 },
@@ -312,13 +305,18 @@ VideoDecoderCUDA::VideoDecoderCUDA():
 {
     // dynamic properties about static property details. used by UI
     // format: detail_property
-    setProperty("detail_surfaces", tr("Decoding surfaces."));
+    setProperty("detail_surfaces", tr("Decoding surfaces"));
     setProperty("detail_flags", tr("Decoder flags"));
-    setProperty("detail_copyMode", tr("Performace: ZeroCopy > DirectCopy > GenericCopy"
-                                      "ZeroCopy: no copy back from GPU to System memory. Directly render the decoded data on GPU.\n"
-                                      "DirectCopy: copy back to host memory but video frames use the same host memory address and maybe not safe.\n"
-                                      "GenericCopy: copy back to host memory and each video frame."
-                                      ));
+    setProperty("detail_copyMode", QString("%1\n%2\n%3\%4")
+                .arg(tr("Performace: ZeroCopy > DirectCopy > GenericCopy"))
+                .arg(tr("ZeroCopy: no copy back from GPU to System memory. Directly render the decoded data on GPU"))
+                .arg(tr("DirectCopy: copy back to host memory but video frames use the same host memory address and maybe not safe"))
+                .arg(tr("GenericCopy: copy back to host memory and each video frame"))
+                );
+    Q_UNUSED(QObject::tr("ZeroCopy"));
+    Q_UNUSED(QObject::tr("DirectCopy"));
+    Q_UNUSED(QObject::tr("GenericCopy"));
+    Q_UNUSED(QObject::tr("copyMode"));
 }
 
 VideoDecoderCUDA::~VideoDecoderCUDA()
@@ -768,7 +766,7 @@ bool VideoDecoderCUDAPrivate::processDecodedData(CUVIDPARSERDISPINFO *cuviddisp,
         if (copy_mode == VideoDecoderCUDA::ZeroCopy && interop_res) {
             if (OpenGLHelper::isOpenGLES()) {
                 proc_params.Reserved[0] = pitch; // TODO: pass pitch to setSurface()
-                frame = VideoFrame(codec_ctx->width, codec_ctx->height, VideoFormat::Format_RGB32); //p->width()
+                frame = VideoFrame(codec_ctx->width, codec_ctx->height, VideoFormat::Format_RGB32);
                 frame.setBytesPerLine(codec_ctx->width * 4); //used by gl to compute texture size
             } else {
                 frame = VideoFrame(codec_ctx->width, codec_ctx->height, VideoFormat::Format_NV12);

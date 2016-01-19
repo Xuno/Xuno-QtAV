@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -27,6 +27,7 @@
 #include <QtCore/QMutex>
 #include <QtCore/QRect>
 #include <QtAV/VideoFrame.h>
+#include <QtGui/QColor>
 
 /*TODO:
  * Region of Interest(ROI)
@@ -60,18 +61,22 @@ public:
       , saturation(0)
       , gammaRGB(1)
       , filterSharp(1)
+      , bg_color(0, 0, 0)
     {
         //conv.setInFormat(PIX_FMT_YUV420P);
         //conv.setOutFormat(PIX_FMT_BGR32); //TODO: why not RGB32?
     }
     virtual ~VideoRendererPrivate(){
     }
-    void computeOutParameters(qreal outAspectRatio) {
+
+    // return true if video rect changed
+    bool computeOutParameters(qreal outAspectRatio) {
         qreal rendererAspectRatio = qreal(renderer_width)/qreal(renderer_height);
+        const QRect out_rect0(out_rect);
         if (out_aspect_ratio_mode == VideoRenderer::RendererAspectRatio) {
             out_aspect_ratio = rendererAspectRatio;
             out_rect = QRect(0, 0, renderer_width, renderer_height);
-            return;
+            return out_rect0 != out_rect;
         }
         // dar: displayed aspect ratio in video renderer orientation
         const qreal dar = (orientation % 180) ? 1.0/outAspectRatio : outAspectRatio;
@@ -79,16 +84,17 @@ public:
         if (rendererAspectRatio >= dar) { //equals to original video aspect ratio here, also equals to out ratio
             //renderer is too wide, use renderer's height, horizonal align center
             const int h = renderer_height;
-            const int w = dar * qreal(h);
+            const int w = qRound(dar * qreal(h));
             out_rect = QRect((renderer_width - w)/2, 0, w, h);
         } else if (rendererAspectRatio < dar) {
             //renderer is too high, use renderer's width
             const int w = renderer_width;
-            const int h = qreal(w)/dar;
+            const int h = qRound(qreal(w)/dar);
             out_rect = QRect(0, (renderer_height - h)/2, w, h);
         }
         out_aspect_ratio = outAspectRatio;
         //qDebug("%f %dx%d <<<<<<<<", out_aspect_ratio, out_rect.width(), out_rect.height());
+        return out_rect0 != out_rect;
     }
     virtual void setupQuality() {}
 
@@ -115,6 +121,7 @@ public:
     bool force_preferred;
 
     qreal brightness, contrast, hue, saturation, gammaRGB, filterSharp;
+    QColor bg_color;
 };
 
 } //namespace QtAV

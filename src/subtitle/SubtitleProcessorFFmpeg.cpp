@@ -19,9 +19,8 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
 
-#include <string>
 #include "QtAV/private/SubtitleProcessor.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 #include "QtAV/AVDemuxer.h"
 #include "QtAV/Packet.h"
 #include "QtAV/private/AVCompat.h"
@@ -54,14 +53,9 @@ private:
 
 static const SubtitleProcessorId SubtitleProcessorId_FFmpeg = QStringLiteral("qtav.subtitle.processor.ffmpeg");
 namespace {
-static const std::string kName("FFmpeg");
+static const char kName[] = "FFmpeg";
 }
-FACTORY_REGISTER_ID_AUTO(SubtitleProcessor, FFmpeg, kName)
-
-void RegisterSubtitleProcessorFFmpeg_Man()
-{
-    FACTORY_REGISTER_ID_MAN(SubtitleProcessor, FFmpeg, kName)
-}
+FACTORY_REGISTER(SubtitleProcessor, FFmpeg, kName)
 
 SubtitleProcessorFFmpeg::SubtitleProcessorFFmpeg()
     : codec_ctx(0)
@@ -80,7 +74,7 @@ SubtitleProcessorId SubtitleProcessorFFmpeg::id() const
 
 QString SubtitleProcessorFFmpeg::name() const
 {
-    return QLatin1String(kName.c_str());//SubtitleProcessorFactory::name(id());
+    return QLatin1String(kName);//SubtitleProcessorFactory::name(id());
 }
 
 QStringList ffmpeg_supported_sub_extensions_by_codec()
@@ -277,7 +271,8 @@ SubtitleFrame SubtitleProcessorFFmpeg::processLine(const QByteArray &data, qreal
     // AV_CODEC_ID_xxx and srt, subrip are available for ffmpeg >= 1.0. AV_CODEC_ID_xxx
     // TODO: what about other formats?
     // libav-9: packet data from demuxer contains time and but duration is 0, must decode
-    if (duration > 0 && (!codec_ctx
+    // Always decode the data because it may contain styles
+    if (false && duration > 0 && (!codec_ctx
 #if QTAV_USE_FFMPEG(LIBAVCODEC)
             || codec_ctx->codec_id == AV_CODEC_ID_SUBRIP
 #endif
@@ -324,15 +319,17 @@ SubtitleFrame SubtitleProcessorFFmpeg::processLine(const QByteArray &data, qreal
     for (unsigned i = 0; i < sub.num_rects; i++) {
         switch (sub.rects[i]->type) {
         case SUBTITLE_ASS:
-            //qDebug("frame: %s", sub.rects[i]->ass);
+            //qDebug("ass frame: %s", sub.rects[i]->ass);
             frame.text.append(PlainText::fromAss(sub.rects[i]->ass)).append(ushort('\n'));
             break;
         case SUBTITLE_TEXT:
-            //qDebug("frame: %s", sub.rects[i]->text);
+            //qDebug("txt frame: %s", sub.rects[i]->text);
             frame.text.append(QString::fromUtf8(sub.rects[i]->text)).append(ushort('\n'));
             break;
         case SUBTITLE_BITMAP:
+            //sub.rects[i]->w > 0 && sub.rects[i]->h > 0
             //qDebug("bmp sub");
+            frame = SubtitleFrame(); // not support bmp subtitle now
             break;
         default:
             break;

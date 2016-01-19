@@ -19,11 +19,14 @@
 ******************************************************************************/
 
 #include "common.h"
-
+#include <cstdio>
+#include <cstdlib>
 #include <QFileOpenEvent>
 #include <QtCore/QLocale>
 #include <QtCore/QTranslator>
 #include <QtCore/QCoreApplication>
+#include <QtCore/QFile>
+#include <QtCore/QTextStream>
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
 #include <QtGui/QDesktopServices>
 #else
@@ -31,12 +34,57 @@
 #endif
 #include <QtDebug>
 
+Q_GLOBAL_STATIC(QFile, fileLogger)
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+class QMessageLogContext {};
+typedef void (*QtMessageHandler)(QtMsgType, const QMessageLogContext &, const QString &);
+QtMsgHandler qInstallMessageHandler(QtMessageHandler h) {
+    static QtMessageHandler hh;
+    hh = h;
+    struct MsgHandlerWrapper {
+        static void handler(QtMsgType type, const char *msg) {
+            static QMessageLogContext ctx;
+            hh(type, ctx, QString::fromUtf8(msg));
+        }
+    };
+    return qInstallMsgHandler(MsgHandlerWrapper::handler);
+}
+#endif
+void Logger(QtMsgType type, const QMessageLogContext &, const QString& qmsg)
+{
+    const QByteArray msgArray = qmsg.toUtf8();
+    const char* msg = msgArray.constData();
+     switch (type) {
+     case QtDebugMsg:
+         printf("Debug: %s\n", msg);
+         fileLogger()->write(QByteArray("Debug: "));
+         break;
+     case QtWarningMsg:
+         printf("Warning: %s\n", msg);
+         fileLogger()->write(QByteArray("Warning: "));
+         break;
+     case QtCriticalMsg:
+         fprintf(stderr, "Critical: %s\n", msg);
+         fileLogger()->write(QByteArray("Critical: "));
+         break;
+     case QtFatalMsg:
+         fprintf(stderr, "Fatal: %s\n", msg);
+         fileLogger()->write(QByteArray("Fatal: "));
+         abort();
+     }
+     fflush(0);
+     fileLogger()->write(msgArray);
+     fileLogger()->write(QByteArray("\n"));
+     fileLogger()->flush();
+}
+
 QOptions get_common_options()
 {
     static QOptions ops = QOptions().addDescription(QString::fromLatin1("Options for QtAV players"))
             .add(QString::fromLatin1("common options"))
             ("help,h", QLatin1String("print this"))
             ("ao", QString(), QLatin1String("audio output. Can be ordered combination of available backends (-ao help). Leave empty to use the default setting. Set 'null' to disable audio."))
+            ("-egl", QLatin1String("Use EGL. Only works for Qt>=5.5+XCB"))
             ("-gl", QLatin1String("OpenGL backend for Qt>=5.4(windows). can be 'desktop', 'opengles' and 'software'"))
             ("x", 0, QString())
             ("y", 0, QLatin1String("y"))
@@ -54,8 +102,57 @@ QOptions get_common_options()
             ("loop",QLatin1String("set loop for sequence of images"))
             ("scale",0.0,QLatin1String("set scale for sequence of images"))
             ("ep","",QLatin1String("extract path"))
+            ("log", QString(), QLatin1String("log level. can be 'off', 'fatal', 'critical', 'warning', 'debug', 'all'"))
+            ("logfile"
+#if defined(Q_OS_WINRT) || defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+             , appDataDir().append(QString::fromLatin1("/log-%1.txt"))
+#else
+             , QString::fromLatin1("log-%1.txt")
+#endif
+             , QString::fromLatin1("log to file. Set empty to disable log file (-logfile '')"))
             ;
     return ops;
+}
+
+void do_common_options_before_qapp(const QOptions& options)
+{
+    // it's too late if qApp is created. but why ANGLE is not?
+    if (options.value(QString::fromLatin1("egl")).toBool() || Config::instance().isEGL()) {
+        // only apply to current run. no config change
+        qputenv("QT_XCB_GL_INTEGRATION", "xcb_egl");
+    } else {
+        qputenv("QT_XCB_GL_INTEGRATION", "xcb_glx");
+    }
+    qDebug() << "QT_XCB_GL_INTEGRATION: " << qgetenv("QT_XCB_GL_INTEGRATION");
+}
+
+void do_common_options(const QOptions &options, const QString& appName)
+{
+    if (options.value(QString::fromLatin1("help")).toBool()) {
+        options.print();
+        exit(0);
+    }
+    // has no effect if qInstallMessageHandler() called
+    //qSetMessagePattern("%{function} @%{line}: %{message}");
+    QString app(appName);
+    if (app.isEmpty() && qApp)
+        app = qApp->applicationName();
+    QString logfile(options.option(QString::fromLatin1("logfile")).value().toString().arg(app));
+    if (!logfile.isEmpty()) {
+        qDebug("set log file");
+        fileLogger()->setFileName(logfile);
+        if (fileLogger()->open(QIODevice::WriteOnly)) {
+            qDebug() << "Logger";
+            qInstallMessageHandler(Logger);
+        } else {
+            qWarning() << "Failed to open log file '" << fileLogger()->fileName() << "': " << fileLogger()->errorString();
+        }
+    }
+    QByteArray level(options.value(QString::fromLatin1("log")).toByteArray());
+    if (level.isEmpty())
+        level = Config::instance().logLevel().toLatin1();
+    if (!level.isEmpty())
+        qputenv("QTAV_LOG", level);
 }
 
 void load_qm(const QStringList &names, const QString& lang)
@@ -168,6 +265,9 @@ bool AppEventFilter::eventFilter(QObject *obj, QEvent *ev)
 {
     if (obj != qApp)
         return false;
+    if (ev->type() == QEvent::WinEventAct) {
+        // winrt file open/pick. since qt5.6
+    }
     if (ev->type() != QEvent::FileOpen)
         return false;
     QFileOpenEvent *foe = static_cast<QFileOpenEvent*>(ev);

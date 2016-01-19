@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -24,7 +24,7 @@
 #include <QResizeEvent>
 #include <QtCore/QLibrary>
 #include "QtAV/private/VideoRenderer_p.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 
 //#define CINTERFACE //http://rxlib.ru/faqs/faqc_en/15596.html
 //#include <windows.h>
@@ -62,43 +62,36 @@ class Direct2DRenderer : public QWidget, public VideoRenderer
     DPTR_DECLARE_PRIVATE(Direct2DRenderer)
 public:
     Direct2DRenderer(QWidget* parent = 0, Qt::WindowFlags f = 0);
-    virtual VideoRendererId id() const;
-    virtual bool isSupported(VideoFormat::PixelFormat pixfmt) const;
+    VideoRendererId id() const Q_DECL_OVERRIDE;
+    bool isSupported(VideoFormat::PixelFormat pixfmt) const Q_DECL_OVERRIDE;
 
     /* WA_PaintOnScreen: To render outside of Qt's paint system, e.g. If you require
      * native painting primitives, you need to reimplement QWidget::paintEngine() to
      * return 0 and set this flag
      */
-    virtual QPaintEngine* paintEngine() const;
-    virtual QWidget* widget() { return this; }
+    QPaintEngine* paintEngine() const Q_DECL_OVERRIDE;
+    QWidget* widget() Q_DECL_OVERRIDE { return this; }
 protected:
-    virtual bool receiveFrame(const VideoFrame& frame);
-    virtual bool needUpdateBackground() const;
-    //called in paintEvent before drawFrame() when required
-    virtual void drawBackground();
-    virtual bool needDrawFrame() const;
-    //draw the current frame using the current paint engine. called by paintEvent()
-    virtual void drawFrame();
+    bool receiveFrame(const VideoFrame& frame) Q_DECL_OVERRIDE;
+    void drawBackground() Q_DECL_OVERRIDE;
+    void drawFrame() Q_DECL_OVERRIDE;
     /*usually you don't need to reimplement paintEvent, just drawXXX() is ok. unless you want do all
      *things yourself totally*/
-    virtual void paintEvent(QPaintEvent *);
-    virtual void resizeEvent(QResizeEvent *);
-    //stay on top will change parent, hide then show(windows). we need GetDC() again
-    virtual void showEvent(QShowEvent *);
+    void paintEvent(QPaintEvent *) Q_DECL_OVERRIDE;
+    void resizeEvent(QResizeEvent *) Q_DECL_OVERRIDE;
+    //stay on top will change parent, hide then show(windows)
+    void showEvent(QShowEvent *) Q_DECL_OVERRIDE;
 };
 typedef Direct2DRenderer VideoRendererDirect2D;
 extern VideoRendererId VideoRendererId_Direct2D;
 #if 0
 FACTORY_REGISTER_ID_AUTO(VideoRenderer, Direct2D, "Direct2D")
 #else
-VideoRenderer* __create_VideoRendererDirect2D() { return new VideoRendererDirect2D();}
-#endif
-
 void RegisterVideoRendererDirect2D_Man()
 {
-    FACTORY_REGISTER_ID_MAN(VideoRenderer, Direct2D, "Direct2D")
+    VideoRenderer::Register<Direct2DRenderer>(VideoRendererId_Direct2D, "Direct2D");
 }
-
+#endif
 VideoRendererId Direct2DRenderer::id() const
 {
     return VideoRendererId_Direct2D;
@@ -329,7 +322,7 @@ bool Direct2DRenderer::receiveFrame(const VideoFrame& frame)
     if (hr != S_OK) {
         qWarning("Failed to copy from memory to bitmap (%ld)", hr);
     }
-    update();
+    updateUi();
     return true;
 }
 
@@ -338,26 +331,19 @@ QPaintEngine* Direct2DRenderer::paintEngine() const
     return 0; //use native engine
 }
 
-bool Direct2DRenderer::needUpdateBackground() const
-{
-    DPTR_D(const Direct2DRenderer);
-    return (d.update_background && d.out_rect != rect()) || !d.video_frame.isValid();
-}
-
 void Direct2DRenderer::drawBackground()
 {
+    const QRegion bgRegion(backgroundRegion());
+    if (bgRegion.isEmpty())
+        return;
     DPTR_D(Direct2DRenderer);
-    D2D1_COLOR_F c = {0, 0, 0, 255};
+    const QColor bc(backgroundColor());
+    D2D1_COLOR_F c = {bc.red(), bc.green(), bc.blue(), bc.alpha()};
     d.render_target->Clear(&c); //const D2D1_COlOR_F&?
 //http://msdn.microsoft.com/en-us/library/windows/desktop/dd535473(v=vs.85).aspx
     //ID2D1SolidColorBrush *brush;
     //d.render_target->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
     //d.render_target->FillRectangle(D2D1::RectF(0, 0, width(), height()), brush);
-}
-
-bool Direct2DRenderer::needDrawFrame() const
-{
-    return true;
 }
 
 void Direct2DRenderer::drawFrame()

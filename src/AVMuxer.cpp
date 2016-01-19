@@ -164,6 +164,51 @@ bool AVMuxer::Private::prepareStreams()
     return !(audio_streams.isEmpty() && video_streams.isEmpty() && subtitle_streams.isEmpty());
 }
 
+static void getFFmpegOutputFormats(QStringList* formats, QStringList* extensions)
+{
+    static QStringList exts;
+    static QStringList fmts;
+    if (exts.isEmpty() && fmts.isEmpty()) {
+        av_register_all(); // MUST register all input/output formats
+        AVOutputFormat *o = NULL;
+        QStringList e, f;
+        while ((o = av_oformat_next(o))) {
+            if (o->extensions)
+                e << QString::fromLatin1(o->extensions).split(QLatin1Char(','), QString::SkipEmptyParts);
+            if (o->name)
+                f << QString::fromLatin1(o->name).split(QLatin1Char(','), QString::SkipEmptyParts);
+        }
+        foreach (const QString& v, e) {
+            exts.append(v.trimmed());
+        }
+        foreach (const QString& v, f) {
+            fmts.append(v.trimmed());
+        }
+        exts.removeDuplicates();
+        fmts.removeDuplicates();
+    }
+    if (formats)
+        *formats = fmts;
+    if (extensions)
+        *extensions = exts;
+}
+
+const QStringList& AVMuxer::supportedFormats()
+{
+    static QStringList fmts;
+    if (fmts.isEmpty())
+        getFFmpegOutputFormats(&fmts, NULL);
+    return fmts;
+}
+
+const QStringList& AVMuxer::supportedExtensions()
+{
+    static QStringList exts;
+    if (exts.isEmpty())
+        getFFmpegOutputFormats(NULL, &exts);
+    return exts;
+}
+
 // TODO: move to QtAV::supportedFormats(bool out). custom protols?
 const QStringList &AVMuxer::supportedProtocols()
 {
@@ -231,6 +276,12 @@ bool AVMuxer::setMedia(const QString &fileName)
         d->file.insert(3, QLatin1Char('h'));
     else if (d->file.startsWith(QLatin1String(kFileScheme)))
         d->file = getLocalPath(d->file);
+    int colon = d->file.indexOf(QLatin1Char(':'));
+    if (colon == 1) {
+#ifdef Q_OS_WINRT
+        d->file.prepend(QStringLiteral("qfile:"));
+#endif
+    }
     d->media_changed = url_old != d->file;
     if (d->media_changed) {
         d->format_forced.clear();
@@ -239,7 +290,7 @@ bool AVMuxer::setMedia(const QString &fileName)
     if (d->file.startsWith(QLatin1Char('/')))
         return d->media_changed;
     // use MediaIO to support protocols not supported by ffmpeg
-    int colon = d->file.indexOf(QLatin1Char(':'));
+    colon = d->file.indexOf(QLatin1Char(':'));
     if (colon >= 0) {
 #ifdef Q_OS_WIN
         if (colon == 1 && d->file.at(0).isLetter())
@@ -266,7 +317,7 @@ bool AVMuxer::setMedia(QIODevice* device)
         }
     }
     if (!d->io)
-        d->io = MediaIO::create(QStringLiteral("QIODevice"));
+        d->io = MediaIO::create("QIODevice");
     QIODevice* old_dev = d->io->property("device").value<QIODevice*>();
     d->media_changed = old_dev != device;
     if (d->media_changed) {

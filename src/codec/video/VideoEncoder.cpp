@@ -19,29 +19,33 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
 
-#include <QtAV/VideoEncoder.h>
-#include <QtAV/private/AVEncoder_p.h>
+#include "QtAV/VideoEncoder.h"
+#include "QtAV/private/AVEncoder_p.h"
 #include "QtAV/private/factory.h"
 #include "utils/Logger.h"
 
 namespace QtAV {
-
 FACTORY_DEFINE(VideoEncoder)
 
 void VideoEncoder_RegisterAll()
 {
-    extern void RegisterVideoEncoderFFmpeg_Man();
+    extern bool RegisterVideoEncoderFFmpeg_Man();
     RegisterVideoEncoderFFmpeg_Man();
 }
 
-VideoEncoder* VideoEncoder::create(VideoEncoderId id)
+QStringList VideoEncoder::supportedCodecs()
 {
-    return VideoEncoderFactory::create(id);
-}
-
-VideoEncoder* VideoEncoder::create(const QString& name)
-{
-    return VideoEncoderFactory::create(VideoEncoderFactory::id(name.toUtf8().constData(), false));
+    static QStringList codecs;
+    if (!codecs.isEmpty())
+        return codecs;
+    avcodec_register_all();
+    AVCodec* c = NULL;
+    while ((c=av_codec_next(c))) {
+        if (!av_codec_is_encoder(c) || c->type != AVMEDIA_TYPE_VIDEO)
+            continue;
+        codecs.append(QString::fromLatin1(c->name));
+    }
+    return codecs;
 }
 
 VideoEncoder::VideoEncoder(VideoEncoderPrivate &d):
@@ -51,7 +55,7 @@ VideoEncoder::VideoEncoder(VideoEncoderPrivate &d):
 
 QString VideoEncoder::name() const
 {
-    return QLatin1String(VideoEncoderFactory::name(id()).c_str());
+    return QLatin1String(VideoEncoder::name(id()));
 }
 
 void VideoEncoder::setWidth(int value)

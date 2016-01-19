@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2013-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2013-2016 Wang Bin <wbsecg1@gmail.com>
     theoribeiro <theo@fictix.com.br>
 
 *   This file is part of QtAV
@@ -25,22 +25,17 @@
 #include <QtQuick/QQuickWindow>
 #include <QtQuick/QSGFlatColorMaterial>
 #include <QtQuick/QSGSimpleTextureNode>
-#include <QtAV/FactoryDefine.h>
 #include <QtAV/AVPlayer.h>
 #include <QtAV/OpenGLVideo.h>
-#include <QtAV/VideoRendererTypes.h> //it declares a factory we need
 #include "QtAV/private/mkid.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 #include "QtAV/private/VideoRenderer_p.h"
 #include "QmlAV/QmlAVPlayer.h"
 #include "QmlAV/SGVideoNode.h"
 
-namespace QtAV
-{
+namespace QtAV {
 static const VideoRendererId VideoRendererId_QQuickItem = mkid::id32base36_6<'Q','Q','I','t','e','m'>::value;
-
-FACTORY_REGISTER_ID_AUTO(VideoRenderer, QQuickItem, "QQuickItem")
-
+FACTORY_REGISTER(VideoRenderer, QQuickItem, "QQuickItem")
 
 class QQuickItemRendererPrivate : public VideoRendererPrivate
 {
@@ -63,6 +58,8 @@ public:
     }
     virtual void setupQuality() {
         if (!node)
+            return;
+        if (opengl)
             return;
         if (quality == VideoRenderer::QualityFastest) {
             ((QSGSimpleTextureNode*)node)->setFiltering(QSGTexture::Nearest);
@@ -153,8 +150,10 @@ void QQuickItemRenderer::setSource(QObject *source)
     if (d.source == source)
         return;
     d.source = source;
+    Q_EMIT sourceChanged();
+    if (!source)
+        return;
     ((QmlAVPlayer*)source)->player()->addVideoRenderer(this);
-    emit sourceChanged();
 }
 
 QQuickItemRenderer::FillMode QQuickItemRenderer::fillMode() const
@@ -175,7 +174,17 @@ void QQuickItemRenderer::setFillMode(FillMode mode)
     }
     //m_geometryDirty = true;
     //update();
-    emit fillModeChanged(mode);
+    Q_EMIT fillModeChanged(mode);
+}
+
+QRectF QQuickItemRenderer::contentRect() const
+{
+    return videoRect();
+}
+
+QRectF QQuickItemRenderer::sourceRect() const
+{
+    return QRectF(QPointF(), videoFrameSize());
 }
 
 bool QQuickItemRenderer::isOpenGL() const
@@ -192,17 +201,6 @@ void QQuickItemRenderer::setOpenGL(bool o)
     emit openGLChanged();
 }
 
-bool QQuickItemRenderer::needUpdateBackground() const
-{
-    DPTR_D(const QQuickItemRenderer);
-    return d.out_rect != boundingRect().toRect();
-}
-
-bool QQuickItemRenderer::needDrawFrame() const
-{
-    return true; //always call updatePaintNode, node must be set
-}
-
 void QQuickItemRenderer::drawFrame()
 {
     DPTR_D(QQuickItemRenderer);
@@ -214,7 +212,6 @@ void QQuickItemRenderer::drawFrame()
         if (d.frame_changed)
             sgvn->setCurrentFrame(d.video_frame);
         d.frame_changed = false;
-        d.video_frame = VideoFrame();
         sgvn->setTexturedRectGeometry(d.out_rect, normalizedROI(), d.orientation);
         return;
     }
@@ -240,7 +237,6 @@ void QQuickItemRenderer::drawFrame()
     static_cast<QSGSimpleTextureNode*>(d.node)->setTexture(d.texture);
     d.node->markDirty(QSGNode::DirtyGeometry);
     d.frame_changed = false;
-    d.video_frame = VideoFrame();
 }
 
 QSGNode *QQuickItemRenderer::updatePaintNode(QSGNode *node, QQuickItem::UpdatePaintNodeData *data)
@@ -285,13 +281,6 @@ void QQuickItemRenderer::afterRendering()
     d_func().img_mutex.unlock();
 }
 
-bool QQuickItemRenderer::onSetRegionOfInterest(const QRectF &roi)
-{
-    Q_UNUSED(roi);
-    emit regionOfInterestChanged();
-    return true;
-}
-
 bool QQuickItemRenderer::onSetOrientation(int value)
 {
     Q_UNUSED(value);
@@ -299,8 +288,6 @@ bool QQuickItemRenderer::onSetOrientation(int value)
         if (value == 90 || value == 270)
             return false;
     }
-    emit orientationChanged();
     return true;
 }
-
 } // namespace QtAV

@@ -59,13 +59,14 @@ namespace QtAV {
 
 namespace Internal {
 // disable logging for release. you can manually enable it.
-#if defined(QT_NO_DEBUG)// && !defined(Q_OS_ANDROID)
+#if defined(QT_NO_DEBUG)// && !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS) && !defined(Q_OS_WINRT)
 static QtAV::LogLevel gLogLevel = QtAV::LogOff;
 #else
 static QtAV::LogLevel gLogLevel = QtAV::LogAll;
 #endif
 static bool gLogLevelSet = false;
 bool isLogLevelSet() { return gLogLevelSet;}
+static int gAVLogLevel = AV_LOG_INFO;
 } //namespace Internal
 
 //TODO: auto add new depend libraries information
@@ -220,10 +221,37 @@ void setFFmpegLogHandler(void (*callback)(void *, int, const char *, va_list))
     av_log_set_callback(callback);
 }
 
+void setFFmpegLogLevel(const QByteArray &level)
+{
+    if (level.isEmpty())
+        return;
+    bool ok = false;
+    const int value = level.toInt(&ok);
+    if ((ok && value == 0) || level == "off" || level == "quiet")
+        Internal::gAVLogLevel = AV_LOG_QUIET;
+    else if (level == "panic")
+        Internal::gAVLogLevel = AV_LOG_PANIC;
+    else if (level == "fatal")
+        Internal::gAVLogLevel = AV_LOG_FATAL;
+    else if (level == "error")
+        Internal::gAVLogLevel = AV_LOG_ERROR;
+    else if (level.startsWith("warn"))
+        Internal::gAVLogLevel = AV_LOG_WARNING;
+    else if (level == "info")
+        Internal::gAVLogLevel = AV_LOG_INFO;
+    else if (level == "verbose")
+        Internal::gAVLogLevel = AV_LOG_VERBOSE;
+    else if (level == "debug")
+        Internal::gAVLogLevel = AV_LOG_DEBUG;
+    else
+        Internal::gAVLogLevel = AV_LOG_INFO;
+    av_log_set_level(Internal::gAVLogLevel);
+}
+
 static void qtav_ffmpeg_log_callback(void* ctx, int level,const char* fmt, va_list vl)
 {
     // AV_LOG_DEBUG is used by ffmpeg developers
-    if (level > AV_LOG_VERBOSE)
+    if (level > Internal::gAVLogLevel)
         return;
     AVClass *c = ctx ? *(AVClass**)ctx : 0;
     QString qmsg = QString().sprintf("[FFmpeg:%s] ", c ? c->item_name(ctx) : "?") + QString().vsprintf(fmt, vl);
@@ -301,24 +329,6 @@ const QStringList& supportedSubtitleMimeTypes()
         init_supported_codec_info();
     return s_subtitle_mimes;
 }
-const QStringList& supportedInputExtensions()
-{
-    static QStringList exts;
-    if (!exts.isEmpty())
-        return exts;
-    av_register_all(); // MUST register all input/output formats
-    AVInputFormat *i = av_iformat_next(NULL);
-    QStringList list;
-    while (i) {
-        list << QString(i->extensions).split(QLatin1Char(','), QString::SkipEmptyParts);
-        i = av_iformat_next(i);
-    }
-    foreach (const QString& v, list) {
-        exts.append(v.trimmed());
-    }
-    exts.removeDuplicates();
-    return exts;
-}
 #endif
 // TODO: static link. move all into 1
 namespace {
@@ -326,29 +336,7 @@ class InitFFmpegLog {
 public:
     InitFFmpegLog() {
         setFFmpegLogHandler(qtav_ffmpeg_log_callback);
-        const QByteArray env = qgetenv("QTAV_FFMPEG_LOG").toLower();
-        if (env.isEmpty())
-            return;
-        bool ok = false;
-        const int level = env.toInt(&ok);
-        if ((ok && level == 0) || env == "off" || env == "quiet") {
-            av_log_set_level(AV_LOG_QUIET);
-            setFFmpegLogHandler(0);
-        }
-        else if (env == "panic")
-            av_log_set_level(AV_LOG_PANIC);
-        else if (env == "fatal")
-            av_log_set_level(AV_LOG_FATAL);
-        else if (env == "error")
-            av_log_set_level(AV_LOG_ERROR);
-        else if (env.startsWith("warn"))
-            av_log_set_level(AV_LOG_WARNING);
-        else if (env == "info")
-            av_log_set_level(AV_LOG_INFO);
-        else if (env == "verbose")
-            av_log_set_level(AV_LOG_VERBOSE);
-        else if (env == "debug")
-            av_log_set_level(AV_LOG_DEBUG);
+        QtAV::setFFmpegLogLevel(qgetenv("QTAV_FFMPEG_LOG").toLower());
     }
 };
 InitFFmpegLog fflog;
@@ -357,7 +345,6 @@ InitFFmpegLog fflog;
 
 // Initialize Qt Resource System when the library is built
 // statically
-
 static void initResources() {
     Q_INIT_RESOURCE(shaders);
     Q_INIT_RESOURCE(QtAV);
@@ -371,4 +358,3 @@ namespace {
     
     ResourceLoader QtAV_QRCLoader;
 }
-

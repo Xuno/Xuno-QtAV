@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -75,15 +75,34 @@ bool QPainterRenderer::prepareFrame(const VideoFrame &frame)
     return true;
 }
 
+void QPainterRenderer::drawBackground()
+{
+    DPTR_D(QPainterRenderer);
+    if (!d.painter)
+        return;
+    const QRegion bgRegion(backgroundRegion());
+    if (bgRegion.isEmpty())
+        return;
+#if 0
+    d.painter->save();
+    d.painter->setClipRegion(bgRegion);
+    d.painter->fillRect(QRect(QPoint(), rendererSize()), backgroundColor());
+    d.painter->restore();
+#else
+    const QVector<QRect> bg(bgRegion.rects());
+    foreach (const QRect& r, bg) {
+        d.painter->fillRect(r, backgroundColor());
+    }
+#endif
+}
+
 void QPainterRenderer::drawFrame()
 {
     DPTR_D(QPainterRenderer);
     if (!d.painter)
         return;
-    if (d.image.isNull()) {
-        d.image = QImage(rendererSize(), QImage::Format_RGB32);
-        d.image.fill(Qt::black); //maemo 4.7.0: QImage.fill(uint)
-    }
+    if (d.image.isNull())
+        return;
     QRect roi = realROI();
     if (orientation() == 0) {
         //assume that the image data is already scaled to out_size(NOT renderer size!)

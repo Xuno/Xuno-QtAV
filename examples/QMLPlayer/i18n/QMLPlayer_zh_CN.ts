@@ -15,7 +15,7 @@
     </message>
     <message>
         <location filename="../qml/QMLPlayer/About.qml" line="22"/>
-        <source>QtAV is a corss-platform, high performace multimedia playback framework</source>
+        <source>QtAV is a cross-platform, high performance multimedia playback framework</source>
         <translation>QtAV是跨平台的高性能多媒体播放框架</translation>
     </message>
     <message>
@@ -65,7 +65,7 @@
     </message>
     <message>
         <location filename="../qml/QMLPlayer/About.qml" line="31"/>
-        <source>Pause/Resum</source>
+        <source>Pause/Resume</source>
         <translation>暂停/恢复</translation>
     </message>
     <message>
@@ -113,7 +113,7 @@
     </message>
     <message>
         <location filename="../qml/QMLPlayer/AudioPage.qml" line="99"/>
-        <source>Stero</source>
+        <source>Stereo</source>
         <translation>立体声</translation>
     </message>
     <message>
@@ -193,99 +193,114 @@
         <translation>时长:</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="28"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="32"/>
         <source>Size: </source>
         <translation>大小:</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="30"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="34"/>
         <source>Title</source>
         <translation>标题</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="32"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="36"/>
         <source>Album</source>
         <translation>专辑</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="34"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="38"/>
         <source>Comment</source>
         <translation>注释</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="36"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="40"/>
         <source>Year</source>
         <translation>年份</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="38"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="42"/>
         <source>Date</source>
         <translation>日期</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="40"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="44"/>
         <source>Author</source>
         <translation>作者</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="42"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="46"/>
         <source>Publisher</source>
         <translation>出版</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="44"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="48"/>
         <source>Genre</source>
         <translation>体裁</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="46"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="50"/>
         <source>Track</source>
         <translation>音轨</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="48"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="52"/>
         <source>Track count</source>
         <translation>音轨数</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="51"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="55"/>
         <source>Video</source>
         <translation>视频</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="52"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="56"/>
         <source>Resolution</source>
         <translation>分辨率</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="53"/>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="59"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="58"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="63"/>
         <source>Codec</source>
         <translation>编码</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="54"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="58"/>
+        <source>Pixel format</source>
+        <translation>像素格式</translation>
+    </message>
+    <message>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="59"/>
         <source>Frame rate</source>
         <translation>帧率</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="55"/>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="60"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="57"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="64"/>
         <source>Bit rate</source>
         <translation>码率</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="58"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="59"/>
+        <source>Frames</source>
+        <translation>帧数</translation>
+    </message>
+    <message>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="62"/>
         <source>Audio</source>
         <translation>音频</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="61"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="63"/>
+        <source>Sample format</source>
+        <translation>采样格式</translation>
+    </message>
+    <message>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="64"/>
         <source>Sample rate</source>
         <translation>采样率</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="62"/>
+        <location filename="../qml/QMLPlayer/MediaInfoPage.qml" line="65"/>
         <source>Channels</source>
         <translation>声道</translation>
     </message>
@@ -356,32 +371,32 @@
     </message>
     <message>
         <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="202"/>
-        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="235"/>
+        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="232"/>
         <source>Clear</source>
         <translation>清除</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="227"/>
+        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="224"/>
         <source>Fonts dir</source>
         <translation>字体目录</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="256"/>
+        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="250"/>
         <source>Embedded Subtitles</source>
         <translation>内嵌字幕</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="286"/>
+        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="280"/>
         <source>External Subtitle</source>
         <translation>外挂字幕</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="299"/>
+        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="293"/>
         <source>Enabled</source>
         <translation>启用</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="308"/>
+        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="302"/>
         <source>Auto load</source>
         <translation>自动加载</translation>
     </message>
@@ -401,17 +416,17 @@
         <translation>预览</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="357"/>
+        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="351"/>
         <source>Choose a font file</source>
         <translation>选择一个字体文件</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="367"/>
+        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="358"/>
         <source>Choose a fonts dir</source>
         <translation>选择一个字体目录</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="378"/>
+        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="366"/>
         <source>Open a subtitle file</source>
         <translation>打开一个字幕文件</translation>
     </message>
@@ -448,7 +463,7 @@
         <translation type="vanished">打开字幕文件</translation>
     </message>
     <message>
-        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="329"/>
+        <location filename="../qml/QMLPlayer/SubtitlePage.qml" line="323"/>
         <source>Open</source>
         <translation>打开</translation>
     </message>

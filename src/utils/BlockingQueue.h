@@ -158,26 +158,24 @@ T BlockingQueue<T, Container>::take()
 {
     QWriteLocker locker(&lock);
     Q_UNUSED(locker);
-    if (!checkEnough()) {
-        cond_full.wakeAll();
-        if (checkEmpty()) {//TODO:always block?
-            //qDebug("queue empty!!");
-            if (empty_callback) {
-                empty_callback->call();
-            }
-            if (block_empty)
-                cond_empty.wait(&lock); //block when empty only
+    if (checkEmpty()) {//TODO:always block?
+        //qDebug("queue empty!!");
+        if (empty_callback) {
+            empty_callback->call();
         }
+        if (block_empty)
+            cond_empty.wait(&lock); //block when empty only
     }
-    //TODO: Why still empty?
     if (checkEmpty()) {
-        qWarning("Queue is still empty");
+        //qWarning("Queue is still empty");
         if (empty_callback) {
             empty_callback->call();
         }
         return T();
     }
     T t(queue.dequeue());
+    if (!checkEnough())
+        cond_full.wakeAll();
     onTake(t); // emit start buffering here if empty
     return t;
 }
@@ -317,7 +315,7 @@ bool BlockingQueue<T, Container>::checkEmpty() const
 template <typename T, template <typename> class Container>
 bool BlockingQueue<T, Container>::checkEnough() const
 {
-    return queue.size() >= thres;
+    return queue.size() >= thres && !checkEmpty();
 }
 } //namespace QtAV
 #endif // QTAV_BLOCKINGQUEUE_H

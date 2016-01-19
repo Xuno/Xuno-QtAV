@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -76,6 +76,9 @@ public:
     // TODO: resample, resize task etc.
     void scheduleTask(QRunnable *task);
     void scheduleFrameDrop(bool value = true);
+    qreal previousHistoryPts() const; //move to statistics?
+    qreal decodeFrameRate() const; //move to statistics?
+    void setDropFrameOnSeek(bool value);
 
 public slots:
     virtual void stop();
@@ -90,6 +93,7 @@ Q_SIGNALS:
      * \param timestamp the frame pts after seek
      */
     void seekFinished(qint64 timestamp);
+    void eofDecoded();
 protected:
     AVThread(AVThreadPrivate& d, QObject *parent = 0);
     void resetState();
@@ -100,6 +104,7 @@ protected:
     // has timeout so that the pending tasks can be processed
     bool tryPause(unsigned long timeout = 100);
     bool processNextTask(); //in AVThread
+    // pts > 0: compare pts and clock when waiting
     void waitAndCheck(ulong value, qreal pts);
 
     DPTR_DECLARE(AVThread)

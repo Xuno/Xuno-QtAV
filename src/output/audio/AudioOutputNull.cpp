@@ -21,7 +21,7 @@
 
 #include "QtAV/private/AudioOutputBackend.h"
 #include "QtAV/private/mkid.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 
 namespace QtAV {
 
@@ -31,23 +31,18 @@ class AudioOutputNull : public AudioOutputBackend
 public:
     AudioOutputNull(QObject *parent = 0);
     QString name() const Q_DECL_OVERRIDE { return QLatin1String(kName);}
-    bool open() Q_DECL_OVERRIDE { return false;}
-    bool close() Q_DECL_OVERRIDE { return false;}
+    bool open() Q_DECL_OVERRIDE { return true;}
+    bool close() Q_DECL_OVERRIDE { return true;}
     // TODO: check channel layout. Null supports channels>2
     BufferControl bufferControl() const Q_DECL_OVERRIDE { return Blocking;}
-    bool write(const QByteArray&) Q_DECL_OVERRIDE { return false;}
-    bool play() Q_DECL_OVERRIDE { return false;}
+    bool write(const QByteArray&) Q_DECL_OVERRIDE { return true;}
+    bool play() Q_DECL_OVERRIDE { return true;}
 
 };
 
 typedef AudioOutputNull AudioOutputBackendNull;
 static const AudioOutputBackendId AudioOutputBackendId_Null = mkid::id32base36_4<'n', 'u', 'l', 'l'>::value;
-FACTORY_REGISTER_ID_AUTO(AudioOutputBackend, Null, kName)
-
-void RegisterAudioOutputNull_Man()
-{
-    FACTORY_REGISTER_ID_MAN(AudioOutputBackend, Null, kName)
-}
+FACTORY_REGISTER(AudioOutputBackend, Null, kName)
 
 AudioOutputNull::AudioOutputNull(QObject *parent)
     : AudioOutputBackend(AudioOutput::DeviceFeatures(), parent)

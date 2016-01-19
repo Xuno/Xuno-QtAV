@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -25,7 +25,7 @@
 #include <windows.h> //GetDC()
 #include <gdiplus.h>
 #include <QResizeEvent>
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 
 #define USE_GRAPHICS 0
 
@@ -42,45 +42,40 @@ class GDIRenderer : public QWidget, public VideoRenderer
     DPTR_DECLARE_PRIVATE(GDIRenderer)
 public:
     GDIRenderer(QWidget* parent = 0, Qt::WindowFlags f = 0); //offscreen?
-    virtual VideoRendererId id() const;
-    virtual bool isSupported(VideoFormat::PixelFormat pixfmt) const;
+    VideoRendererId id() const Q_DECL_OVERRIDE;
+    bool isSupported(VideoFormat::PixelFormat pixfmt) const Q_DECL_OVERRIDE;
     /* WA_PaintOnScreen: To render outside of Qt's paint system, e.g. If you require
      * native painting primitives, you need to reimplement QWidget::paintEngine() to
      * return 0 and set this flag
      */
-    virtual QPaintEngine* paintEngine() const;
+    QPaintEngine* paintEngine() const Q_DECL_OVERRIDE;
 
     /*http://lists.trolltech.com/qt4-preview-feedback/2005-04/thread00609-0.html
      * true: paintEngine.getDC(), double buffer is enabled by defalut.
      * false: GetDC(winId()), no double buffer, should reimplement paintEngine()
      */
-    virtual QWidget* widget() { return this; }
+    QWidget* widget() Q_DECL_OVERRIDE { return this; }
 protected:
-    virtual bool receiveFrame(const VideoFrame& frame);
-    virtual bool needUpdateBackground() const;
-    //called in paintEvent before drawFrame() when required
-    virtual void drawBackground();
-    //draw the current frame using the current paint engine. called by paintEvent()
-    virtual void drawFrame();
+    bool receiveFrame(const VideoFrame& frame) Q_DECL_OVERRIDE;
+    void drawBackground() Q_DECL_OVERRIDE;
+    void drawFrame() Q_DECL_OVERRIDE;
     /*usually you don't need to reimplement paintEvent, just drawXXX() is ok. unless you want do all
      *things yourself totally*/
-    virtual void paintEvent(QPaintEvent *);
-    virtual void resizeEvent(QResizeEvent *);
+    void paintEvent(QPaintEvent *) Q_DECL_OVERRIDE;
+    void resizeEvent(QResizeEvent *) Q_DECL_OVERRIDE;
     //stay on top will change parent, hide then show(windows). we need GetDC() again
-    virtual void showEvent(QShowEvent *);
+    void showEvent(QShowEvent *) Q_DECL_OVERRIDE;
 };
 typedef GDIRenderer VideoRendererGDI;
 extern VideoRendererId VideoRendererId_GDI;
 #if 0
 FACTORY_REGISTER_ID_AUTO(VideoRenderer, GDI, "GDI")
 #else
-VideoRenderer* __create_VideoRendererGDI() { return new VideoRendererGDI();}
-#endif
-
 void RegisterVideoRendererGDI_Man()
 {
-    FACTORY_REGISTER_ID_MAN(VideoRenderer, GDI, "GDI")
+    VideoRenderer::Register<GDIRenderer>(VideoRendererId_GDI, "GDI");
 }
+#endif
 
 VideoRendererId GDIRenderer::id() const
 {
@@ -229,23 +224,24 @@ bool GDIRenderer::receiveFrame(const VideoFrame& frame)
         d.video_frame = frame;
     else
         d.video_frame = frame.to(frame.pixelFormat());
-    update();
+    updateUi();
     return true;
-}
-
-bool GDIRenderer::needUpdateBackground() const
-{
-    DPTR_D(const GDIRenderer);
-    return (d.update_background && d.out_rect != rect()) || !d.video_frame.isValid();
 }
 
 void GDIRenderer::drawBackground()
 {
+    const QRegion bgRegion(backgroundRegion());
+    if (bgRegion.isEmpty())
+        return;
+    const QColor bc(backgroundColor());
     DPTR_D(GDIRenderer);
     //HDC hdc = d.device_context;
     Graphics g(d.device_context);
-    SolidBrush brush(Color(255, 0, 0, 0)); //argb
-    g.FillRectangle(&brush, 0, 0, width(), height());
+    SolidBrush brush(Color(bc.alpha(), bc.red(), bc.green(), bc.blue())); //argb
+    const QVector<QRect> bg(bgRegion.rects());
+    foreach (const QRect& r, bg) {
+        g.FillRectangle(&brush, r.x(), r.y(), r.width(), r.height());
+    }
 }
 
 void GDIRenderer::drawFrame()

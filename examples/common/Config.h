@@ -64,6 +64,7 @@ class COMMON_EXPORT Config : public QObject
     Q_PROPERTY(QMap WebLinks READ WebLinks WRITE setWebLinks NOTIFY weblinksChanged)
     Q_PROPERTY(int previewWidth READ previewWidth WRITE setPreviewWidth NOTIFY previewWidthChanged)
     Q_PROPERTY(int previewHeight READ previewHeight WRITE setPreviewHeight NOTIFY previewHeightChanged)
+    Q_PROPERTY(bool EGL READ isEGL WRITE setEGL NOTIFY EGLChanged)
     Q_PROPERTY(OpenGLType openGLType READ openGLType WRITE setOpenGLType NOTIFY openGLTypeChanged)
     Q_PROPERTY(QString ANGLEPlatform READ getANGLEPlatform WRITE setANGLEPlatform NOTIFY ANGLEPlatformChanged)
     Q_PROPERTY(bool avformatOptionsEnabled READ avformatOptionsEnabled WRITE setAvformatOptionsEnabled NOTIFY avformatOptionsEnabledChanged)
@@ -72,6 +73,7 @@ class COMMON_EXPORT Config : public QObject
     Q_PROPERTY(int bufferValue READ bufferValue WRITE setBufferValue NOTIFY bufferValueChanged)
     Q_PROPERTY(int bufferValueI READ bufferValueI WRITE setBufferValueI NOTIFY bufferValueChangedI)
     Q_PROPERTY(bool forceVideoClockI READ forceVideoClockI WRITE setForceVideoClockI NOTIFY forceVideoClockChangedI)
+    Q_PROPERTY(QString logLevel READ logLevel WRITE setLogLevel NOTIFY logLevelChanged)
     Q_ENUMS(OpenGLType)
     Q_PROPERTY(bool floatControlEnabled READ floatControlEnabled WRITE setFloatControlEnabled NOTIFY floatControlEnabledChanged)
 
@@ -85,7 +87,7 @@ public:
     };
 
     static Config& instance();
-
+    static void setName(const QString& name); // config file base name
     Q_INVOKABLE bool reset();
     void reload();
     /*!
@@ -197,6 +199,9 @@ public:
     QMap<QString,QVariant> WebLinks() const;
     Config& setWebLinks(const QMap<QString, QVariant> &value);
 
+    // currently only for xcb
+    bool isEGL() const;
+    Config& setEGL(bool value);
     // can be "Desktop", "OpenGLES", "Software"
     OpenGLType openGLType() const;
     Config& setOpenGLType(OpenGLType value);
@@ -220,6 +225,10 @@ public:
 
     bool forceVideoClockI() const;
     Config& setForceVideoClockI(bool value);
+
+    // can be: "", "off", "debug", "warning", "critical", "fatal", "all"
+    QString logLevel() const;
+    Config& setLogLevel(const QString& value);
 
     Q_INVOKABLE QVariant operator ()(const QString& key) const;
     Q_INVOKABLE Config& operator ()(const QString& key, const QVariant& value);
@@ -252,6 +261,7 @@ public:
     Q_SIGNAL void weblinksChanged();
     Q_SIGNAL void previewWidthChanged();
     Q_SIGNAL void previewHeightChanged();
+    Q_SIGNAL void EGLChanged();
     Q_SIGNAL void openGLTypeChanged();
     Q_SIGNAL void ANGLEPlatformChanged();
     Q_SIGNAL void avformatOptionsEnabledChanged();
@@ -264,6 +274,7 @@ public:
     Q_SIGNAL void abortOnTimeoutChangedI();
     Q_SIGNAL void forceVideoClockChangedI();
     Q_SIGNAL void floatControlEnabledChanged();
+    Q_SIGNAL void logLevelChanged();
 
 protected:
     explicit Config(QObject *parent = 0);

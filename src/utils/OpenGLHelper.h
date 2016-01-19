@@ -67,31 +67,40 @@ typedef QGLBuffer QOpenGLBuffer;
 #endif
 //GL_BGRA is available in OpenGL >= 1.2
 #ifndef GL_BGRA
-#ifndef GL_BGRA_EXT
-#if defined QT_OPENGL_ES_2
-#include <GLES2/gl2ext.h>
-//#include <GLES/glext.h> //maemo 5 define there
-#elif defined QT_OPENGL_ES
-#include <GLES/glext.h>
-#else
-#include <GL/glext.h> //GL_BGRA_EXT for OpenGL<=1.1 //TODO Apple include <OpenGL/xxx>
-#endif
-#endif //GL_BGRA_EXT
-//TODO: glPixelStorei(GL_PACK_SWAP_BYTES, ) to swap rgba?
-#ifndef GL_BGRA //it may be defined in glext.h
-#ifdef GL_BGRA_EXT
-#define GL_BGRA GL_BGRA_EXT
-#endif //GL_BGRA_EXT
-#ifdef GL_BGR_EXT
-#define GL_BGR GL_BGR_EXT
-#endif //GL_BGR_EXT
-#endif //GL_BGRA
-#endif //GL_BGRA
-#ifndef GL_BGRA
 #define GL_BGRA 0x80E1
 #endif
 #ifndef GL_BGR
 #define GL_BGR 0x80E0
+#endif
+#ifndef GL_RED
+#define GL_RED 0x1903
+#endif
+#ifndef GL_RG
+#define GL_RG 0x8227
+#endif
+#ifndef GL_R8
+#define GL_R8 0x8229
+#endif
+#ifndef GL_R16
+#define GL_R16 0x822A
+#endif
+#ifndef GL_RG8
+#define GL_RG8 0x822B
+#endif
+#ifndef GL_RG16
+#define GL_RG16 0x822C
+#endif
+#ifndef GL_RGB8
+#define GL_RGB8 0x8051
+#endif
+#ifndef GL_RGB16
+#define GL_RGB16 0x8054
+#endif
+#ifndef GL_RGBA8
+#define GL_RGBA8 0x8058
+#endif
+#ifndef GL_RGBA16
+#define GL_RGBA16 0x805B
 #endif
 // for dynamicgl. qglfunctions before qt5.3 does not have portable gl functions
 #ifdef QT_OPENGL_DYNAMIC
@@ -103,15 +112,47 @@ typedef QGLBuffer QOpenGLBuffer;
 #define GL_TEXTURE_RECTANGLE 0x84F5
 #endif
 
+#define EGL_ENSURE(x, ...) \
+    do { \
+        if (!(x)) { \
+            EGLint err = eglGetError(); \
+            qWarning("EGL error@%d<<%s. " #x ": %#x %s", __LINE__, __FILE__, err, eglQueryString(eglGetCurrentDisplay(), err)); \
+            return __VA_ARGS__; \
+        } \
+    } while(0)
+#define EGL_WARN(x, ...) \
+    do { \
+        if (!(x)) { \
+            EGLint err = eglGetError(); \
+            qWarning("EGL error@%d<<%s. " #x ": %#x %s", __LINE__, __FILE__, err, eglQueryString(eglGetCurrentDisplay(), err)); \
+        } \
+    } while(0)
+
 class QMatrix4x4;
 namespace QtAV {
 namespace OpenGLHelper {
 
+int GLSLVersion();
+bool isEGL();
 bool isOpenGLES();
 /*!
- * \brief hasExtension
- * Current OpenGL context must be valid.
+ * \brief hasExtensionEGL
+ * Test if any of the given extensions is supported
  * \param exts Ends with NULL
+ * \return true if one of extension is supported
+ */
+bool hasExtensionEGL(const char* exts[]);
+bool hasRG();
+bool has16BitTexture();
+// set by user (environment var "QTAV_TEXTURE16_DEPTH=8 or 16", default now is 8)
+int depth16BitTexture();
+// set by user (environment var "QTAV_GL_DEPRECATED=1")
+bool useDeprecatedFormats();
+/*!
+ * \brief hasExtension
+ * Test if any of the given extensions is supported. Current OpenGL context must be valid.
+ * \param exts Ends with NULL
+ * \return true if one of extension is supported
  */
 bool hasExtension(const char* exts[]);
 bool isPBOSupported();
@@ -127,8 +168,6 @@ void glActiveTexture(GLenum texture);
  */
 bool videoFormatToGL(const VideoFormat& fmt, GLint* internal_format, GLenum* data_format, GLenum* data_type, QMatrix4x4* mat = NULL);
 int bytesOfGLFormat(GLenum format, GLenum dataType = GL_UNSIGNED_BYTE);
-GLint GetGLInternalFormat(GLint data_format, int bpp);
-
 } //namespace OpenGLHelper
 } //namespace QtAV
 #else

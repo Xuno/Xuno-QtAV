@@ -30,6 +30,7 @@ using namespace QtAV;
 
 PlayerWindow::PlayerWindow(QWidget *parent) : QWidget(parent)
 {
+    QtAV::Widgets::registerRenderers();
     setWindowTitle(QString::fromLatin1("QtAV simple player example"));
     m_player = new AVPlayer(this);
     QVBoxLayout *vl = new QVBoxLayout();
@@ -94,7 +95,7 @@ void PlayerWindow::updatePreview(const QImage &image)
 void PlayerWindow::capture()
 {
     //m_player->captureVideo();
-    m_player->videoCapture()->request();
+    m_player->videoCapture()->capture();
 }
 
 void PlayerWindow::onCaptureSaved(const QString &path)

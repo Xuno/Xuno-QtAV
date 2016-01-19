@@ -37,7 +37,7 @@ RESOURCES += \
 #QMAKE_LFLAGS += -u _link_hack
 
 #SystemParametersInfo
-*msvc*: LIBS += -lUser32
+!winrt:*msvc*: LIBS += -lUser32
 
 HEADERS = common.h \
     Config.h \
@@ -56,8 +56,8 @@ macx:!ios {
     LIBS += -framework CoreServices #-framework ScreenSaver
 }
 
-include($$PROJECTROOT/deploy.pri)
+!contains(QMAKE_HOST.os, Windows):include($$PROJECTROOT/deploy.pri)
 
 target.path = $$[QT_INSTALL_BINS]
-INSTALLS += target
+!contains(QMAKE_HOST.os, Windows):INSTALLS += target
 

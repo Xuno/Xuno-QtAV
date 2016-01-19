@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2014-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -36,7 +36,7 @@ enum MediaStatus
     StalledMedia, // insufficient buffering or other interruptions (timeout, user interrupt)
     BufferingMedia, // NOT IMPLEMENTED
     BufferedMedia, // when playing //NOT IMPLEMENTED
-    EndOfMedia,
+    EndOfMedia, // Playback has reached the end of the current media. The player is in the StoppedState.
     InvalidMedia // what if loop > 0 or stopPosition() is not mediaStopPosition()?
 };
 
@@ -45,6 +45,13 @@ enum BufferMode {
     BufferBytes,
     BufferPackets
 };
+
+enum MediaEndActionFlag {
+    MediaEndAction_Default, /// stop playback (if loop end) and clear video renderer
+    MediaEndAction_KeepDisplay = 1, /// stop playback but video renderer keeps the last frame
+    MediaEndAction_Pause = 1 << 1 /// pause playback. Currently AVPlayer repeat mode will not work if this flag is set
+};
+Q_DECLARE_FLAGS(MediaEndAction, MediaEndActionFlag)
 
 enum SeekUnit {
     SeekByTime, // only this is supported now
@@ -67,17 +74,26 @@ enum ColorSpace {
     ColorSpace_BT709
 };
 
+/*!
+ * \brief The SurfaceType enum
+ * HostMemorySurface:
+ * Map the decoded frame to host memory
+ * GLTextureSurface:
+ * Map the decoded frame as an OpenGL texture
+ * SourceSurface:
+ * get the original surface from decoder, for example VASurfaceID for va-api, CUdeviceptr for CUDA and IDirect3DSurface9* for DXVA.
+ * Zero copy mode is required.
+ * UserSurface:
+ * Do your own magic mapping with it
+ */
 enum SurfaceType {
     HostMemorySurface,
     GLTextureSurface,
-    DXTextureSurface,
-    VAAPISurface,
-    DXVASurface,
-    CUDASurface,
-    UnknownSurface
+    SourceSurface,
+    UserSurface = 0xffff
 };
 
 } //namespace QtAV
 Q_DECLARE_METATYPE(QtAV::MediaStatus)
-
+Q_DECLARE_METATYPE(QtAV::MediaEndAction)
 #endif // QTAV_COMMONTYPES_H

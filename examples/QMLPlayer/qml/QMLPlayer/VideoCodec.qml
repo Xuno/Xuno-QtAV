@@ -72,8 +72,13 @@ Page {
                 onStateChanged: {
                     if (state != "selected")
                         return
-                    d.detail = description + " " + (hardware ? qsTr("hardware decoding") : qsTr("software decoding"))  + "\n"
-                            + qsTr("Zero Copy support") + ":" + zcopy
+                    d.detail = description + " " + (hardware ? qsTr("hardware decoding") : qsTr("software decoding"))
+                    if (name === "FFmpeg") {
+                        copyMode.visible = false
+                    } else {
+                        copyMode.visible = true
+                        d.detail += "\n" + qsTr("Zero Copy support") + ":" + zcopy
+                    }
                     PlayerConfig.decoderPriorityNames = [ name ]
                 }
             }
@@ -91,7 +96,7 @@ Page {
     Component.onCompleted: {
         if (Qt.platform.os == "windows") {
             codecMode.append({ name: "DXVA", hardware: true, zcopy: true, description: "DirectX Video Acceleration (Windows)\nUse OpenGLES(ANGLE) + D3D to support 0-copy" })
-            codecMode.append({ name: "CUDA", hardware: true, zcopy: true, description: "NVIDIA CUDA (Windows, Linux)"})
+            codecMode.append({ name: "CUDA", hardware: true, zcopy: true, description: "NVIDIA CUDA (Windows, Linux).\nH264 10bit support."})
         } else if (Qt.platform.os == "osx") {
             codecMode.append({ name: "VDA", hardware: true, zcopy: true, description: "VDA (OSX)" })
             codecMode.append({ name: "VideoToolbox", hardware: true, zcopy: true, description: "VideoToolbox (OSX)" })

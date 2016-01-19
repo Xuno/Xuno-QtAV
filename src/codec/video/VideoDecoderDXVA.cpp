@@ -25,9 +25,8 @@
 #endif
 #include "VideoDecoderFFmpegHW.h"
 #include "VideoDecoderFFmpegHW_p.h"
-#include "QtAV/Packet.h"
 #include "QtAV/private/AVCompat.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 //#include "QtAV/private/mkid.h"
 #include "utils/Logger.h"
 #include "SurfaceInteropDXVA.h"
@@ -36,15 +35,14 @@
 #include "utils/DirectXHelper.h"
 
 // d3d9ex: http://dxr.mozilla.org/mozilla-central/source/dom/media/wmf/DXVA2Manager.cpp
-// AV_CODEC_ID_H265 is a macro defined as AV_CODEC_ID_HEVC. so we can avoid libavcodec version check. (from ffmpeg 2.1)
-#ifndef AV_CODEC_ID_H265
+// AV_CODEC_ID_H265 is a macro defined as AV_CODEC_ID_HEVC in ffmpeg but not in libav. so we can use FF_PROFILE_HEVC_MAIN to avoid libavcodec version check. (from ffmpeg 2.1)
+#ifndef FF_PROFILE_HEVC_MAIN //libav does not define it
 #ifdef _MSC_VER
 #pragma message("HEVC will not be supported. Update your FFmpeg")
 #else
 #warning "HEVC will not be supported. Update your FFmpeg"
 #endif
-#define AV_CODEC_ID_H265 QTAV_CODEC_ID(NONE) //mkid::fourcc<'H','2','6','5'>::value
-#define AV_CODEC_ID_HEVC QTAV_CODEC_ID(NONE)
+#define AV_CODEC_ID_HEVC QTAV_CODEC_ID(NONE) //mkid::fourcc<'H','E','V','C'>::value
 #define FF_PROFILE_HEVC_MAIN -1
 #define FF_PROFILE_HEVC_MAIN_10 -1
 #endif
@@ -174,12 +172,7 @@ public:
 };
 
 extern VideoDecoderId VideoDecoderId_DXVA;
-FACTORY_REGISTER_ID_AUTO(VideoDecoder, DXVA, "DXVA")
-
-void RegisterVideoDecoderDXVA_Man()
-{
-    FACTORY_REGISTER_ID_MAN(VideoDecoder, DXVA, "DXVA")
-}
+FACTORY_REGISTER(VideoDecoder, DXVA, "DXVA")
 
 typedef struct {
     IDirect3DSurface9 *d3d;
@@ -452,7 +445,7 @@ VideoDecoderDXVA::VideoDecoderDXVA()
 {
     // dynamic properties about static property details. used by UI
     // format: detail_property
-    setProperty("detail_surfaces", tr("Decoding surfaces.") + QStringLiteral(" ") + tr("0: auto"));
+    setProperty("detail_surfaces", tr("Decoding surfaces") + QStringLiteral(" ") + tr("0: auto"));
 }
 
 VideoDecoderId VideoDecoderDXVA::id() const
@@ -480,8 +473,8 @@ VideoFrame VideoDecoderDXVA::frame()
     IDirect3DSurface9 *d3d = (IDirect3DSurface9*)(uintptr_t)d.frame->data[3];
     if (copyMode() == ZeroCopy && d.interop_res) {
         dxva::SurfaceInteropDXVA *interop = new dxva::SurfaceInteropDXVA(d.interop_res);
-        interop->setSurface(d3d, width(), height());
-        VideoFrame f(width(), height(), VideoFormat::Format_RGB32); //p->width()
+        interop->setSurface(d3d, d.width, d.height);
+        VideoFrame f(d.width, d.height, VideoFormat::Format_RGB32);
         f.setBytesPerLine(d.width * 4); //used by gl to compute texture size
         f.setMetaData(QStringLiteral("surface_interop"), QVariant::fromValue(VideoSurfaceInteropPtr(interop)));
         f.setTimestamp(d.frame->pkt_pts/1000.0);

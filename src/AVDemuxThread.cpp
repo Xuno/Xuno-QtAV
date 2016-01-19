@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -62,13 +62,13 @@ AVDemuxThread::AVDemuxThread(QObject *parent) :
   , paused(false)
   , user_paused(false)
   , end(false)
+  , end_action(MediaEndAction_Default)
   , m_buffering(false)
   , m_buffer(0)
   , demuxer(0)
   , ademuxer(0)
   , audio_thread(0)
   , video_thread(0)
-  , nb_next_frame(0)
   , clock_type(-1)
 {
     seek_tasks.setCapacity(1);
@@ -137,6 +137,69 @@ AVThread* AVDemuxThread::audioThread()
     return audio_thread;
 }
 
+void AVDemuxThread::stepBackward()
+{
+    if (!video_thread)
+        return;
+    AVThread *t = video_thread;
+    const qreal pre_pts = video_thread->previousHistoryPts();
+    if (pre_pts == 0.0) {
+        qWarning("can not get previous pts");
+        return;
+    }
+    end = false;
+    // queue maybe blocked by put()
+    if (audio_thread) {
+        audio_thread->packetQueue()->clear(); // will put new packets before task run
+    }
+
+    class stepBackwardTask : public QRunnable {
+    public:
+        stepBackwardTask(AVDemuxThread *dt, qreal t)
+            : demux_thread(dt)
+            , pts(t)
+        {}
+        void run() {
+            AVThread *avt = demux_thread->videoThread();
+            avt->packetQueue()->clear(); // clear here
+            if (pts <= 0) {
+                demux_thread->demuxer->seek(qint64(-pts*1000.0) - 1000LL);
+                QVector<qreal> ts;
+                qreal t = -1.0;
+                while (t < -pts) {
+                    demux_thread->demuxer->readFrame();
+                    if (demux_thread->demuxer->stream() != demux_thread->demuxer->videoStream())
+                        continue;
+                    t = demux_thread->demuxer->packet().pts;
+                    ts.push_back(t);
+                }
+                ts.pop_back();
+                pts = ts.back();
+                // FIXME: sometimes can not seek to the previous pts, the result pts is always current pts
+            }
+            qDebug("step backward: %lld, %f", qint64(pts*1000.0), pts);
+            demux_thread->video_thread->setDropFrameOnSeek(false);
+            demux_thread->seekInternal(qint64(pts*1000.0), AccurateSeek);
+        }
+    private:
+        AVDemuxThread *demux_thread;
+        qreal pts;
+    };
+
+    pause(true);
+    // set clock first
+    if (clock_type < 0)
+        clock_type = (int)video_thread->clock()->isClockAuto() + 2*(int)video_thread->clock()->clockType();
+    video_thread->clock()->setClockType(AVClock::VideoClock);
+    t->packetQueue()->clear(); // will put new packets before task run
+    t->packetQueue();
+    Packet pkt;
+    pkt.pts = pre_pts;
+    t->packetQueue()->put(pkt); // clear and put a seek packet to ensure not frames other than previous frame will be decoded and rendered
+    video_thread->pause(false);
+    newSeekRequest(new stepBackwardTask(this, pre_pts));
+}
+
 void AVDemuxThread::seek(qint64 pos, SeekType type)
 {
     end = false;
@@ -155,6 +218,8 @@ void AVDemuxThread::seek(qint64 pos, SeekType type)
             , position(t)
         {}
         void run() {
+            if (demux_thread->video_thread)
+                demux_thread->video_thread->setDropFrameOnSeek(true);
             demux_thread->seekInternal(position, type);
         }
     private:
@@ -197,7 +262,7 @@ void AVDemuxThread::seekInternal(qint64 pos, SeekType type)
     }
     if (watch_thread) {
         pauseInternal(false);
-        emit requestClockPause(false); // need direct connection
+        Q_EMIT requestClockPause(false); // need direct connection
         // direct connection is fine here
         connect(watch_thread, SIGNAL(seekFinished(qint64)), this, SLOT(seekOnPauseFinished()), Qt::DirectConnection);
     }
@@ -207,7 +272,7 @@ void AVDemuxThread::newSeekRequest(QRunnable *r)
 {
     if (seek_tasks.size() >= seek_tasks.capacity()) {
         QRunnable *r = seek_tasks.take();
-        if (r->autoDelete())
+        if (r && r->autoDelete())
             delete r;
     }
     seek_tasks.put(r);
@@ -288,10 +353,10 @@ void AVDemuxThread::stop()
 
 void AVDemuxThread::pause(bool p, bool wait)
 {
+    user_paused = p;
     if (paused == p)
         return;
     paused = p;
-    user_paused = paused;
     if (!paused)
         cond.wakeAll();
     else {
@@ -303,9 +368,21 @@ void AVDemuxThread::pause(bool p, bool wait)
     }
 }
 
-void AVDemuxThread::nextFrame()
+void AVDemuxThread::setMediaEndAction(MediaEndAction value)
 {
-    // clock type will be wrong if no lock because slot frameDeliveredNextFrame() is in video thread
+    end_action = value;
+}
+
+MediaEndAction AVDemuxThread::mediaEndAction() const
+{
+    return end_action;
+}
+
+void AVDemuxThread::stepForward()
+{
+    if (end)
+        return;
+    // clock type will be wrong if no lock because slot frameDeliveredOnStepForward() is in video thread
     QMutexLocker locker(&next_frame_mutex);
     Q_UNUSED(locker);
     pause(true); // must pause AVDemuxThread (set user_paused true)
@@ -323,12 +400,12 @@ void AVDemuxThread::nextFrame()
         t->pause(false);
         t->packetQueue()->blockFull(false);
         if (!connected) {
-            connect(t, SIGNAL(frameDelivered()), this, SLOT(frameDeliveredNextFrame()), Qt::DirectConnection);
+            connect(t, SIGNAL(frameDelivered()), this, SLOT(frameDeliveredOnStepForward()), Qt::DirectConnection);
+            connect(t, SIGNAL(eofDecoded()), this, SLOT(eofDecodedOnStepForward()), Qt::DirectConnection);
             connected = true;
         }
     }
-    emit requestClockPause(false);
-    nb_next_frame.ref();
+    Q_EMIT requestClockPause(false);
     pauseInternal(false);
 }
 
@@ -339,39 +416,54 @@ void AVDemuxThread::seekOnPauseFinished()
     disconnect(thread, SIGNAL(seekFinished(qint64)), this, SLOT(seekOnPauseFinished()));
     if (user_paused) {
         pause(true); // restore pause state
-        emit requestClockPause(true); // need direct connection
+        Q_EMIT requestClockPause(true); // need direct connection
     // pause video/audio thread
         if (video_thread)
             video_thread->pause(true);
         if (audio_thread)
             audio_thread->pause(true);
     }
+    if (clock_type >= 0) {
+        thread->clock()->setClockAuto(clock_type & 1);
+        thread->clock()->setClockType(AVClock::ClockType(clock_type/2));
+        clock_type = -1;
+    }
 }
 
-void AVDemuxThread::frameDeliveredNextFrame()
+void AVDemuxThread::frameDeliveredOnStepForward()
 {
     AVThread *thread = video_thread ? video_thread : audio_thread;
     Q_ASSERT(thread);
-    if (nb_next_frame.deref()) {
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0) || QT_VERSION >= QT_VERSION_CHECK(5, 3, 0)
-        Q_ASSERT_X((int)nb_next_frame > 0, "frameDeliveredNextFrame", "internal error. frameDeliveredNextFrame must be > 0");
-#else
-        Q_ASSERT_X((int)nb_next_frame.load() > 0, "frameDeliveredNextFrame", "internal error. frameDeliveredNextFrame must be > 0");
-#endif
-        return;
-    }
     QMutexLocker locker(&next_frame_mutex);
     Q_UNUSED(locker);
-    disconnect(thread, SIGNAL(frameDelivered()), this, SLOT(frameDeliveredNextFrame()));
+    disconnect(thread, SIGNAL(frameDelivered()), this, SLOT(frameDeliveredOnStepForward()));
+    disconnect(thread, SIGNAL(eofDecoded()), this, SLOT(eofDecodedOnStepForward()));
     if (user_paused) {
         pause(true); // restore pause state
-        emit requestClockPause(true); // need direct connection
+        Q_EMIT requestClockPause(true); // need direct connection
     // pause both video and audio thread
         if (video_thread)
             video_thread->pause(true);
         if (audio_thread)
             audio_thread->pause(true);
     }
+    if (clock_type >= 0) {
+        thread->clock()->setClockAuto(clock_type & 1);
+        thread->clock()->setClockType(AVClock::ClockType(clock_type/2));
+        clock_type = -1;
+    }
+}
+
+void AVDemuxThread::eofDecodedOnStepForward()
+{
+    AVThread *thread = video_thread ? video_thread : audio_thread;
+    Q_ASSERT(thread);
+    QMutexLocker locker(&next_frame_mutex);
+    Q_UNUSED(locker);
+    disconnect(thread, SIGNAL(frameDelivered()), this, SLOT(frameDeliveredOnStepForward()));
+    disconnect(thread, SIGNAL(eofDecoded()), this, SLOT(eofDecodedOnStepForward()));
+    pause(false);
+    end = true;
     if (clock_type >= 0) {
         thread->clock()->setClockAuto(clock_type & 1);
         thread->clock()->setClockType(AVClock::ClockType(clock_type/2));
@@ -420,32 +512,62 @@ void AVDemuxThread::run()
     }
     connect(thread, SIGNAL(seekFinished(qint64)), this, SIGNAL(seekFinished(qint64)), Qt::DirectConnection);
     seek_tasks.clear();
-    bool was_end = false;
+    int was_end = 0;
     if (ademuxer) {
         ademuxer->seek(0LL);
     }
+    qreal last_apts = 0;
+    qreal last_vpts = 0;
     while (!end) {
         processNextSeekTask();
         //vthread maybe changed by AVPlayer.setPriority() from no dec case
         vqueue = video_thread ? video_thread->packetQueue() : 0;
         if (demuxer->atEnd()) {
             // if avthread may skip 1st eof packet because of a/v sync
+            const int kMaxEof = 1;//if buffer packet, we can use qMax(aqueue->bufferValue(), vqueue->bufferValue()) and not call blockEmpty(false);
             if (aqueue && (!was_end || aqueue->isEmpty())) {
-                aqueue->put(Packet::createEOF());
-                aqueue->blockEmpty(false); // do not block if buffer is not enough. block again on seek
+                if (was_end < kMaxEof)
+                    aqueue->put(Packet::createEOF());
+                const qreal dpts = last_vpts - last_apts;
+                if (dpts > 0.1) {
+                    Packet fake_apkt;
+                    fake_apkt.duration = last_vpts - qMin(thread->clock()->videoTime(), thread->clock()->value()); // FIXME: when clock value < 0?
+                    qDebug("audio is too short than video: %.3f, fake_apkt.duration: %.3f", dpts, fake_apkt.duration);
+                    last_apts = last_vpts = 0; // if not reset to 0, for example real eof pts, then no fake apkt after seek because dpts < 0
+                    aqueue->put(fake_apkt);
+                }
+                aqueue->blockEmpty(was_end >= kMaxEof); // do not block if buffer is not enough. block again on seek
             }
             if (vqueue && (!was_end || vqueue->isEmpty())) {
-                vqueue->put(Packet::createEOF());
-                vqueue->blockEmpty(false);
+                if (was_end < kMaxEof)
+                    vqueue->put(Packet::createEOF());
+                vqueue->blockEmpty(was_end >= kMaxEof);
             }
-            m_buffering = false;
-            Q_EMIT mediaStatusChanged(QtAV::BufferedMedia);
-            was_end = true;
+            if (m_buffering) {
+                m_buffering = false;
+                Q_EMIT mediaStatusChanged(QtAV::BufferedMedia);
+            }
+            was_end = qMin(was_end + 1, kMaxEof);
+            bool exit_thread = !user_paused;
+            if (aqueue)
+                exit_thread &= aqueue->isEmpty();
+            if (vqueue)
+                exit_thread &= vqueue->isEmpty();
+            if (exit_thread) {
+                if (!(mediaEndAction() & MediaEndAction_Pause))
+                    break;
+                pause(true);
+                Q_EMIT requestClockPause(true);
+                if (aqueue)
+                    aqueue->blockEmpty(true);
+                if (vqueue)
+                    vqueue->blockEmpty(true);
+            }
             // wait for a/v thread finished
             msleep(100);
             continue;
         }
-        was_end = false;
+        was_end = 0;
         if (tryPause()) {
             continue; //the queue is empty and will block
         }
@@ -498,6 +620,7 @@ void AVDemuxThread::run()
         if (a_internal || a_ext > 0) {//apkt.isValid()) {
             if (a_internal && !a_ext) // internal is always read even if external audio used
                 apkt = demuxer->packet();
+            last_apts = apkt.pts;
             /* if vqueue if not blocked and full, and aqueue is empty, then put to
              * vqueue will block demuex thread
              */
@@ -526,6 +649,7 @@ void AVDemuxThread::run()
                 }
                 vqueue->blockFull(!audio_thread || !audio_thread->isRunning() || !aqueue || aqueue->isEnough());
                 vqueue->put(pkt); //affect audio_thread
+                last_vpts = pkt.pts;
             }
         } else if (demuxer->subtitleStreams().contains(stream)) { //subtitle
             Q_EMIT internalSubtitlePacketRead(demuxer->subtitleStreams().indexOf(stream), pkt);
@@ -537,17 +661,25 @@ void AVDemuxThread::run()
     m_buffer = 0;
     while (audio_thread && audio_thread->isRunning()) {
         qDebug("waiting audio thread.......");
+        Packet quit_pkt(Packet::createEOF());
+        quit_pkt.position = 0;
+        aqueue->put(quit_pkt);
         aqueue->blockEmpty(false); //FIXME: why need this
+        audio_thread->pause(false);
         audio_thread->wait(500);
     }
     while (video_thread && video_thread->isRunning()) {
         qDebug("waiting video thread.......");
+        Packet quit_pkt(Packet::createEOF());
+        quit_pkt.position = 0;
+        vqueue->put(quit_pkt);
         vqueue->blockEmpty(false);
+        video_thread->pause(false);
         video_thread->wait(500);
     }
     thread->disconnect(this, SIGNAL(seekFinished(qint64)));
     qDebug("Demux thread stops running....");
-    emit mediaStatusChanged(QtAV::EndOfMedia);
+    Q_EMIT mediaStatusChanged(QtAV::EndOfMedia);
 }
 
 bool AVDemuxThread::tryPause(unsigned long timeout)

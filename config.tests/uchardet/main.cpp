@@ -1,6 +1,6 @@
 /******************************************************************************
-    VideoRendererTypes: type id and manually id register function
-    Copyright (C) 2013-2015 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Media play library based on Qt and FFmpeg
+    Copyright (C) 2015 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -18,20 +18,8 @@
     License along with this library; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
+#include <uchardet/uchardet.h>
 
-#ifndef QTAV_VIDEORENDERERTYPES_H
-#define QTAV_VIDEORENDERERTYPES_H
-
-#include <QtAV/VideoRenderer.h>
-
-namespace QtAV {
-
-//Q_AV_EXPORT(dllexport/import) is needed if used out of the library
-//TODO graphics item?
-extern Q_AV_EXPORT VideoRendererId VideoRendererId_OpenGLWindow;
-
-Q_AV_EXPORT void VideoRenderer_RegisterAll();
-
-} //namespace QtAV
-
-#endif // QTAV_VIDEORENDERERTYPES_H
+void test() {
+  uchardet_new();
+}

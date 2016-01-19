@@ -219,10 +219,15 @@ const char* VideoShader::fragmentShader() const
         qWarning("Empty fragment shader!");
         return 0;
     }
+    if (d.video_format.planeCount() == 2) //TODO: nv21 must be swapped
+        frag.prepend("#define IS_BIPLANE\n");
+    if (OpenGLHelper::hasRG() && !OpenGLHelper::useDeprecatedFormats())
+        frag.prepend("#define USE_RG\n");
     const bool has_alpha = d.video_format.hasAlpha();
     if (d.video_format.isPlanar()) {
-        if (d.video_format.bytesPerPixel(0) == 1) {
-            frag.prepend("#define CHANNEL_8BIT\n");
+        if (d.video_format.bytesPerPixel(0) > 1) {
+            if (!OpenGLHelper::has16BitTexture() || OpenGLHelper::depth16BitTexture() < 16)
+                frag.prepend("#define CHANNEL16_TO8\n");
         }
 #if YUVA_DONE
         if (has_alpha)
@@ -235,8 +240,9 @@ const char* VideoShader::fragmentShader() const
 
     if (d.texture_target == GL_TEXTURE_RECTANGLE) {
         frag.prepend("#extension GL_ARB_texture_rectangle : enable\n"
-                     "#define texture2D texture2DRect\n"
                      "#define sampler2D sampler2DRect\n");
+        if (OpenGLHelper::GLSLVersion() < 140)
+            frag.prepend("#define texture texture2DRect\n");
     }
 #if (GLSL_BICUBIC)
         frag.prepend("#define USED_BiCubic\n");
@@ -402,7 +408,7 @@ bool VideoShader::update(VideoMaterial *material)
      };
 
     //material->unbind();
-    const VideoFormat fmt(material->currentFormat());
+    const VideoFormat fmt(material->currentFormat()); //FIXME: maybe changed in setCurrentFrame(
     //format is out of date because we may use the same shader for different formats
     setVideoFormat(fmt);
     // uniforms begin
@@ -533,6 +539,7 @@ void VideoMaterial::setCurrentFrame(const VideoFrame &frame)
         qDebug() << fmt;
         qDebug("pixel format changed: %s => %s %d", qPrintable(d.video_format.name()), qPrintable(fmt.name()), fmt.pixelFormat());
         d.video_format = fmt;
+        d.init_textures_required = true;
     }
 }
 
@@ -554,11 +561,12 @@ VideoShader* VideoMaterial::createShader() const
 
 QString VideoMaterial::typeName(qint64 value)
 {
-    return QString("gl material 8bit channel: %1, planar: %2, has alpha: %3, 2d texture: %4")
+    return QString("gl material 16to8bit: %1, planar: %2, has alpha: %3, 2d texture: %4, 2nd plane rg: %5")
             .arg(!!(value&1))
             .arg(!!(value&(1<<1)))
             .arg(!!(value&(1<<2)))
             .arg(!!(value&(1<<3)))
+            .arg(!!(value&(1<<4)))
             ;
 }
 
@@ -568,7 +576,9 @@ qint64 VideoMaterial::type() const
     const VideoFormat &fmt = d.video_format;
     const bool tex_2d = d.target == GL_TEXTURE_2D;
     // 2d,alpha,planar,8bit
-    return (tex_2d<<3)|(fmt.hasAlpha()<<2)|(fmt.isPlanar()<<1)|(fmt.bytesPerPixel(0) == 1);
+    const int rg_biplane = fmt.planeCount()==2 && !OpenGLHelper::useDeprecatedFormats() && OpenGLHelper::hasRG();
+    const int channel16_to8 = fmt.bytesPerPixel(0) > 1 && (!OpenGLHelper::has16BitTexture() || OpenGLHelper::depth16BitTexture() < 16);
+    return (rg_biplane<<4)|(tex_2d<<3)|(fmt.hasAlpha()<<2)|(fmt.isPlanar()<<1)|(channel16_to8);
 }
 
 bool VideoMaterial::bind()
@@ -778,6 +788,10 @@ QPointF VideoMaterial::mapToTexture(int plane, const QPointF &p, int normalize) 
     if (p.isNull())
         return p;
     DPTR_D(const VideoMaterial);
+    if (d.texture_size.isEmpty()) { //It should not happen if it's called in QtAV
+        qWarning("textures not ready");
+        return p;
+    }
     float x = p.x();
     float y = p.y();
     const qreal tex0W = d.texture_size[0].width();
@@ -810,6 +824,10 @@ QPointF VideoMaterial::mapToTexture(int plane, const QPointF &p, int normalize) 
 QRectF VideoMaterial::mapToTexture(int plane, const QRectF &roi, int normalize) const
 {
     DPTR_D(const VideoMaterial);
+    if (d.texture_size.isEmpty()) { //It should not happen if it's called in QtAV
+        qWarning("textures not ready");
+        return QRectF();
+    }
     const qreal tex0W = d.texture_size[0].width();
     const qreal s = tex0W/qreal(d.width); // only apply to unnormalized input roi
     const qreal pw = d.video_format.normalizedWidth(plane);
@@ -897,6 +915,11 @@ bool VideoMaterialPrivate::initTexture(GLuint tex, GLint internal_format, GLenum
 
 VideoMaterialPrivate::~VideoMaterialPrivate()
 {
+    // FIXME: when to delete
+    if (!QOpenGLContext::currentContext()) {
+        qWarning("No gl context");
+        return;
+    }
     if (!textures.isEmpty()) {
         DYGL(glDeleteTextures(textures.size(), textures.data()));
     }
@@ -916,12 +939,6 @@ bool VideoMaterialPrivate::updateTextureParameters(const VideoFormat& fmt)
     //http://www.gamedev.net/topic/634850-do-luminance-textures-still-exist-to-opengl/
     //https://github.com/kivy/kivy/issues/1738: GL_LUMINANCE does work on a Galaxy Tab 2. LUMINANCE_ALPHA very slow on Linux
      //ALPHA: vec4(1,1,1,A), LUMINANCE: (L,L,L,1), LUMINANCE_ALPHA: (L,L,L,A)
-    /*
-     * To support both planar and packed use GL_ALPHA and in shader use r,g,a like xbmc does.
-     * or use Swizzle_mask to layout the channels: http://www.opengl.org/wiki/Texture#Swizzle_mask
-     * GL ES2 support: GL_RGB, GL_RGBA, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_ALPHA
-     * http://stackoverflow.com/questions/18688057/which-opengl-es-2-0-texture-formats-are-color-depth-or-stencil-renderable
-     */
     const int nb_planes = fmt.planeCount();
     internal_format.resize(nb_planes);
     data_format.resize(nb_planes);
@@ -935,16 +952,13 @@ bool VideoMaterialPrivate::updateTextureParameters(const VideoFormat& fmt)
      * GLES internal_format == data_format, GL_LUMINANCE_ALPHA is 2 bytes
      * so if NV12 use GL_LUMINANCE_ALPHA, YV12 use GL_ALPHA
      */
-    if (nb_planes > 2 && fmt.bytesPerPixel(1) == 1) { // QtAV uses the same shader for planar and semi-planar yuv format
+    // GL_GREEN as (internal)format is not supported in new versions
+    if (nb_planes > 2 && data_format[2] == GL_LUMINANCE && fmt.bytesPerPixel(1) == 1) { // QtAV uses the same shader for planar and semi-planar yuv format
         internal_format[2] = data_format[2] = GL_ALPHA;
         if (nb_planes == 4)
-            internal_format[3] = data_format[3] = GL_ALPHA; // vec4(,,,A)
+            internal_format[3] = data_format[3] = data_format[2]; // vec4(,,,A)
     }
     for (int i = 0; i < nb_planes; ++i) {
-        //qDebug("format: %#x GL_LUMINANCE_ALPHA=%#x", data_format[i], GL_LUMINANCE_ALPHA);
-        if (fmt.bytesPerPixel(i) == 2 && nb_planes == 3) {
-            //data_type[i] = GL_UNSIGNED_SHORT;
-        }
         const int bpp_gl = OpenGLHelper::bytesOfGLFormat(data_format[i], data_type[i]);
         const int pad = std::ceil((qreal)(texture_size[i].width() - effective_tex_width[i])/(qreal)bpp_gl);
         texture_size[i].setWidth(std::ceil((qreal)texture_size[i].width()/(qreal)bpp_gl));
@@ -984,6 +998,7 @@ bool VideoMaterialPrivate::ensureResources()
     if (!fmt.isValid())
         return false;
 
+    // update textures if format, texture target, valid texture width(normalized), plane 0 size or plane 1 line size changed
     bool update_textures = init_textures_required;
     const int nb_planes = fmt.planeCount();
     // will this take too much time?

@@ -24,7 +24,7 @@
 #include "utils/GPUMemCopy.h"
 #include "QtAV/SurfaceInterop.h"
 #include "QtAV/private/AVCompat.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 #include "utils/OpenGLHelper.h"
 #include <assert.h>
 #ifdef __cplusplus
@@ -75,15 +75,8 @@ public:
 Q_SIGNALS:
     void formatChanged();
 };
-
 extern VideoDecoderId VideoDecoderId_VDA;
-FACTORY_REGISTER_ID_AUTO(VideoDecoder, VDA, "VDA")
-
-void RegisterVideoDecoderVDA_Man()
-{
-    FACTORY_REGISTER_ID_MAN(VideoDecoder, VDA, "VDA")
-}
-
+FACTORY_REGISTER(VideoDecoder, VDA, "VDA")
 
 class VideoDecoderVDAPrivate Q_DECL_FINAL: public VideoDecoderFFmpegHWPrivate
 {
@@ -276,15 +269,17 @@ VideoFrame VideoDecoderVDA::frame()
             if (pixfmt == NV12) {
                 dtype = GL_UNSIGNED_BYTE;
                 if (plane == 0) {
-                    iformat = format = GL_LUMINANCE;
+                    iformat = format = OpenGLHelper::useDeprecatedFormats() ? GL_LUMINANCE : GL_RED;
                 } else {
-                    iformat = format = GL_LUMINANCE_ALPHA;
+                    iformat = format = OpenGLHelper::useDeprecatedFormats() ? GL_LUMINANCE_ALPHA : GL_RG;
                 }
             } else if (pixfmt == UYVY || pixfmt == YUYV) {
                 w /= 2; //rgba texture
             } else if (pixfmt == YUV420P) {
                 dtype = GL_UNSIGNED_BYTE;
-                iformat = format = GL_LUMINANCE;
+                iformat = format = OpenGLHelper::useDeprecatedFormats() ? GL_LUMINANCE : GL_RED;
+                if (plane > 1 && format == GL_LUMINANCE)
+                    iformat = format = GL_ALPHA;
             }
             DYGL(glBindTexture(target, *((GLuint*)handle)));
             CGLError err = CGLTexImageIOSurface2D(CGLGetCurrentContext(), target, iformat, w, h, format, dtype, surface, plane);
@@ -316,19 +311,19 @@ VideoFrame VideoDecoderVDA::frame()
         // make sure VideoMaterial can correctly setup parameters
         switch (format()) {
         case UYVY:
-            pitch[0] = 2*width(); //
+            pitch[0] = 2*d.width; //
             pixfmt = VideoFormat::Format_VYUY; //FIXME: VideoShader assume uyvy is uploaded as rgba, but apple limits the result to bgra
             break;
         case NV12:
-            pitch[0] = width();
-            pitch[1] = width();
+            pitch[0] = d.width;
+            pitch[1] = d.width;
             break;
         case YUV420P:
-            pitch[0] = width();
-            pitch[1] = pitch[2] = width()/2;
+            pitch[0] = d.width;
+            pitch[1] = pitch[2] = d.width/2;
             break;
         case YUYV:
-            pitch[0] = 2*width(); //
+            pitch[0] = 2*d.width; //
             //pixfmt = VideoFormat::Format_YVYU; //
             break;
         default:
@@ -348,7 +343,7 @@ VideoFrame VideoDecoderVDA::frame()
     }
     VideoFrame f;
     if (zero_copy || copyMode() == VideoDecoderFFmpegHW::LazyCopy) {
-        f = VideoFrame(width(), height(), fmt);
+        f = VideoFrame(d.width, d.height, fmt);
         f.setBytesPerLine(pitch);
         f.setTimestamp(double(d.frame->pkt_pts)/1000.0);
         f.setDisplayAspectRatio(d.getDAR(d.frame));

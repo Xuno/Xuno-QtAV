@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -41,6 +41,7 @@ class AVDemuxer::InterruptHandler : public AVIOInterruptCB
 {
 public:
     enum Action {
+        Unknown = -1,
         Open,
         FindStreamInfo,
         Read
@@ -52,7 +53,7 @@ public:
       , mTimeoutAbort(true)
       , mEmitError(true)
       //, mLastTime(0)
-      , mAction(Open)
+      , mAction(Unknown)
       , mpDemuxer(demuxer)
     {
         callback = handleTimeout;
@@ -85,6 +86,7 @@ public:
         default:
             break;
         }
+        mAction = Unknown;
     }
     qint64 getTimeout() const { return mTimeout; }
     void setTimeout(qint64 timeout) { mTimeout = timeout; }
@@ -125,8 +127,12 @@ public:
         }
         // qApp->processEvents(); //FIXME: qml crash
         switch (handler->mAction) {
+        case Unknown: //callback is not called between begin()/end()
+            //qWarning("Unknown timeout action");
+            break;
         case Open:
         case FindStreamInfo:
+            //qDebug("set loading media for %d from: %d", handler->mAction, handler->mpDemuxer->mediaStatus());
             handler->mpDemuxer->setMediaStatus(LoadingMedia);
             break;
         case Read:
@@ -340,6 +346,51 @@ AVDemuxer::~AVDemuxer()
     unload();
 }
 
+static void getFFmpegInputFormats(QStringList* formats, QStringList* extensions)
+{
+    static QStringList exts;
+    static QStringList fmts;
+    if (exts.isEmpty() && fmts.isEmpty()) {
+        av_register_all(); // MUST register all input/output formats
+        AVInputFormat *i = NULL;
+        QStringList e, f;
+        while ((i = av_iformat_next(i))) {
+            if (i->extensions)
+                e << QString::fromLatin1(i->extensions).split(QLatin1Char(','), QString::SkipEmptyParts);
+            if (i->name)
+                f << QString::fromLatin1(i->name).split(QLatin1Char(','), QString::SkipEmptyParts);
+        }
+        foreach (const QString& v, e) {
+            exts.append(v.trimmed());
+        }
+        foreach (const QString& v, f) {
+            fmts.append(v.trimmed());
+        }
+        exts.removeDuplicates();
+        fmts.removeDuplicates();
+    }
+    if (formats)
+        *formats = fmts;
+    if (extensions)
+        *extensions = exts;
+}
+
+const QStringList& AVDemuxer::supportedFormats()
+{
+    static QStringList fmts;
+    if (fmts.isEmpty())
+        getFFmpegInputFormats(&fmts, NULL);
+    return fmts;
+}
+
+const QStringList& AVDemuxer::supportedExtensions()
+{
+    static QStringList exts;
+    if (exts.isEmpty())
+        getFFmpegInputFormats(NULL, &exts);
+    return exts;
+}
+
 const QStringList &AVDemuxer::supportedProtocols()
 {
     static QStringList protocols;
@@ -518,12 +569,20 @@ bool AVDemuxer::seek(qint64 pos)
         seek_flag = AVSEEK_FLAG_BACKWARD;
     }
     if (d->seek_type == AnyFrameSeek) {
-        seek_flag = AVSEEK_FLAG_ANY;
+        seek_flag |= AVSEEK_FLAG_ANY;
     }
+    //qDebug("seek flag: %d", seek_flag);
     //bool seek_bytes = !!(d->format_ctx->iformat->flags & AVFMT_TS_DISCONT) && strcmp("ogg", d->format_ctx->iformat->name);
     int ret = av_seek_frame(d->format_ctx, -1, upos, seek_flag);
     //int ret = avformat_seek_file(d->format_ctx, -1, INT64_MIN, upos, upos, seek_flag);
     //avformat_seek_file()
+    if (ret < 0 && (seek_flag & AVSEEK_FLAG_BACKWARD)) {
+        // seek to 0?
+        qDebug("av_seek_frame error with flag AVSEEK_FLAG_BACKWARD: %s. try to seek without the flag", av_err2str(ret));
+        seek_flag &= ~AVSEEK_FLAG_BACKWARD;
+        ret = av_seek_frame(d->format_ctx, -1, upos, seek_flag);
+    }
+    //qDebug("av_seek_frame ret: %d", ret);
 #endif
     if (ret < 0) {
         AVError::ErrorCode ec(AVError::SeekError);
@@ -591,6 +650,12 @@ bool AVDemuxer::setMedia(const QString &fileName)
         d->file.insert(3, QLatin1Char('h'));
     else if (d->file.startsWith(QLatin1String(kFileScheme)))
         d->file = getLocalPath(d->file);
+    int colon = d->file.indexOf(QLatin1Char(':'));
+    if (colon == 1) {
+#ifdef Q_OS_WINRT
+        d->file.prepend(QStringLiteral("qfile:"));
+#endif
+    }
     d->media_changed = url_old != d->file;
     if (d->media_changed) {
         d->format_forced.clear();
@@ -599,7 +664,7 @@ bool AVDemuxer::setMedia(const QString &fileName)
     if (d->file.startsWith(QLatin1Char('/')))
         return d->media_changed;
     // use MediaIO to support protocols not supported by ffmpeg
-    int colon = d->file.indexOf(QLatin1Char(':'));
+    colon = d->file.indexOf(QLatin1Char(':'));
     if (colon >= 0) {
 #ifdef Q_OS_WIN
         if (colon == 1 && d->file.at(0).isLetter())
@@ -626,7 +691,7 @@ bool AVDemuxer::setMedia(QIODevice* device)
         }
     }
     if (!d->input)
-        d->input = MediaIO::create(QStringLiteral("QIODevice"));
+        d->input = MediaIO::create("QIODevice");
     QIODevice* old_dev = d->input->property("device").value<QIODevice*>();
     d->media_changed = old_dev != device;
     if (d->media_changed) {
@@ -744,6 +809,7 @@ bool AVDemuxer::load()
     d->interrupt_hanlder->begin(InterruptHandler::FindStreamInfo);
     ret = avformat_find_stream_info(d->format_ctx, NULL);
     d->interrupt_hanlder->end();
+
     if (ret < 0) {
         setMediaStatus(InvalidMedia);
         AVError::ErrorCode ec(AVError::FindStreamInfoError);
@@ -763,17 +829,24 @@ bool AVDemuxer::load()
     }
     d->started = false;
     setMediaStatus(LoadedMedia);
-    emit loaded();
+    Q_EMIT loaded();
     const bool was_seekable = d->seekable;
     d->seekable = d->checkSeekable();
     if (was_seekable != d->seekable)
-        emit seekableChanged();
+        Q_EMIT seekableChanged();
     qDebug("avfmtctx.flag: %d", d->format_ctx->flags);
     qDebug("AVFMT_NOTIMESTAMPS: %d, AVFMT_TS_DISCONT: %d, AVFMT_NO_BYTE_SEEK:%d"
            , d->format_ctx->flags&AVFMT_NOTIMESTAMPS
            , d->format_ctx->flags&AVFMT_TS_DISCONT
            , d->format_ctx->flags&AVFMT_NO_BYTE_SEEK
            );
+    if (getInterruptStatus() < 0) {
+        QString msg;
+        qDebug("AVERROR_EXIT: %d", AVERROR_EXIT);
+        handleError(AVERROR_EXIT, 0, msg);
+        qWarning() << "User interupted: " << msg;
+        return false;
+    }
     return true;
 }
 
@@ -1147,6 +1220,7 @@ void AVDemuxer::handleError(int averr, AVError::ErrorCode *errorCode, QString &m
         if (mediaStatus() == LoadingMedia)
             setMediaStatus(InvalidMedia);
     }
+    msg = err_msg;
     if (!errorCode)
         return;
     AVError::ErrorCode ec(*errorCode);
@@ -1160,7 +1234,6 @@ void AVDemuxer::handleError(int averr, AVError::ErrorCode *errorCode, QString &m
     }
     AVError err(ec, err_msg, averr);
     emit error(err);
-    msg = err_msg;
     *errorCode = ec;
 }
 

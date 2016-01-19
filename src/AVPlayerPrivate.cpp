@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2014-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -102,6 +102,8 @@ AVPlayer::Private::Private()
     , force_fps(0)
     , notify_interval(-500)
     , status(NoMedia)
+    , state(AVPlayer::StoppedState)
+    , end_action(MediaEndAction_Default)
 {
     demuxer.setInterruptTimeout(interrupt_timeout);
     /*
@@ -221,8 +223,10 @@ void AVPlayer::Private::initCommonStatistics(int s, Statistics::Common *st, AVCo
         st->frame_rate = av_q2d(stream->avg_frame_rate);
 #if (defined FF_API_R_FRAME_RATE && FF_API_R_FRAME_RATE) //removed in libav10
     //FIXME: which 1 should we choose? avg_frame_rate may be nan, r_frame_rate may be wrong(guessed value)
-    else if (stream->r_frame_rate.den && stream->r_frame_rate.num)
+    else if (stream->r_frame_rate.den && stream->r_frame_rate.num) {
         st->frame_rate = av_q2d(stream->r_frame_rate);
+        qDebug("%d/%d", stream->r_frame_rate.num, stream->r_frame_rate.den);
+    }
 #endif //FF_API_R_FRAME_RATE
     //http://ffmpeg.org/faq.html#AVStream_002er_005fframe_005frate-is-wrong_002c-it-is-much-larger-than-the-frame-rate_002e
     //http://libav-users.943685.n4.nabble.com/Libav-user-Reading-correct-frame-rate-fps-of-input-video-td4657666.html
@@ -251,7 +255,7 @@ void AVPlayer::Private::initAudioStatistics(int s)
     statistics.audio_only.channels = avctx->channels;
     char cl[128]; //
     // nb_channels -1: will use av_get_channel_layout_nb_channels
-    av_get_channel_layout_string(cl, sizeof(cl), avctx->channels, avctx->channel_layout); //TODO: ff version
+    av_get_channel_layout_string(cl, sizeof(cl), avctx->channels, avctx->channel_layout);
     statistics.audio_only.channel_layout = QLatin1String(cl);
     statistics.audio_only.sample_fmt = QLatin1String(av_get_sample_fmt_name(avctx->sample_fmt));
     statistics.audio_only.frame_size = avctx->frame_size;
@@ -305,6 +309,11 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
         adec = 0;
     }
     adec = AudioDecoder::create();
+    if (!adec)
+    {
+        qWarning("failed to create audio decoder");
+        return false;
+    }
     QObject::connect(adec, SIGNAL(error(QtAV::AVError)), player, SIGNAL(error(QtAV::AVError)));
     adec->setCodecContext(avctx);
     adec->setOptions(ac_opt);
@@ -318,11 +327,15 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
     AudioFormat af;
     af.setSampleRate(avctx->sample_rate);
     af.setSampleFormatFFmpeg(avctx->sample_fmt);
+    af.setChannelLayoutFFmpeg(avctx->channel_layout);
+    qDebug() << "audio format from codec: " << af;
+    if (!af.isValid()) {
+        qWarning("invalid audio format. audio stream will be disabled");
+        return false;
+    }
     // 5, 6, 7 channels may not play
     if (avctx->channels > 2)
         af.setChannelLayout(ao->preferredChannelLayout());
-    else
-        af.setChannelLayoutFFmpeg(avctx->channel_layout);
     //af.setChannels(avctx->channels);
     // FIXME: workaround. planar convertion crash now!
     if (af.isPlanar()) {
@@ -355,6 +368,8 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
     adec->resampler()->inAudioFormat().setChannels(avctx->channels);
     adec->resampler()->inAudioFormat().setChannelLayoutFFmpeg(avctx->channel_layout);
 #endif
+    if (audio_track < 0)
+        return true;
     if (!athread) {
         qDebug("new audio thread");
         athread = new AudioThread(player);
@@ -435,6 +450,7 @@ bool AVPlayer::Private::applySubtitleStream(int n, AVPlayer *player)
     AVCodecContext *ctx = demuxer.subtitleCodecContext();
     if (!ctx)
         return false;
+    // FIXME: AVCodecDescriptor.name and AVCodec.name are different!
     const AVCodecDescriptor *codec_desc = avcodec_descriptor_get(ctx->codec_id);
     QByteArray codec(codec_desc->name);
     if (ctx->extradata)
@@ -451,7 +467,7 @@ bool AVPlayer::Private::tryApplyDecoderPriority(AVPlayer *player)
     VideoDecoder *vd = NULL;
     AVCodecContext *avctx = demuxer.videoCodecContext();
     foreach(VideoDecoderId vid, vc_ids) {
-        qDebug("**********trying video decoder: %s...", VideoDecoderFactory::name(vid).c_str());
+        qDebug("**********trying video decoder: %s...", VideoDecoder::name(vid));
         vd = VideoDecoder::create(vid);
         if (!vd)
             continue;
@@ -494,8 +510,7 @@ bool AVPlayer::Private::setupVideoThread(AVPlayer *player)
     // clear packets before stream changed
     if (vthread) {
         vthread->packetQueue()->clear();
-        // TODO: wait for next keyframe
-        vthread->setDecoder(0); // TODO: not work now. must dynamic check decoder in every loop in VideoThread.run()
+        vthread->setDecoder(0);
     }
     AVCodecContext *avctx = demuxer.videoCodecContext();
     if (!avctx) {
@@ -507,8 +522,8 @@ bool AVPlayer::Private::setupVideoThread(AVPlayer *player)
         vdec = 0;
     }
     foreach(VideoDecoderId vid, vc_ids) {
-        qDebug("**********trying video decoder: %s...", VideoDecoderFactory::name(vid).c_str());
-        VideoDecoder *vd = VideoDecoderFactory::create(vid);
+        qDebug("**********trying video decoder: %s...", VideoDecoder::name(vid));
+        VideoDecoder *vd = VideoDecoder::create(vid);
         if (!vd) {
             continue;
         }
@@ -544,6 +559,7 @@ bool AVPlayer::Private::setupVideoThread(AVPlayer *player)
                 vthread->installFilter(filter);
             }
         }
+        QObject::connect(vthread, SIGNAL(finished()), player, SLOT(tryClearVideoRenderers()), Qt::DirectConnection);
     }
     vthread->setDecoder(vdec);
 
@@ -565,7 +581,7 @@ void AVPlayer::Private::updateBufferValue(PacketBuffer* buf)
     if (!video) {
         // if has video, then audio buffer should not block the video buffer (bufferValue == 1, modified in AVDemuxThread)
         bv = statistics.audio.frame_rate > 0 && statistics.audio.frame_rate < 60 ?
-                        statistics.audio.frame_rate : 1LL;
+                        statistics.audio.frame_rate : 3LL;
     }
     if (buffer_mode == BufferTime)
         bv = 600LL; //ms

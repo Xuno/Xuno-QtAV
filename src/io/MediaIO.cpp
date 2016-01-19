@@ -24,34 +24,48 @@
 #include "QtAV/private/MediaIO_p.h"
 #include "QtAV/private/factory.h"
 #include <QtCore/QStringList>
+#include "utils/Logger.h"
 
 namespace QtAV {
 
 FACTORY_DEFINE(MediaIO)
+
+extern bool RegisterMediaIOQIODevice_Man();
+extern bool RegisterMediaIOQFile_Man();
+extern bool RegisterMediaIOWinRT_Man();
+void MediaIO::registerAll()
+{
+    static bool done = false;
+    if (done)
+        return;
+    done = true;
+    RegisterMediaIOQIODevice_Man();
+    RegisterMediaIOQFile_Man();
+#ifdef Q_OS_WINRT
+    RegisterMediaIOWinRT_Man();
+#endif
+}
 
 QStringList MediaIO::builtInNames()
 {
     static QStringList names;
     if (!names.isEmpty())
         return names;
-    std::vector<std::string> stdnames(MediaIOFactory::registeredNames());
-    foreach (const std::string stdname, stdnames) {
-        names.append(QLatin1String(stdname.c_str()));
+    std::vector<const char*> ns(MediaIOFactory::Instance().registeredNames());
+    foreach (const char* n, ns) {
+        names.append(QLatin1String(n));
     }
     return names;
 }
 
 // TODO: plugin
-MediaIO* MediaIO::create(const QString &name)
-{
-    return MediaIOFactory::create(MediaIOFactory::id(name.toStdString()));
-}
+
 // TODO: plugin use metadata(Qt plugin system) to avoid loading
 MediaIO* MediaIO::createForProtocol(const QString &protocol)
 {
-    std::vector<MediaIOId> ids(MediaIOFactory::registeredIds());
+    std::vector<MediaIOId> ids(MediaIOFactory::Instance().registeredIds());
     foreach (MediaIOId id, ids) {
-        MediaIO *in = MediaIOFactory::create(id);
+        MediaIO *in = MediaIO::create(id);
         if (in->protocols().contains(protocol))
             return in;
         delete in;
@@ -96,14 +110,7 @@ static int64_t av_seek(void *opaque, int64_t offset, int whence)
         // return the filesize without seeking anywhere. Supporting this is optional.
         return io->size() > 0 ? io->size() : 0;
     }
-    int from = whence;
-    if (whence == SEEK_SET)
-        from = 0;
-    else if (whence == SEEK_CUR)
-        from = 1;
-    else if (whence == SEEK_END)
-        from = 2;
-    if (!io->seek(offset, from))
+    if (!io->seek(offset, whence))
         return -1;
     return io->position();
 }
@@ -127,6 +134,7 @@ void MediaIO::setUrl(const QString &url)
     DPTR_D(MediaIO);
     if (d.url == url)
         return;
+    // TODO: check protocol
     d.url = url;
     onUrlChanged();
 }
@@ -175,6 +183,7 @@ void* MediaIO::avioContext()
     d.ctx = avio_alloc_context(buf, IODATA_BUFFER_SIZE, write_flag, this, &av_read, write_flag ? &av_write : NULL, &av_seek);
     // if seekable==false, containers that estimate duration from pts(or bit rate) will not seek to the last frame when computing duration
     // but it's still seekable if call seek outside(e.g. from demuxer)
+    // TODO: isVariableSize: size = -real_size
     d.ctx->seekable = isSeekable() && !isVariableSize() ? AVIO_SEEKABLE_NORMAL : 0;
     return d.ctx;
 }

@@ -40,7 +40,7 @@ AVDecoder::~AVDecoder()
 
 QString AVDecoder::name() const
 {
-    return QStringLiteral("avcodec");
+    return QString();
 }
 
 QString AVDecoder::description() const
@@ -103,6 +103,8 @@ bool AVDecoder::open()
     // TODO: only open for ff decoders
     AV_ENSURE_OK(avcodec_open2(d.codec_ctx, codec, d.options.isEmpty() ? NULL : &d.dict), false);
     d.is_open = true;
+    static const char* thread_name[] = { "Single", "Frame", "Slice"};
+    qDebug("%s thread type: %s, count: %d", metaObject()->className(), thread_name[d.codec_ctx->active_thread_type], d.codec_ctx->thread_count);
     return true;
 }
 
@@ -189,12 +191,6 @@ QString AVDecoder::codecName() const
 bool AVDecoder::isAvailable() const
 {
     return d_func().codec_ctx != 0;
-}
-
-bool AVDecoder::decode(const QByteArray &encoded)
-{
-    Q_UNUSED(encoded);
-    return true;
 }
 
 int AVDecoder::undecodedSize() const

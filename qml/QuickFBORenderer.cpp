@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2015-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -22,11 +22,10 @@
 #include "QmlAV/QuickFBORenderer.h"
 #include "QmlAV/QmlAVPlayer.h"
 #include "QtAV/AVPlayer.h"
-#include "QtAV/FactoryDefine.h"
 #include "QtAV/OpenGLVideo.h"
 #include "QtAV/private/VideoRenderer_p.h"
 #include "QtAV/private/mkid.h"
-#include "QtAV/private/prepost.h"
+#include "QtAV/private/factory.h"
 #include <QtCore/QCoreApplication>
 #include <QtGui/QOpenGLFramebufferObject>
 #include <QtQuick/QQuickWindow>
@@ -40,7 +39,7 @@
 
 namespace QtAV {
 static const VideoRendererId VideoRendererId_QuickFBO = mkid::id32base36_4<'Q','F','B','O'>::value;
-FACTORY_REGISTER_ID_AUTO(VideoRenderer, QuickFBO, "QuickFBO")
+FACTORY_REGISTER(VideoRenderer, QuickFBO, "QuickFBO")
 
 class FBORenderer : public QQuickFramebufferObject::Renderer
 {
@@ -81,7 +80,7 @@ public:
       , source(0)
       , glctx(0)
     {}
-    void setupAspectRatio() {
+    void setupAspectRatio() { //TODO: call when out_rect, renderer_size, orientation changed
         matrix.setToIdentity();
         matrix.scale((GLfloat)out_rect.width()/(GLfloat)renderer_width, (GLfloat)out_rect.height()/(GLfloat)renderer_height, 1);
         if (orientation)
@@ -149,8 +148,10 @@ void QuickFBORenderer::setSource(QObject *source)
     if (d.source == source)
         return;
     d.source = source;
+    Q_EMIT sourceChanged();
+    if (!source)
+        return;
     ((QmlAVPlayer*)source)->player()->addVideoRenderer(this);
-    emit sourceChanged();
 }
 
 QuickFBORenderer::FillMode QuickFBORenderer::fillMode() const
@@ -165,7 +166,17 @@ void QuickFBORenderer::setFillMode(FillMode mode)
         return;
     d_func().fill_mode = mode;
     updateRenderRect();
-    emit fillModeChanged(mode);
+    Q_EMIT fillModeChanged(mode);
+}
+
+QRectF QuickFBORenderer::contentRect() const
+{
+    return videoRect();
+}
+
+QRectF QuickFBORenderer::sourceRect() const
+{
+    return QRectF(QPointF(), videoFrameSize());
 }
 
 bool QuickFBORenderer::isOpenGL() const
@@ -179,7 +190,7 @@ void QuickFBORenderer::setOpenGL(bool o)
     if (d.opengl == o)
         return;
     d.opengl = o;
-    emit openGLChanged();
+    Q_EMIT openGLChanged();
     if (o)
         setPreferredPixelFormat(VideoFormat::Format_YUV420P);
     else
@@ -200,20 +211,11 @@ void QuickFBORenderer::renderToFbo()
     handlePaintEvent();
 }
 
-bool QuickFBORenderer::needUpdateBackground() const
-{
-    DPTR_D(const QuickFBORenderer);
-    return d.out_rect != boundingRect().toRect();
-}
-
 void QuickFBORenderer::drawBackground()
 {
-    d_func().glv.fill(QColor(Qt::black));
-}
-
-bool QuickFBORenderer::needDrawFrame() const
-{
-    return true; //always call updatePaintNode, node must be set
+    if (backgroundRegion().isEmpty())
+        return;
+    d_func().glv.fill(backgroundColor());
 }
 
 void QuickFBORenderer::drawFrame()
@@ -239,17 +241,10 @@ bool QuickFBORenderer::event(QEvent *e)
     return true;
 }
 
-bool QuickFBORenderer::onSetRegionOfInterest(const QRectF &roi)
-{
-    Q_UNUSED(roi);
-    emit regionOfInterestChanged();
-    return true;
-}
-
 bool QuickFBORenderer::onSetOrientation(int value)
 {
     Q_UNUSED(value);
-    emit orientationChanged();
+    d_func().setupAspectRatio();
     return true;
 }
 
