@@ -1076,13 +1076,13 @@ void MainWindow::onPaused(bool p)
 void MainWindow::onStartPlay()
 {
     //--- TODO --- remove after recover OpenGL rgb48le
-#if !IMGSEQOPENGL
-    bool rgb48=mpPlayer->statistics().video_only.pix_fmt.contains("rgb48be");
-    VideoRenderer *vo = VideoRendererFactory::create( (isFileImgageSequence() && rgb48) ? VideoRendererId_Widget : VideoRendererId_GLWidget2);
-    if (vo && vo->isAvailable()) {
-        setRenderer(vo);
-    }
-#endif
+//#if !IMGSEQOPENGL
+//    bool rgb48=mpPlayer->statistics().video_only.pix_fmt.contains("rgb48be");
+//    VideoRenderer *vo = VideoRendererFactory::create( (isFileImgageSequence() && rgb48) ? VideoRendererId_Widget : VideoRendererId_GLWidget2);
+//    if (vo && vo->isAvailable()) {
+//        setRenderer(vo);
+//    }
+//#endif
 
     mpRenderer->setRegionOfInterest(QRectF());
     mFile = mpPlayer->file(); //open from EventFilter's menu
@@ -1328,7 +1328,7 @@ void MainWindow::mouseMoveEvent(QMouseEvent *e)
         mGlobalMouse=e->globalPos();
         QPointF center=roi.center()-delta;
         roi.moveCenter(center);
-        if (roi.top()>1 && roi.left()>1 && roi.right()<mpRenderer->frameSize().width() && roi.bottom()<mpRenderer->frameSize().height()){
+        if (roi.top()>1 && roi.left()>1 && roi.right() < mpRenderer->rendererWidth() && roi.bottom() < mpRenderer->rendererHeight()){
             mpRenderer->setRegionOfInterest(roi);
         }
     }
@@ -1978,7 +1978,7 @@ void MainWindow::loadRemoteUrlPresset(const QString& url){
 void MainWindow::reSizeByMovie()
 {
     if (isFullScreen()) return;
-    QSize t=mpRenderer->frameSize();
+    QSize t=mpRenderer->rendererSize();
     Statistics st=mpPlayer->statistics();
     if (st.video_only.width>0 && st.video_only.width>0 && mPlayerScale>0 ){ //(t.width()+t.height())==0
         t.setWidth(st.video_only.width*mPlayerScale);

@@ -229,6 +229,9 @@ private: // property change. used as signals in subclasses. implemented by moc
     virtual void contrastChanged(qreal) {}
     virtual void hueChanged(qreal) {}
     virtual void saturationChanged(qreal) {}
+    virtual void gammaRGBChanged(qreal) {}
+    virtual void filterSharpChanged(qreal) {}
+
     virtual void backgroundColorChanged() {}
 private: // mainly used by VideoOutput class
     /*!
