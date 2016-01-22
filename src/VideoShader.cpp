@@ -493,7 +493,6 @@ void VideoMaterial::setCurrentFrame(const VideoFrame &frame)
     DPTR_D(VideoMaterial);
     d.update_texure = true;
     // TODO: move to another function before rendering?
-    d.bpp = frame.format().bitsPerPixel(0);
     d.width = frame.width();
     d.height = frame.height();
     GLenum new_target = GL_TEXTURE_2D; // not d.target. because metadata "target" is not always set
