@@ -83,14 +83,15 @@ const mat4 yuv2rgbMatrix = mat4(1, 1, 1, 0,
 #endif
 // matrixCompMult for convolution
 //added by xuno start
-uniform float u_gammaRGB;
-uniform vec2  u_pix;
-uniform float u_filterkernel[9];
-uniform vec2 u_pixeloffsetkernel[9];
-vec3 color;
-int i;
 #define USED_FILTERS
 #define USED_GAMMA
+#if defined(USED_FILTERS)
+uniform float u_filterkernel[9];
+uniform vec2 u_pixeloffsetkernel[9];
+#endif //USED_FILTERS
+#if defined(USED_GAMMA)
+uniform float u_gammaRGB;
+#endif //USED_GAMMA
 //added by xuno end
 
 
@@ -99,26 +100,34 @@ int i;
 vec4 sample(sampler2D tex, vec2 pos)
 {
 #if defined(USED_FILTERS)
-    return texture(tex, pos+u_pixeloffsetkernel[i]);
+    vec3 sum = vec3(0.0);
+    vec4 c;
+    float a;
+    for (int i=0;i<9;i++) {
+       c = texture(tex, pos+u_pixeloffsetkernel[i]);
+       if (i==4) a=c.a;
+       sum +=  c.rgb * u_filterkernel[i];
+     }
+    c.rgb=sum.rgb;
+    c.a=a;
+    return c;
 #else
-    return texture(tex, pos);
+    return texture(tex, pos); //default
 #endif //USED_FILTERS
 }
 #endif
 
+void postprocess()
+{
+#if defined(USED_GAMMA)
+    gl_FragColor.rgb = pow(gl_FragColor.rgb, 1.0 / vec3(u_gammaRGB));
+#endif //USED_GAMMA
+}
+
+
 // 10, 16bit: http://msdn.microsoft.com/en-us/library/windows/desktop/bb970578%28v=vs.85%29.aspx
 void main()
 {
- //added by xuno start
-#if defined(USED_FILTERS)
-   vec3 sum = vec3(0.0);
-   for (i=0;i<9;i++) {
-#else
-   i=4;
-#endif //USED_FILTERS
-//added by xuno end
-
-
     gl_FragColor = clamp(u_colorMatrix
                          * vec4(
 #ifdef CHANNEL16_TO8
@@ -164,20 +173,5 @@ void main()
 #endif //USE_RG
 #endif //CHANNEL16_TO8
 #endif //HAS_ALPHA
-
-//added by xuno start
-#if defined(USED_FILTERS)
-//added sharp filter
-   color = gl_FragColor.rgb;
-   sum += color * u_filterkernel[i];
-  }
-  gl_FragColor.rgb = sum;
-#endif //USED_FILTERS
-
-#if defined(USED_GAMMA)
-  color = gl_FragColor.rgb;
-  gl_FragColor.rgb = pow(color, 1.0 / vec3(u_gammaRGB));
-#endif //USED_GAMMA
-
-
+    postprocess();
 }

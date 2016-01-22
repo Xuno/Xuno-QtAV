@@ -42,13 +42,15 @@ uniform float u_opacity;
 uniform mat4 u_c;
 
 //added by xuno start
-uniform float u_gammaRGB;
-uniform vec2  u_pix;
-uniform float u_filterkernel[9];
-uniform vec2 u_pixeloffsetkernel[9];
-vec3 color;
 #define USED_FILTERS
 #define USED_GAMMA
+#if defined(USED_FILTERS)
+uniform float u_filterkernel[9];
+uniform vec2 u_pixeloffsetkernel[9];
+#endif //USED_FILTERS
+#if defined(USED_GAMMA)
+uniform float u_gammaRGB;
+#endif //USED_GAMMA
 //added by xuno end
 
 /***User Sampler code here***%1***/
@@ -56,40 +58,36 @@ vec3 color;
 vec4 sample(sampler2D tex, vec2 pos)
 {
 #if defined(USED_FILTERS)
-    return texture(tex, pos+u_pixeloffsetkernel[i]);
+    vec3 sum = vec3(0.0);
+    vec4 c;
+    float a;
+    for (int i=0;i<9;i++) {
+       c = texture(tex, pos+u_pixeloffsetkernel[i]);
+       if (i==4) a=c.a;
+       sum +=  c.rgb * u_filterkernel[i];
+     }
+    c.rgb=sum.rgb;
+    c.a=a;
+    return c;
 #else
-    return texture(tex, pos);
+    return texture(tex, pos); //default
 #endif //USED_FILTERS
-
 }
 #endif
 
-void main() {
-#if defined(USED_FILTERS)
-    vec3 sum = vec3(0.0);
-    for (int i=0;i<9;i++) {
-#else
-    int i=4;
-#endif //USED_FILTERS
+void postprocess()
+{
+#if defined(USED_GAMMA)
+    gl_FragColor.rgb = pow(gl_FragColor.rgb, 1.0 / vec3(u_gammaRGB));
+#endif //USED_GAMMA
+}
 
+void main() {
     vec4 c = sample(u_Texture0, v_TexCoords0);
     c = u_c * c;
 #ifndef HAS_ALPHA
     c.a = 1.0;
 #endif //HAS_ALPHA
     gl_FragColor = clamp(u_colorMatrix * c, 0.0, 1.0) * u_opacity;
-
-    //added by xuno start
-#if defined(USED_FILTERS)
-    //added filters
-    color = gl_FragColor.rgb;
-    sum += color * u_filterkernel[i];
-}
-gl_FragColor.rgb = sum;
-#endif //USED_FILTERS
-
-#if defined(USED_GAMMA)
-color = gl_FragColor.rgb;
-gl_FragColor.rgb = pow(color, 1.0 / vec3(u_gammaRGB));
-#endif //USED_GAMMA
+    postprocess();
 }
