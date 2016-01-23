@@ -314,6 +314,7 @@ static const gl_param_t gl_param_desktop[] = {
     {GL_RGB16,   GL_RGB,     GL_UNSIGNED_SHORT},     // 3 x 16
     {GL_RGBA16,  GL_RGBA,    GL_UNSIGNED_SHORT},     // 4 x 16
     {0,0,0},
+    {GL_RGB10_A2, GL_RGBA,   GL_UNSIGNED_INT_2_10_10_10_REV},         // 4 x 8
 };
 static const gl_param_t gl_param_desktop_fallback[] = {
     {GL_RED,     GL_RED,     GL_UNSIGNED_BYTE},      // 1 x 8
@@ -425,6 +426,15 @@ static const gl_param_t* get_gl_param()
     static gl_param_t* gp = 0;
     if (gp)
         return gp;
+
+    //XUNO
+    bool has_10 = false;
+    // [9] RGB10_A2
+    if (test_gl_param(gl_param_desktop[9], &has_10)) {
+        qDebug()<<"OpenGLHelper.cpp : test RGB10_A2"<<has_10;
+    }
+    //XUNO
+
     bool has_16 = false;
     // [4] is always available
     if (test_gl_param(gl_param_desktop[4], &has_16)) {
