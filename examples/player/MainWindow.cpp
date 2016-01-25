@@ -253,6 +253,7 @@ void MainWindow::setupUi()
         mpControl = new QWidget(this);
     }
 
+    mpControl->setMinimumWidth(865);
     mpControl->setMaximumHeight(25);
     mpControl->setMaximumHeight(30);
 
@@ -280,8 +281,8 @@ void MainWindow::setupUi()
                                     background-color: #0066FF; \
                                 } \
                                 ");
-                                mpTimeSlider->addVisualLimits();
-            mpCurrent = new QLabel(mpControl);
+    mpTimeSlider->addVisualLimits();
+    mpCurrent = new QLabel(mpControl);
     mpCurrent->setToolTip(tr("Current time"));
     mpCurrent->setContentsMargins(QMargins(2, 2, 2, 2));
     mpCurrent->setText(QString::fromLatin1("00:00:00"));
@@ -648,7 +649,7 @@ void MainWindow::setupUi()
     QHBoxLayout *controlLayout = new QHBoxLayout();
     controlLayout->setSpacing(0);
     controlLayout->setContentsMargins(QMargins(1, 1, 1, 1));
-    mpControl->setLayout(controlLayout);
+    mpControl->setLayout(controlVLayout);
     controlLayout->addWidget(mpCurrent);
     //controlLayout->addWidget(mpTitle);
     //QSpacerItem *space = new QSpacerItem(mpPlayPauseBtn->width(), mpPlayPauseBtn->height(), QSizePolicy::MinimumExpanding);
