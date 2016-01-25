@@ -92,6 +92,20 @@ MiscPage::MiscPage()
 #endif
     gl->addWidget(m_angle_platform, r++, 2);
 
+    gl->addWidget(new QLabel("EGL"), r, 0);
+    m_egl = new QCheckBox();
+    m_egl->setToolTip(tr("Currently only works for Qt>=5.5 XCB build"));
+#if QT_VERSION < QT_VERSION_CHECK(5, 5, 0) || !defined(Q_OS_LINUX)
+    m_egl->setEnabled(false);
+#endif
+    gl->addWidget(m_egl, r++, 1);
+
+    gl->addWidget(new QLabel("Log"), r, 0);
+    m_log = new QComboBox();
+    m_log->addItems(QStringList() << QString::fromLatin1("off") << QString::fromLatin1("warning") << QString::fromLatin1("debug") << QString::fromLatin1("all"));
+    gl->addWidget(m_log, r++, 1);
+
+
     //gl->addItem(new QSpacerItem(185, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r,0);
     //gl->addItem(new QSpacerItem(120, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r,1);
     //gl->addItem(new QSpacerItem(120, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r++,2);
@@ -135,18 +149,7 @@ MiscPage::MiscPage()
     vl->addWidget(playerView,1, Qt::AlignTop);
 
     setLayout(vl);
-    gl->addWidget(new QLabel("EGL"), r, 0);
-    m_egl = new QCheckBox();
-    m_egl->setToolTip(tr("Currently only works for Qt>=5.5 XCB build"));
-#if QT_VERSION < QT_VERSION_CHECK(5, 5, 0) || !defined(Q_OS_LINUX)
-    m_egl->setEnabled(false);
-#endif
-    gl->addWidget(m_egl, r++, 1);
 
-    gl->addWidget(new QLabel("Log"), r, 0);
-    m_log = new QComboBox();
-    m_log->addItems(QStringList() << QString::fromLatin1("off") << QString::fromLatin1("warning") << QString::fromLatin1("debug") << QString::fromLatin1("all"));
-    gl->addWidget(m_log, r++, 1);
 
     applyToUi();
 }
