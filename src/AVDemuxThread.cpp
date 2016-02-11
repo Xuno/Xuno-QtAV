@@ -187,10 +187,6 @@ void AVDemuxThread::stepBackward()
     };
 
     pause(true);
-    // set clock first
-    if (clock_type < 0)
-        clock_type = (int)video_thread->clock()->isClockAuto() + 2*(int)video_thread->clock()->clockType();
-    video_thread->clock()->setClockType(AVClock::VideoClock);
     t->packetQueue()->clear(); // will put new packets before task run
     t->packetQueue();
     Packet pkt;
@@ -240,22 +236,30 @@ void AVDemuxThread::seekInternal(qint64 pos, SeekType type)
         ademuxer->setSeekType(type);
         ademuxer->seek(pos);
     }
+
     AVThread *watch_thread = 0;
     // TODO: why queue may not empty?
+    int sync_id = 0;
     for (size_t i = 0; i < sizeof(av)/sizeof(av[0]); ++i) {
         AVThread *t = av[i];
         if (!t)
             continue;
+        if (!sync_id)
+            sync_id = t->clock()->syncStart(!!audio_thread + (!!video_thread && !demuxer->hasAttacedPicture()));
+        Q_ASSERT(sync_id != 0);
+        qDebug("demuxer sync id: %d/%d", sync_id, t->clock()->syncId());
         t->packetQueue()->clear();
+        t->requestSeek();
         // TODO: the first frame (key frame) will not be decoded correctly if flush() is called.
         //PacketBuffer *pb = t->packetQueue();
         //qDebug("%s put seek packet. %d/%d-%.3f, progress: %.3f", t->metaObject()->className(), pb->buffered(), pb->bufferValue(), pb->bufferMax(), pb->bufferProgress());
         t->packetQueue()->setBlocking(false); // aqueue bufferValue can be small (1), we can not put and take
         Packet pkt;
         pkt.pts = qreal(pos)/1000.0;
+        pkt.position = sync_id;
         t->packetQueue()->put(pkt);
         t->packetQueue()->setBlocking(true); // blockEmpty was false when eof is read.
-        if (isPaused()) {
+        if (isPaused()) { //TODO: deal with pause in AVThread?
             t->pause(false);
             watch_thread = t;
         }
@@ -423,11 +427,6 @@ void AVDemuxThread::seekOnPauseFinished()
         if (audio_thread)
             audio_thread->pause(true);
     }
-    if (clock_type >= 0) {
-        thread->clock()->setClockAuto(clock_type & 1);
-        thread->clock()->setClockType(AVClock::ClockType(clock_type/2));
-        clock_type = -1;
-    }
 }
 
 void AVDemuxThread::frameDeliveredOnStepForward()
@@ -452,6 +451,7 @@ void AVDemuxThread::frameDeliveredOnStepForward()
         thread->clock()->setClockType(AVClock::ClockType(clock_type/2));
         clock_type = -1;
     }
+    Q_EMIT stepFinished();
 }
 
 void AVDemuxThread::eofDecodedOnStepForward()
@@ -469,6 +469,7 @@ void AVDemuxThread::eofDecodedOnStepForward()
         thread->clock()->setClockType(AVClock::ClockType(clock_type/2));
         clock_type = -1;
     }
+    Q_EMIT stepFinished();
 }
 
 void AVDemuxThread::onAVThreadQuit()

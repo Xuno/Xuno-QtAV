@@ -142,7 +142,7 @@ private slots:
     void onGammaRGBChanged(int s);
     void onFilterSharpChanged(int s);
 
-    void onSeekFinished();
+    void onSeekFinished(qint64 pos);
     void onCaptureConfigChanged();
     void onPreviewEnabledChanged();
     void onAVFilterVideoConfigChanged();

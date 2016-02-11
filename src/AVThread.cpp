@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -120,6 +120,19 @@ const QList<Filter*>& AVThread::filters() const
 void AVThread::scheduleTask(QRunnable *task)
 {
     d_func().tasks.put(task);
+}
+
+void AVThread::requestSeek()
+{
+    class SeekPTS : public QRunnable {
+        AVThread *self;
+    public:
+        SeekPTS(AVThread* thread) : self(thread) {}
+        void run() Q_DECL_OVERRIDE {
+            self->d_func().seek_requested = true;
+        }
+    };
+    scheduleTask(new SeekPTS(this));
 }
 
 void AVThread::scheduleFrameDrop(bool value)
@@ -286,6 +299,7 @@ void AVThread::resetState()
 {
     DPTR_D(AVThread);
     pause(false);
+    d.pts_history = ring<qreal>(d.pts_history.capacity());
     d.tasks.clear();
     d.render_pts0 = -1;
     d.stop = false;

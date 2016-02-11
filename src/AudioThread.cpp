@@ -84,19 +84,39 @@ void AudioThread::run()
     Packet pkt;
     qint64 fake_duration = 0LL;
     qint64 fake_pts = 0LL;
+    int sync_id = 0;
     while (!d.stop) {
         processNextTask();
-        //TODO: why put it at the end of loop then playNextFrame() not work?
-        if (tryPause()) { //DO NOT continue, or playNextFrame() will fail
-            if (d.stop)
-                break; //the queue is empty and may block. should setBlocking(false) wake up cond empty?
+        if (d.render_pts0 < 0) { // no pause when seeking
+            if (tryPause()) { //DO NOT continue, or stepForward() will fail
+                if (d.stop)
+                    break; //the queue is empty and may block. should setBlocking(false) wake up cond empty?
+            } else {
+                if (isPaused())
+                    continue;
+            }
+        }
+        if (d.seek_requested) {
+            d.seek_requested = false;
+            qDebug("request seek audio thread");
+            pkt = Packet(); // last decode failed and pkt is valid, reset pkt to force take the next packet if seek is requested
+            msleep(1);
         } else {
-            if (isPaused())
-                continue;
+            // d.render_pts0 < 0 means seek finished here
+            if (d.clock->syncId() > 0) {
+                qDebug("audio thread wait to sync end for sync id: %d", d.clock->syncId());
+                if (d.render_pts0 < 0 && sync_id > 0) {
+                    msleep(10);
+                    continue;
+                }
+            } else {
+                sync_id = 0;
+            }
         }
         if (!pkt.isValid()) {
             // can't seek back if eof packet is read
             //qDebug("eof pkt: %d valid: %d, aqueue size: %d, abuffer: %d %.3f %d, fake_duration: %lld", pkt.isEOF(), pkt.isValid(), d.packets.size(), d.packets.bufferValue(), d.packets.bufferMax(), d.packets.isFull(), fake_duration);
+            // If seek requested but last decode failed
             if (!pkt.isEOF() && (fake_duration <= 0 || !d.packets.isEmpty())) {
                 pkt = d.packets.take(); //wait to dequeue
             }
@@ -112,6 +132,8 @@ void AudioThread::run()
                     if (d.dec) //maybe set to null in setDecoder()
                         d.dec->flush();
                     d.render_pts0 = pkt.pts;
+                    sync_id = pkt.position;
+                    qDebug("audio seek: %.3f, id: %d", d.render_pts0, sync_id);
                     pkt = Packet(); //mark invalid to take next
                     if (fake_duration > 0) {
                         //qDebug("fake_duration update on seek: %ul + %ul - %.3f", fake_duration, fake_pts, d.render_pts0);
@@ -165,7 +187,7 @@ void AudioThread::run()
             continue;
         }
         const bool is_external_clock = d.clock->clockType() == AVClock::ExternalClock;
-        if (is_external_clock) {
+        if (is_external_clock && !pkt.isEOF()) {
             d.delay = dts - d.clock->value();
             /*
              *after seeking forward, a packet may be the old, v packet may be
@@ -244,11 +266,18 @@ void AudioThread::run()
             qDebug("audio thread stop before decode()");
             break;
         }
+        //qDebug("apkt: %.3f, %lld %p", pkt.pts, pkt.asAVPacket()->pts, pkt.asAVPacket()->data);
         if (!dec->decode(pkt)) {
             qWarning("Decode audio failed. undecoded: %d", dec->undecodedSize());
             if (pkt.isEOF()) {
                 qDebug("audio decode eof done");
                 Q_EMIT eofDecoded();
+                if (d.render_pts0 >= 0) {
+                    qDebug("audio seek done at eof pts: %.3f. id: %d", pkt.pts, sync_id);
+                    d.render_pts0 = -1;
+                    d.clock->syncEndOnce(sync_id);
+                    Q_EMIT seekFinished(qint64(pkt.pts*1000.0)); //TODO: pts
+                }
                 if (!pkt.position)
                     break;
             }
@@ -265,7 +294,7 @@ void AudioThread::run()
         }
         // reduce here to ensure to decode the rest data in the next loop
         if (!pkt.isEOF())
-            pkt.data = QByteArray::fromRawData(pkt.data.constData() + pkt.data.size() - dec->undecodedSize(), dec->undecodedSize());
+            pkt.skip(pkt.data.size() - dec->undecodedSize());
 #if USE_AUDIO_FRAME
         AudioFrame frame(dec->frame());
         if (!frame)
@@ -273,14 +302,18 @@ void AudioThread::run()
         if (frame.timestamp() <= 0)
             frame.setTimestamp(pkt.pts); // pkt.pts is wrong. >= real timestamp
         if (d.render_pts0 >= 0.0) { // seeking
+            d.clock->updateValue(frame.timestamp());
             if (frame.timestamp() < d.render_pts0) {
                 qDebug("skip audio rendering: %f-%f", frame.timestamp(), d.render_pts0);
-                d.clock->updateValue(frame.timestamp());
                 continue; //pkt data is updated after decode, no reset here
             }
-            qDebug("seek audio done @%.3f", frame.timestamp());
+            qDebug("audio seek finished @%.3f. id: %d", frame.timestamp(), sync_id);
             d.render_pts0 = -1.0;
+            d.clock->syncEndOnce(sync_id);
             Q_EMIT seekFinished(qint64(frame.timestamp()*1000.0));
+            if (has_ao) {
+                ao->clear();
+            }
         }
         if (has_ao) {
             applyFilters(frame);
@@ -298,23 +331,27 @@ void AudioThread::run()
         int decodedPos = 0;
         qreal delay = 0;
         const qreal byte_rate = frame.format().bytesPerSecond();
+        qreal pts = frame.timestamp();
+        //qDebug("frame samples: %d @%.3f+%lld", frame.samplesPerChannel()*frame.channelCount(), frame.timestamp(), frame.duration()/1000LL);
         while (decodedSize > 0) {
             if (d.stop) {
                 qDebug("audio thread stop after decode()");
                 break;
             }
-            // TODO: set to format.bytesPerFrame()*1024?
-            const int chunk = qMin(decodedSize, has_ao ? ao->bufferSize() : 1024*4);//int(max_len*byte_rate));
+            const int chunk = qMin(decodedSize, has_ao ? ao->bufferSize() : 512*frame.format().bytesPerFrame());//int(max_len*byte_rate));
             //AudioFormat.bytesForDuration
             const qreal chunk_delay = (qreal)chunk/(qreal)byte_rate;
-            pkt.pts += chunk_delay;
-            pkt.dts += chunk_delay;
             if (has_ao && ao->isOpen()) {
                 QByteArray decodedChunk = QByteArray::fromRawData(decoded.constData() + decodedPos, chunk);
-                ao->play(decodedChunk, pkt.pts);
-                //qDebug("ao.timestamp: %.3f", ao->timestamp());
-                if (!is_external_clock)
+                //qDebug("ao.timestamp: %.3f, pts: %.3f, pktpts: %.3f", ao->timestamp(), pts, pkt.pts);
+                ao->play(decodedChunk, pts);
+                if (!is_external_clock && ao->timestamp() > 0) {//TODO: clear ao buffer
+                   // const qreal da = qAbs(pts - ao->timestamp());
+                   // if (da > 1.0) { // what if frame duration is long?
+                   // }
+                    // TODO: check seek_requested(atomic bool)
                     d.clock->updateValue(ao->timestamp());
+                }
             } else {
                 d.clock->updateDelay(delay += chunk_delay);
             /*
@@ -327,6 +364,9 @@ void AudioThread::run()
             }
             decodedPos += chunk;
             decodedSize -= chunk;
+            pts += chunk_delay;
+            pkt.pts += chunk_delay; // packet not fully decoded, use new pts in the next decoding
+            pkt.dts += chunk_delay;
         }
         if (has_ao)
             emit frameDelivered();

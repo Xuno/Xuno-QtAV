@@ -194,12 +194,12 @@ public:
     bool setHue(qreal hue);
     qreal saturation() const;
     bool setSaturation(qreal saturation);
+    QColor backgroundColor() const;
+    void setBackgroundColor(const QColor& c);
     qreal gammaRGB() const;
     bool setGammaRGB(qreal gammaRGB);
     qreal filterSharp() const;
     bool setFilterSharp(qreal filterSharp);
-    QColor backgroundColor() const;
-    void setBackgroundColor(const QColor& c);
 
 protected:
     VideoRenderer(VideoRendererPrivate &d);
@@ -229,10 +229,10 @@ private: // property change. used as signals in subclasses. implemented by moc
     virtual void contrastChanged(qreal) {}
     virtual void hueChanged(qreal) {}
     virtual void saturationChanged(qreal) {}
+    virtual void backgroundColorChanged() {}
     virtual void gammaRGBChanged(qreal) {}
     virtual void filterSharpChanged(qreal) {}
 
-    virtual void backgroundColorChanged() {}
 private: // mainly used by VideoOutput class
     /*!
      * return false if value not changed. default is true

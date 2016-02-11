@@ -42,8 +42,14 @@ COMMON = $$PWD/../common
 INCLUDEPATH *= $$COMMON $$COMMON/..
 RESOURCES += $$COMMON/theme/theme.qrc
 isEmpty(PROJECTROOT): PROJECTROOT = $$PWD/../..
+
+fonts.files = fonts
+fonts.path = fonts
+QMAKE_BUNDLE_DATA += fonts
 mac: RC_FILE = $$PROJECTROOT/src/QtAV.icns
 QMAKE_INFO_PLIST = $$COMMON/Info.plist
+#ios: QMAKE_INFO_PLIST = ios/Info.plist
+
 defineTest(genRC) {
     RC_ICONS = $$PROJECTROOT/src/QtAV.ico
     QMAKE_TARGET_COMPANY = "Shanghai University->S3 Graphics->Deepin | wbsecg1@gmail.com"
@@ -92,6 +98,7 @@ android {
     android/gradlew.bat
 
   ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
+#user can put fonts in android/assets/fonts
 }
 winrt|wince {
    winrt:isEqual(QT_MAJOR_VERSION, 5):lessThan(QT_MINOR_VERSION, 7) {
@@ -110,21 +117,23 @@ winrt|wince {
 # If not using vs, edit AppxManifest.map for Qt5.5
   depend_dll.files = \
     $$[QT_INSTALL_BINS]/QtAV$${QTAV_MAJOR_VERSION}.dll \
-    $$[QT_INSTALL_BINS]/libass.dll \
     $$[QT_INSTALL_BINS]/avcodec-*.dll \
     $$[QT_INSTALL_BINS]/avformat-*.dll \
     $$[QT_INSTALL_BINS]/avutil-*.dll \
     $$[QT_INSTALL_BINS]/avfilter-*.dll \
     $$[QT_INSTALL_BINS]/swresample-*.dll \
     $$[QT_INSTALL_BINS]/swscale-*.dll
+  exists($$[QT_INSTALL_BINS]/ass.dll): depend_dll.files += $$[QT_INSTALL_BINS]/ass.dll
   #depend_dll.path = $$OUT_PWD
-  DEPLOYMENT += depend_dll
+  DEPLOYMENT = depend_dll fonts #vs2015update1 error about multiple qt5core.dll(in both build dir and qtbin dir), we can remove them in `Deployment Files`
 # WINRT_MANIFEST file: "=>\"
   winphone {
-    WINRT_MANIFEST = WinPhone8.Package.appxmanifest
+    WINRT_MANIFEST = winrt/WinPhone8.Package.appxmanifest
+  } else:*-msvc2015 {
+    WINRT_MANIFEST = winrt/WinRT10.Package.appxmanifest
   } else {
-    WINRT_MANIFEST = WinRT8.Package.appxmanifest
+    WINRT_MANIFEST = winrt/WinRT8.Package.appxmanifest
   }
-  OTHER_FILES *= *Package.appxmanifest
-  #WINRT_ASSETS_PATH = $$PWD/assets-winrt #for qmake generated manifest
+  OTHER_FILES *= winrt/*
+  WINRT_ASSETS_PATH = winrt/assets #for qmake generated manifest
 }
