@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -33,7 +33,7 @@
 #ifdef QT_OPENGL_DYNAMIC
 #include <QtGui/QOpenGLFunctions_1_0>
 #endif
-#if QTAV_HAVE(EGL_CAPI)  && QTAV_HAVE(QT_EGL) //make sure no crash if no egl library
+#if QTAV_HAVE(EGL_CAPI) // && QTAV_HAVE(QT_EGL) //make sure no crash if no egl library
 #define EGL_CAPI_NS
 #include "capi/egl_api.h"
 #endif //QTAV_HAVE(EGL_CAPI)
@@ -89,6 +89,7 @@ static void glGetTexLevelParameteriv(GLenum target, GLint level, GLenum pname, G
 #endif
 }
 
+/// 16bit (R16 e.g.) texture does not support >8bit a BE channel, fallback to 2 channel texture
 int depth16BitTexture()
 {
     static int depth = qgetenv("QTAV_TEXTURE16_DEPTH").toInt() == 16 ? 16 : 8;//8 ? 8 : 16;
@@ -116,7 +117,6 @@ int GLSLVersion()
         v = major * 100 + minor;
     else
         v = 0;
-    qDebug("GLSL version: %s/%d", vs, v);
     return v;
 }
 
@@ -125,12 +125,21 @@ bool isEGL()
     static int is_egl = -1;
     if (is_egl >= 0)
         return !!is_egl;
+#ifdef Q_OS_IOS
+    is_egl = 0;
+    return false;
+#endif
     if (isOpenGLES()) { //TODO: ios has no egl
         is_egl = 1;
         return true;
     }
-#if QTAV_HAVE(EGL_CAPI) && QTAV_HAVE(QT_EGL) //make sure no crash if no egl library
-    if (eglGetCurrentDisplay() != EGL_NO_DISPLAY) {
+    // angle has no QTAV_HAVE(QT_EGL). TODO: no assert in capi, or check egl loaded
+#if QTAV_HAVE(EGL_CAPI) //&& QTAV_HAVE(QT_EGL) //make sure no crash if no egl library
+    if (!egl::api().loaded()) { //load twice, here and ns func call
+        is_egl = 0;
+        return false;
+    }
+    if (eglGetCurrentDisplay() != EGL_NO_DISPLAY) { //egl can be loaded but glx is used
         is_egl = 1;
         return true;
     }
@@ -172,7 +181,9 @@ bool isOpenGLES()
 
 bool hasExtensionEGL(const char *exts[])
 {
-#if QTAV_HAVE(EGL_CAPI) && QTAV_HAVE(QT_EGL) //make sure no crash if no egl library
+    if (!isEGL())
+        return false;
+#if QTAV_HAVE(EGL_CAPI)
     static QList<QByteArray> supported;
     if (supported.isEmpty()) {
         EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -232,7 +243,6 @@ bool isPBOSupported() {
         NULL
     };
     support = hasExtension(exts);
-    qDebug() << "PBO: " << support;
     pbo_checked = true;
     return support;
 }
@@ -306,7 +316,7 @@ static const gl_param_t gl_param_compat[] = { // it's legacy
 };
 static const gl_param_t gl_param_desktop[] = {
     {GL_R8,     GL_RED,     GL_UNSIGNED_BYTE},      // 1 x 8
-    {GL_RG,      GL_RG,      GL_UNSIGNED_BYTE},      // 2 x 8
+    {GL_RG,      GL_RG,      GL_UNSIGNED_BYTE},      // 2 x 8 //FIXME: OSX error in hasRG(), internal format GL_RG8 is ok
     {GL_RGB,     GL_RGB,     GL_UNSIGNED_BYTE},      // 3 x 8
     {GL_RGBA,    GL_RGBA,    GL_UNSIGNED_BYTE},      // 4 x 8
     {GL_R16,     GL_RED,     GL_UNSIGNED_SHORT},     // 1 x 16
@@ -397,20 +407,24 @@ bool hasRG()
     static int has_rg = -1;
     if (has_rg >= 0)
         return !!has_rg;
+    qDebug("check desktop rg: %#X", gl_param_desktop[1].internal_format);
     if (test_gl_param(gl_param_desktop[1])) {
         has_rg = 1;
         return true;
     }
+    qDebug("check es3 rg: %#X", gl_param_es3[1].internal_format);
     if (test_gl_param(gl_param_es3[1])) {
         has_rg = 1;
         return true;
     }
+    qDebug("check GL_EXT_texture_rg");
     static const char* ext[] = { "GL_EXT_texture_rg", 0}; //RED, RG, R8, RG8
     if (hasExtension(ext)) {
         qDebug("has extension GL_EXT_texture_rg");
         has_rg = 1;
         return true;
     }
+    qDebug("check gl es>=3 rg");
     if (QOpenGLContext::currentContext())
         has_rg = isOpenGLES() && QOpenGLContext::currentContext()->format().majorVersion() > 2;
     return has_rg;
@@ -499,6 +513,7 @@ static const reorder_t gl_channel_maps[] = {
     { VideoFormat::Format_BGR48BE,{2, 1, 0, 3}},
     { VideoFormat::Format_BGR48,  {2, 1, 0, 3}},
     { VideoFormat::Format_BGR555, {2, 1, 0, 3}},
+    // TODO: rgb444le/be etc
     { VideoFormat::Format_Invalid,{1, 2, 3}}
 };
 
@@ -580,7 +595,7 @@ bool videoFormatToGL(const VideoFormat& fmt, GLint* internal_format, GLenum* dat
         {VideoFormat::Format_BGR555, GL_RGBA, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV},
     #endif
         // TODO: BE formats not implemeted
-        {VideoFormat::Format_RGB48, GL_RGB, GL_RGB, GL_UNSIGNED_SHORT }, //TODO: rgb16?
+        {VideoFormat::Format_RGB48, GL_RGB, GL_RGB, GL_UNSIGNED_SHORT }, //TODO: they are not work for ANGLE, and rgb16 works on desktop gl, so remove these lines to use rgb16?
         {VideoFormat::Format_RGB48LE, GL_RGB, GL_RGB, GL_UNSIGNED_SHORT },
         {VideoFormat::Format_RGB48BE, GL_RGB, GL_RGB, GL_UNSIGNED_SHORT },
         {VideoFormat::Format_BGR48, GL_RGB, GL_BGR, GL_UNSIGNED_SHORT }, //RGB16?
@@ -650,9 +665,12 @@ bool videoFormatToGL(const VideoFormat& fmt, GLint* internal_format, GLenum* dat
     GLenum *d_f = data_format;
     GLenum *d_t = data_type;
     gl_param_t* gp = (gl_param_t*)get_gl_param();
-    if (gp == gl_param_desktop && fmt.planeCount() == 2) {
-        gp = (gl_param_t*)gl_param_desktop_fallback; // nv12 UV plane is 16bit, but we use rg
-        qDebug("desktop_fallback for bi-plane format");
+    if (gp == gl_param_desktop && (
+                fmt.planeCount() == 2 // nv12 UV plane is 16bit, but we use rg
+                || (OpenGLHelper::depth16BitTexture() == 16 && OpenGLHelper::has16BitTexture() && fmt.isBigEndian() && fmt.bitsPerComponent() > 8) // 16bit texture does not support be channel now
+                )) {
+        gp = (gl_param_t*)gl_param_desktop_fallback;
+        qDebug("desktop_fallback for %s", fmt.planeCount() == 2 ? "bi-plane format" : "16bit big endian channel");
     }
     for (int p = 0; p < fmt.planeCount(); ++p) {
         // for packed rgb(swizzle required) and planar formats

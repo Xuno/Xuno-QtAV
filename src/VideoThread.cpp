@@ -290,15 +290,36 @@ void VideoThread::run()
     //bool wait_audio_drain
     const char* pkt_data = NULL; // workaround for libav9 decode fail but error code >= 0
     qint64 last_deliver_time = 0;
+    int sync_id = 0;
     while (true) {
         processNextTask();
         //TODO: why put it at the end of loop then stepForward() not work?
         //processNextTask tryPause(timeout) and  and continue outter loop
-        if (tryPause()) { //DO NOT continue, or stepForward() will fail
+        if (d.render_pts0 < 0) { // no pause when seeking
+            if (tryPause()) { //DO NOT continue, or stepForward() will fail
 
+            } else {
+                if (isPaused())
+                    continue; //timeout. process pending tasks
+            }
+        }
+        if (d.seek_requested) {
+            d.seek_requested = false;
+            qDebug("request seek video thread");
+            pkt = Packet(); // last decode failed and pkt is valid, reset pkt to force take the next packet if seek is requested
+            msleep(1);
         } else {
-            if (isPaused())
-                continue; //timeout. process pending tasks
+            // d.render_pts0 < 0 means seek finished here
+            if (d.clock->syncId() > 0) {
+                qDebug("video thread wait to sync end for sync id: %d", d.clock->syncId());
+                if (d.render_pts0 < 0 && sync_id > 0) {
+                    msleep(10);
+                    v_a = 0;
+                    continue;
+                }
+            } else {
+                sync_id = 0;
+            }
         }
         if(!pkt.isValid() && !pkt.isEOF()) { // can't seek back if eof packet is read
             pkt = d.packets.take(); //wait to dequeue
@@ -318,12 +339,14 @@ void VideoThread::run()
                 qDebug("Invalid packet! flush video codec context!!!!!!!!!! video packet queue size: %d", d.packets.size());  
                 d.dec->flush(); //d.dec instead of dec because d.dec maybe changed in processNextTask() but dec is not
                 d.render_pts0 = pkt.pts;
+                sync_id = pkt.position;
+                qDebug("video seek: %.3f, id: %d", d.render_pts0, sync_id);
                 d.pts_history = ring<qreal>(d.pts_history.capacity());
                 v_a = 0;
                 continue;
             }
         }
-        if (pkt.pts <= 0) {
+        if (pkt.pts <= 0 && !pkt.isEOF() && pkt.data.size() > 0) {
             nb_no_pts++;
         } else {
             nb_no_pts = 0;
@@ -376,6 +399,7 @@ void VideoThread::run()
                     nb_dec_slow = 0;
                     wait_key_frame = true;
                     pkt = Packet();
+                    v_a = 0;
                     // TODO: use discard flag
                     continue;
                 } else {
@@ -434,36 +458,35 @@ void VideoThread::run()
             if (!pkt.hasKeyFrame) {
                 qDebug("waiting for key frame. queue size: %d. pkt.size: %d", d.packets.size(), pkt.data.size());
                 pkt = Packet();
+                v_a = 0;
                 continue;
             }
             wait_key_frame = false;
         }
         QVariantHash *dec_opt_old = dec_opt;
-        if (d.drop_frame_seek) {
-            if (!seeking || d.render_pts0 < 0.001) { // MAYBE not seeking
-                if (nb_dec_slow < kNbSlowFrameDrop) {
-                    if (dec_opt == &d.dec_opt_framedrop) {
-                        qDebug("frame drop normal. nb_dec_slow: %d. not seeking", nb_dec_slow);
-                        dec_opt = &d.dec_opt_normal;
-                    }
-                } else {
-                    if (dec_opt == &d.dec_opt_normal) {
-                        qDebug("frame drop noref. nb_dec_slow: %d too slow. not seeking", nb_dec_slow);
-                        dec_opt = &d.dec_opt_framedrop;
-                    }
+        if (!seeking || pkt.pts - d.render_pts0 >= 0.0) { // MAYBE not seeking. We should not drop the frames after seek target
+            if (seeking)
+                qDebug("seeking... pkt.pts - d.render_pts0: %.3f", pkt.pts - d.render_pts0);
+            if (nb_dec_slow < kNbSlowFrameDrop) {
+                if (dec_opt == &d.dec_opt_framedrop) {
+                    qDebug("frame drop=>normal. nb_dec_slow: %d", nb_dec_slow);
+                    dec_opt = &d.dec_opt_normal;
                 }
-            } else { // seeking
-                if (seek_count > 0) {
-                    if (dec_opt == &d.dec_opt_normal) {
-                        qDebug("seeking... frame drop noref. nb_dec_slow: %d", nb_dec_slow);
-                        dec_opt = &d.dec_opt_framedrop;
-                    }
-                } else {
-                    seek_count = -1;
+            } else {
+                if (dec_opt == &d.dec_opt_normal) {
+                    qDebug("frame drop=>noref. nb_dec_slow: %d too slow", nb_dec_slow);
+                    dec_opt = &d.dec_opt_framedrop;
                 }
             }
-        } else {
-            dec_opt = &d.dec_opt_normal;
+        } else { // seeking
+            if (seek_count > 0 && d.drop_frame_seek) {
+                if (dec_opt == &d.dec_opt_normal) {
+                    qDebug("seeking... pkt.pts - d.render_pts0: %.3f, frame drop=>noref. nb_dec_slow: %d", pkt.pts - d.render_pts0, nb_dec_slow);
+                    dec_opt = &d.dec_opt_framedrop;
+                }
+            } else {
+                seek_count = -1;
+            }
         }
 
         // decoder maybe changed in processNextTask(). code above MUST use d.dec but not dec
@@ -471,6 +494,7 @@ void VideoThread::run()
             dec = static_cast<VideoDecoder*>(d.dec);
             if (!pkt.hasKeyFrame) {
                 wait_key_frame = true;
+                v_a = 0;
                 continue;
             }
             qDebug("decoder changed. decoding key frame");
@@ -484,8 +508,9 @@ void VideoThread::run()
                 Q_EMIT eofDecoded();
                 qDebug("video decode eof done. d.render_pts0: %.3f", d.render_pts0);
                 if (d.render_pts0 >= 0) {
-                    qDebug("video seek done at eof pts: %.3f", d.pts_history.back());
+                    qDebug("video seek done at eof pts: %.3f. id: %d", d.pts_history.back(), sync_id);
                     d.render_pts0 = -1;
+                    d.clock->syncEndOnce(sync_id);
                     Q_EMIT seekFinished(qint64(d.pts_history.back()*1000.0));
                     if (seek_count == -1)
                         seek_count = 1;
@@ -496,11 +521,12 @@ void VideoThread::run()
                     break;
             }
             pkt = Packet();
+            v_a = 0; //?
             continue;
         }
         // reduce here to ensure to decode the rest data in the next loop
         if (!pkt.isEOF())
-            pkt.data = QByteArray::fromRawData(pkt.data.constData() + pkt.data.size() - dec->undecodedSize(), dec->undecodedSize());
+            pkt.skip(pkt.data.size() - dec->undecodedSize());
         VideoFrame frame = dec->frame();
         if (!frame.isValid()) {
             qWarning("invalid video frame from decoder. undecoded data size: %d", pkt.data.size());
@@ -508,6 +534,7 @@ void VideoThread::run()
                 pkt = Packet();
             else
                 pkt_data = pkt.data.constData();
+            v_a = 0; //?
             continue;
         }
         pkt_data = pkt.data.constData();
@@ -521,10 +548,12 @@ void VideoThread::run()
             if (pts < d.render_pts0) {
                 if (!pkt.isEOF())
                     pkt = Packet();
+                v_a = 0;
                 continue;
             }
             d.render_pts0 = -1;
-            qDebug("video seek finished @%f", pts);
+            qDebug("video seek finished @%f. id: %d", pts, sync_id);
+            d.clock->syncEndOnce(sync_id);
             Q_EMIT seekFinished(qint64(pts*1000.0));
             if (seek_count == -1)
                 seek_count = 1;
@@ -534,6 +563,7 @@ void VideoThread::run()
         if (skip_render) {
             qDebug("skip rendering @%.3f", pts);
             pkt = Packet();
+            v_a = 0;
             continue;
         }
         Q_ASSERT(d.statistics);

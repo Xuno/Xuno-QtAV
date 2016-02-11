@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -37,8 +37,8 @@ typedef QTime QElapsedTimer;
 namespace QtAV {
 
 // chunk
-static const int kBufferSize = 1024*4;
-static const int kBufferCount = 8;
+static const int kBufferSamples = 512;
+static const int kBufferCount = 8*2; // may wait too long at the beginning (oal) if too large. if buffer count is too small, can not play for high sample rate audio.
 
 typedef void (*scale_samples_func)(quint8 *dst, const quint8 *src, int nb_samples, int volume, float volumef);
 
@@ -127,7 +127,7 @@ public:
       , vol(1)
       , speed(1.0)
       , nb_buffers(kBufferCount)
-      , buffer_size(kBufferSize)
+      , buffer_samples(kBufferSamples)
       , features(0)
       , play_pos(0)
       , processed_remain(0)
@@ -151,7 +151,6 @@ public:
         cond.wait(&mutex, (us+500LL)/1000LL);
     }
 
-    int bufferSizeTotal() { return nb_buffers * buffer_size; }
     struct FrameInfo {
         FrameInfo(qreal t = 0, int s = 0) : timestamp(t), data_size(s) {}
         qreal timestamp;
@@ -181,7 +180,7 @@ public:
     QByteArray data;
     //AudioFrame audio_frame;
     quint32 nb_buffers;
-    qint32 buffer_size;
+    qint32 buffer_samples;
     int features;
     int play_pos; // index or bytes
     int processed_remain;
@@ -220,8 +219,8 @@ void AudioOutputPrivate::playInitialData()
                     || format.sampleFormat() == AudioFormat::SampleFormat_Unsigned8Planar)
             ? 0x80 : 0;
     for (quint32 i = 0; i < nb_buffers; ++i) {
-        backend->write(QByteArray(buffer_size, c)); // fill silence byte, not always 0. AudioFormat.silenceByte
-        frame_infos.push_back(FrameInfo(0, buffer_size));
+        backend->write(QByteArray(buffer_samples*format.bytesPerSample(), c)); // fill silence byte, not always 0. AudioFormat.silenceByte
+        frame_infos.push_back(FrameInfo(0, buffer_samples*format.bytesPerSample()));
     }
     backend->play();
 }
@@ -261,6 +260,9 @@ AudioOutput::AudioOutput(QObject* parent)
     d_func().format.setSampleFormat(AudioFormat::SampleFormat_Signed16);
     d_func().format.setChannelLayout(AudioFormat::ChannelLayout_Stereo);
     static const QStringList all = QStringList()
+#ifdef Q_OS_MAC
+            << QStringLiteral("AudioToolbox")
+#endif
 #if QTAV_HAVE(XAUDIO2)
             << QStringLiteral("XAudio2")
 #endif
@@ -350,6 +352,24 @@ QString AudioOutput::backend() const
     if (d.backend)
         return d.backend->name();
     return QString();
+}
+
+void AudioOutput::flush()
+{
+    DPTR_D(AudioOutput);
+    while (!d.frame_infos.empty()) {
+        if (d.backend)
+            d.backend->flush();
+        waitForNextBuffer();
+    }
+}
+
+void AudioOutput::clear()
+{
+    DPTR_D(AudioOutput);
+    if (!d.backend || !d.backend->clear())
+        flush();
+    d.resetStatus();
 }
 
 bool AudioOutput::open()
@@ -564,12 +584,17 @@ AudioFormat::ChannelLayout AudioOutput::preferredChannelLayout() const
 
 int AudioOutput::bufferSize() const
 {
-    return d_func().buffer_size;
+    return bufferSamples() * d_func().format.bytesPerSample();
 }
 
-void AudioOutput::setBufferSize(int value)
+int AudioOutput::bufferSamples() const
 {
-    d_func().buffer_size = value;
+    return d_func().buffer_samples;
+}
+
+void AudioOutput::setBufferSamples(int value)
+{
+    d_func().buffer_samples = value;
 }
 
 int AudioOutput::bufferCount() const
@@ -611,6 +636,8 @@ AudioOutput::DeviceFeatures AudioOutput::supportedDeviceFeatures() const
 bool AudioOutput::waitForNextBuffer()
 {
     DPTR_D(AudioOutput);
+    if (d.frame_infos.empty())
+        return true;
     if (!d.backend)
         return false;
     //don't return even if we can add buffer because we don't know when a buffer is processed and we have /to update dequeue index
@@ -665,7 +692,7 @@ bool AudioOutput::waitForNextBuffer()
         while (!no_wait && d.processed_remain < next) {
             const qint64 us = d.format.durationForBytes(next - d.processed_remain);
             if (us < 1000LL)
-                d.uwait(10000LL);
+                d.uwait(1000LL);
             else
                 d.uwait(us);
             d.processed_remain = d.backend->getPlayedBytes();
@@ -689,7 +716,7 @@ bool AudioOutput::waitForNextBuffer()
             if (elapsed > 0 && us > elapsed*1000LL)
                 us -= elapsed*1000LL;
             if (us < 1000LL)
-                us = 10000LL; //opensl crash if 1
+                us = 1000LL; //opensl crash if 1ms
 #endif //AO_USE_TIMER
             d.uwait(us);
             c = d.backend->getPlayedCount();

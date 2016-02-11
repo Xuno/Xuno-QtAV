@@ -46,15 +46,6 @@ class FBORenderer : public QQuickFramebufferObject::Renderer
 public:
     FBORenderer(QuickFBORenderer* item) : m_item(item) {}
     QOpenGLFramebufferObject* createFramebufferObject(const QSize &size) {
-        static bool sInfo = true;
-        if (sInfo) {
-            sInfo = false;
-            qDebug("GL_VERSION: %s", DYGL(glGetString(GL_VERSION)));
-            qDebug("GL_VENDOR: %s", DYGL(glGetString(GL_VENDOR)));
-            qDebug("GL_RENDERER: %s", DYGL(glGetString(GL_RENDERER)));
-            qDebug("GL_SHADING_LANGUAGE_VERSION: %s", DYGL(glGetString(GL_SHADING_LANGUAGE_VERSION)));
-        }
-
         m_item->fboSizeChanged(size);
         return QQuickFramebufferObject::Renderer::createFramebufferObject(size);
     }
@@ -74,6 +65,7 @@ class QuickFBORendererPrivate : public VideoRendererPrivate
 public:
     QuickFBORendererPrivate():
         VideoRendererPrivate()
+      , frame_changed(false)
       , opengl(true)
       , fill_mode(QuickFBORenderer::PreserveAspectFit)
       , node(0)
@@ -91,6 +83,7 @@ public:
         else
             matrix.scale(1, -1);
     }
+    bool frame_changed;
     bool opengl;
     QuickFBORenderer::FillMode fill_mode;
     QSGNode *node;
@@ -130,7 +123,7 @@ bool QuickFBORenderer::receiveFrame(const VideoFrame &frame)
 {
     DPTR_D(QuickFBORenderer);
     d.video_frame = frame;
-    d.glv.setCurrentFrame(frame);
+    d.frame_changed = true;
 //    update();  // why update slow? because of calling in a different thread?
     //QMetaObject::invokeMethod(this, "update"); // slower than directly postEvent
     QCoreApplication::postEvent(this, new QEvent(QEvent::User));
@@ -229,7 +222,10 @@ void QuickFBORenderer::drawFrame()
         d.glv.fill(QColor(0, 0, 0, 0));
         return;
     }
-    //d.glv.setCurrentFrame(d.video_frame);
+    if (d.frame_changed) {
+        d.glv.setCurrentFrame(d.video_frame);
+        d.frame_changed = false;
+    }
     d.glv.render(d.out_rect, normalizedROI(), d.matrix);
 }
 

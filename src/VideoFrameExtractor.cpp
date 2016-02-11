@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2014-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -104,6 +104,7 @@ class VideoFrameExtractorPrivate : public DPtrPrivate<VideoFrameExtractor>
 public:
     VideoFrameExtractorPrivate()
         : extracted(false)
+        , abort_seek(false)
         , async(true)
         , has_video(true)
         , auto_extract(true)
@@ -139,20 +140,14 @@ public:
     ~VideoFrameExtractorPrivate() {
         // stop first before demuxer and decoder close to avoid running new seek task after demuxer is closed.
         thread.waitStop();
-        // close codec context first.
-        decoder.reset(0);
-        demuxer.unload();
+        releaseResourceInternal();
     }
-
     bool checkAndOpen() {
         const bool loaded = demuxer.fileName() == source && demuxer.isLoaded();
-        if (loaded && decoder && !demuxer.atEnd())
+        if (loaded && decoder)// && !demuxer.atEnd()) //we may seek back later when eof got. TODO: remove demuxer.atEnd()
             return true;
         seek_count = 0;
-        if (decoder) { // new source
-            decoder->close();
-            decoder.reset(0);
-        }
+        decoder.reset(0);
         if (!loaded || demuxer.atEnd()) {
             demuxer.unload();
             demuxer.setMedia(source);
@@ -195,6 +190,7 @@ public:
 
     // return the key frame position
     bool extractInPrecision(qint64 value, int range) {
+        abort_seek = false;
         frame = VideoFrame();
         if (value < demuxer.startTime())
             value += demuxer.startTime();
@@ -205,6 +201,10 @@ public:
         bool warn_bad_seek = true;
         bool warn_out_of_range = true;
         while (!demuxer.atEnd()) {
+            if (abort_seek) {
+                qDebug("VideoFrameExtractor abort seek before read");
+                return false;
+            }
             if (!demuxer.readFrame())
                 continue;
             if (demuxer.stream() != vstream)
@@ -243,6 +243,10 @@ public:
         // must decode key frame
         int k = 0;
         while (k < 2 && !frame.isValid()) {
+            if (abort_seek) {
+                qDebug("VideoFrameExtractor abort seek before decoding key frames");
+                return false;
+            }
             //qWarning("invalid key frame!!!!! undecoded: %d", decoder->undecodedSize());
             if (decoder->decode(pkt)) {
                 frame = decoder->frame();
@@ -262,6 +266,10 @@ public:
         QVariantHash* dec_opt = &dec_opt_normal; // 0: default, 1: framedrop
         // decode at the given position
         while (!demuxer.atEnd()) {
+            if (abort_seek) {
+                qDebug("VideoFrameExtractor abort seek after key frame before read");
+                return false;
+            }
             if (!demuxer.readFrame())
                 continue;
             if (demuxer.stream() != vstream)
@@ -317,9 +325,13 @@ public:
         }
         ++seek_count;
         // now we get the final frame
+        if (demuxer.atEnd())
+            releaseResourceInternal();
         return true;
     }
     void releaseResourceInternal() {
+        seek_count = 0;
+        // close codec context first.
         decoder.reset(0);
         demuxer.unload();
     }
@@ -337,6 +349,7 @@ public:
     }
 
     bool extracted;
+    volatile bool abort_seek;
     bool async;
     bool has_video;
     bool loading;
@@ -366,14 +379,14 @@ VideoFrameExtractor::VideoFrameExtractor(QObject *parent) :
     connect(this, SIGNAL(aboutToExtract(qint64)), SLOT(extractInternal(qint64)));
 }
 
-void VideoFrameExtractor::setSource(const QString value)
+void VideoFrameExtractor::setSource(const QString url)
 {
     DPTR_D(VideoFrameExtractor);
-    if (value == d.source)
+    if (url == d.source)
         return;
-    d.source = value;
+    d.source = url;
     d.has_video = true;
-    emit sourceChanged();
+    Q_EMIT sourceChanged();
     d.frame = VideoFrame();
     d.safeReleaseResource();
 }
@@ -389,7 +402,7 @@ void VideoFrameExtractor::setAsync(bool value)
     if (d.async == value)
         return;
     d.async = value;
-    emit asyncChanged();
+    Q_EMIT asyncChanged();
 }
 
 bool VideoFrameExtractor::async() const
@@ -403,7 +416,7 @@ void VideoFrameExtractor::setAutoExtract(bool value)
     if (d.auto_extract == value)
         return;
     d.auto_extract = value;
-    emit autoExtractChanged();
+    Q_EMIT autoExtractChanged();
 }
 
 bool VideoFrameExtractor::autoExtract() const
@@ -422,7 +435,7 @@ void VideoFrameExtractor::setPosition(qint64 value)
     d.frame = VideoFrame();
     d.extracted = false;
     d.position = value;
-    emit positionChanged();
+    Q_EMIT positionChanged();
     if (!autoExtract())
         return;
     extract();
@@ -443,7 +456,7 @@ void VideoFrameExtractor::setPrecision(int value)
     // it's key frame finding rule
     if (value >= 0)
         d.precision = value;
-    emit precisionChanged();
+    Q_EMIT precisionChanged();
 }
 
 int VideoFrameExtractor::precision() const
@@ -469,7 +482,7 @@ void VideoFrameExtractor::extract()
     }
 #if ASYNC_SIGNAL
     else {
-        emit aboutToExtract(position());
+        Q_EMIT aboutToExtract(position());
         return;
     }
 #endif
@@ -487,6 +500,7 @@ void VideoFrameExtractor::extract()
         VideoFrameExtractor *extractor;
         qint64 position;
     };
+    d.abort_seek = true;
     d.thread.addTask(new ExtractTask(this, position()));
     return;
 #endif
@@ -500,19 +514,19 @@ void VideoFrameExtractor::extractInternal(qint64 pos)
     DPTR_D(VideoFrameExtractor);
     int precision_old = precision();
     if (!d.checkAndOpen()) {
-        emit error();
+        Q_EMIT error();
         //qWarning("can not open decoder....");
         return; // error handling
     }
     if (precision_old != precision()) {
-        emit precisionChanged();
+        Q_EMIT precisionChanged();
     }
     d.extracted = d.extractInPrecision(pos, precision());
     if (!d.extracted) {
-        emit error();
+        Q_EMIT error();
         return;
     }
-    emit frameExtracted(d.frame);
+    Q_EMIT frameExtracted(d.frame);
 }
 
 } //namespace QtAV
