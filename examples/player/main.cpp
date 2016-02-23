@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
     MainWindow window;
     window.setProperty("rendererId", rendererId_from_opt_name(vo.toLower()));
     window.show();
-    QString title = QString::fromLatin1("XunoPlayer %1 http://www.xuno.com").arg(XUNO_QtAV_Version_String_Long());
+    QString title = QString::fromLatin1("XunoPlayer %1 http://www.xuno.com").arg(window.XUNO_QtAV_Version_String_Long());
     window.setWindowTitle(title);
     AppEventFilter ae(&window);
     qApp->installEventFilter(&ae);

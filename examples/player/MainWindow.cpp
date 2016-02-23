@@ -281,8 +281,8 @@ void MainWindow::setupUi()
                                     background-color: #0066FF; \
                                 } \
                                 ");
-    mpTimeSlider->addVisualLimits();
-    mpCurrent = new QLabel(mpControl);
+                                mpTimeSlider->addVisualLimits();
+            mpCurrent = new QLabel(mpControl);
     mpCurrent->setToolTip(tr("Current time"));
     mpCurrent->setContentsMargins(QMargins(2, 2, 2, 2));
     mpCurrent->setText(QString::fromLatin1("00:00:00"));
@@ -1077,13 +1077,13 @@ void MainWindow::onPaused(bool p)
 void MainWindow::onStartPlay()
 {
     //--- TODO --- remove after recover OpenGL rgb48le
-//#if !IMGSEQOPENGL
-//    bool rgb48=mpPlayer->statistics().video_only.pix_fmt.contains("rgb48be");
-//    VideoRenderer *vo = VideoRendererFactory::create( (isFileImgageSequence() && rgb48) ? VideoRendererId_Widget : VideoRendererId_GLWidget2);
-//    if (vo && vo->isAvailable()) {
-//        setRenderer(vo);
-//    }
-//#endif
+    //#if !IMGSEQOPENGL
+    //    bool rgb48=mpPlayer->statistics().video_only.pix_fmt.contains("rgb48be");
+    //    VideoRenderer *vo = VideoRendererFactory::create( (isFileImgageSequence() && rgb48) ? VideoRendererId_Widget : VideoRendererId_GLWidget2);
+    //    if (vo && vo->isAvailable()) {
+    //        setRenderer(vo);
+    //    }
+    //#endif
 
     mpRenderer->setRegionOfInterest(QRectF());
     mFile = mpPlayer->file(); //open from EventFilter's menu
@@ -1376,9 +1376,47 @@ void MainWindow::wheelEvent(QWheelEvent *e)
     mpRenderer->setRegionOfInterest((r | m.mapRect(viewport))&QRectF(QPointF(0,0), mpRenderer->videoFrameSize()));
 }
 
+QString MainWindow::aboutXunoQtAV_PlainText()
+{
+    return aboutXunoQtAV_HTML().remove(QRegExp(QStringLiteral("<[^>]*>")));
+}
+
+QString MainWindow::aboutXunoQtAV_HTML()
+{
+    static QString about = "<h3>XunoPlayer " XUNO_QTAV_VERSION_STR_LONG "</h3>\n"
+                "<p>" + QObject::tr("Fork project (Xuno-QtAV) of QtAV \n") + QTAV_VERSION_STR "</p>";
+    return about;
+}
+
 void MainWindow::about()
 {
-    QtAV::about();
+    //QtAV::about();
+    //we should use new because a qobject will delete it's children
+    QTextBrowser *viewQtAV = new QTextBrowser;
+    QTextBrowser *viewFFmpeg = new QTextBrowser;
+    viewQtAV->setOpenExternalLinks(true);
+    viewFFmpeg->setOpenExternalLinks(true);
+    viewQtAV->setHtml(aboutXunoQtAV_HTML().append(aboutQtAV_HTML()));
+    viewFFmpeg->setHtml(aboutFFmpeg_HTML());
+    QTabWidget *tab = new QTabWidget;
+    tab->addTab(viewQtAV, QStringLiteral("Xuno-QtAV"));
+    tab->addTab(viewFFmpeg, QStringLiteral("FFmpeg"));
+    QPushButton *qbtn = new QPushButton(QObject::tr("About Qt"));
+    QPushButton *btn = new QPushButton(QObject::tr("Ok"));
+    QHBoxLayout *btnLayout = new QHBoxLayout;
+    btnLayout->addWidget(btn);
+    btnLayout->addStretch();
+    btnLayout->addWidget(qbtn);
+    btn->setFocus();
+    QDialog dialog;
+    dialog.setWindowTitle(QObject::tr("About") + QStringLiteral("  Xuno-QtAV"));
+    QVBoxLayout *layout = new QVBoxLayout;
+    dialog.setLayout(layout);
+    layout->addWidget(tab);
+    layout->addLayout(btnLayout);
+    QObject::connect(qbtn, SIGNAL(clicked()), qApp, SLOT(aboutQt()));
+    QObject::connect(btn, SIGNAL(clicked()), &dialog, SLOT(accept()));
+    dialog.exec();
 }
 
 void MainWindow::help()
@@ -1605,8 +1643,8 @@ void MainWindow::onTimeSliderHover(int pos, int value)
         gpos = mapToGlobal(mpTimeSlider->pos() + QPoint(pos, 0));
     }
     QToolTip::showText(gpos, QTime(0, 0, 0).addMSecs(value).toString(QString::fromLatin1("HH:mm:ss.zzz")));
-            if (!Config::instance().previewEnabled())
-            return;
+    if (!Config::instance().previewEnabled())
+        return;
     if (!m_preview)
         m_preview = new VideoPreviewWidget();
 
@@ -2114,3 +2152,14 @@ void MainWindow::analyeUsedFPS()
             }
         }
 }
+
+QString MainWindow::XUNO_QtAV_Version_String()
+{
+    return XUNO_QTAV_VERSION_STR;
+}
+
+QString  MainWindow::XUNO_QtAV_Version_String_Long()
+{
+    return XUNO_QTAV_VERSION_STR_LONG;
+}
+

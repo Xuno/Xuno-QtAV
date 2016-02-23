@@ -45,4 +45,5 @@ HEADERS += \
     config/PropertyEditor.h \
     config/AVFormatConfigPage.h \
     config/AVFilterConfigPage.h \
-    filters/AVFilterSubtitle.h
+    filters/AVFilterSubtitle.h \
+    $$PWD/version.h

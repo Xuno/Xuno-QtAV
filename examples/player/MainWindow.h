@@ -22,6 +22,7 @@
 #define MAINWINDOW_H
 
 #include <QWidget>
+#include "version.h"
 #include <QUrl>
 #include "config/configwebmemu.h"
 #include "config/ImageSequenceConfigPage.h"
@@ -77,6 +78,8 @@ public:
     void setFileName(const QString fname);
     void setExtractTask(const QString fname);
 
+    QString XUNO_QtAV_Version_String();
+    QString XUNO_QtAV_Version_String_Long();
 public slots:
     void play(const QString& name);
     void play(const QUrl& url);
@@ -258,6 +261,8 @@ private:
     ImageSequenceConfigPage *mpImageSequence = 0;
     ConfigWebMemu *mpWebMenu = 0;
     ImgSeqExtractControl *mpImgSeqExtract=0;
+    QString aboutXunoQtAV_PlainText();
+    QString aboutXunoQtAV_HTML();
 };
 
 
