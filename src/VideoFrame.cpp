@@ -68,9 +68,9 @@ VideoFrame VideoFrame::fromGPU(const VideoFormat& fmt, int width, int height, in
         }
         // additional 15 bytes to ensure 16 bytes aligned
         QByteArray buf(15 + yuv_size, 0);
-        const int offset_16 = (16 - ((uintptr_t)buf.data() & 0x0f)) & 0x0f;
+        const int offset_16 = (16 - ((uintptr_t)buf.constData() & 0x0f)) & 0x0f;
         // plane 1, 2... is aligned?
-        uchar* plane_ptr = (uchar*)buf.data() + offset_16;
+        uchar* plane_ptr = (uchar*)buf.constData() + offset_16;
         QVector<uchar*> dst(nb_planes, 0);
         for (int i = 0; i < nb_planes; ++i) {
             dst[i] = plane_ptr;
@@ -117,7 +117,8 @@ public:
         : FramePrivate()
         , width(0)
         , height(0)
-        , color_space(ColorSpace_Unknow)
+        , color_space(ColorSpace_Unknown)
+        , color_range(ColorRange_Unknown)
         , displayAspectRatio(0)
         , format(VideoFormat::Format_Invalid)
     {}
@@ -125,7 +126,8 @@ public:
         : FramePrivate()
         , width(w)
         , height(h)
-        , color_space(ColorSpace_Unknow)
+        , color_space(ColorSpace_Unknown)
+        , color_range(ColorRange_Unknown)
         , displayAspectRatio(0)
         , format(fmt)
     {
@@ -139,6 +141,7 @@ public:
     ~VideoFramePrivate() {}
     int width, height;
     ColorSpace color_space;
+    ColorRange color_range;
     float displayAspectRatio;
     VideoFormat format;
     QScopedPointer<QImage> qt_image;
@@ -242,6 +245,7 @@ VideoFrame VideoFrame::clone() const
     f.setTimestamp(d->timestamp);
     f.setDisplayAspectRatio(d->displayAspectRatio);
     f.setColorSpace(d->color_space);
+    f.setColorRange(d->color_range);
     return f;
 }
 
@@ -289,14 +293,13 @@ int VideoFrame::height() const
 
 int VideoFrame::effectivePlaneWidth(int plane) const
 {
-    Q_D(const VideoFrame);
-    return effectiveBytesPerLine(plane)/d->format.bytesPerPixel(plane); //padded bpl?
+    return planeWidth(plane)*effectiveBytesPerLine(plane)/bytesPerLine(plane);
 }
 
 int VideoFrame::planeWidth(int plane) const
 {
     Q_D(const VideoFrame);
-    return bytesPerLine(plane)/d->format.bytesPerPixel(plane);
+    return d->format.width(width(), plane);
 }
 
 int VideoFrame::planeHeight(int plane) const
@@ -332,6 +335,16 @@ ColorSpace VideoFrame::colorSpace() const
 void VideoFrame::setColorSpace(ColorSpace value)
 {
     d_func()->color_space = value;
+}
+
+ColorRange VideoFrame::colorRange() const
+{
+    return d_func()->color_range;
+}
+
+void VideoFrame::setColorRange(ColorRange value)
+{
+    d_func()->color_range = value;
 }
 
 int VideoFrame::effectiveBytesPerLine(int plane) const
@@ -399,8 +412,9 @@ VideoFrame VideoFrame::to(const VideoFormat &fmt, const QSize& dstSize, const QR
     if (fmt.isRGB()) {
         f.setColorSpace(fmt.isPlanar() ? ColorSpace_GBR : ColorSpace_RGB);
     } else {
-        f.setColorSpace(ColorSpace_Unknow);
+        f.setColorSpace(ColorSpace_Unknown);
     }
+    // TODO: color range
     f.setTimestamp(timestamp());
     f.setDisplayAspectRatio(displayAspectRatio());
     f.d_ptr->metadata = d->metadata; // need metadata?
@@ -530,8 +544,9 @@ VideoFrame VideoFrameConverter::convert(const VideoFrame &frame, int fffmt) cons
     if (fmt.isRGB()) {
         f.setColorSpace(fmt.isPlanar() ? ColorSpace_GBR : ColorSpace_RGB);
     } else {
-        f.setColorSpace(ColorSpace_Unknow);
+        f.setColorSpace(ColorSpace_Unknown);
     }
+    // TODO: color range
     return f;
 }
 

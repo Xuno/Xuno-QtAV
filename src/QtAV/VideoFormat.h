@@ -127,6 +127,8 @@ public:
         Format_BGRA64, //native endian
         Format_BGRA64LE,
         Format_BGRA64BE,
+
+        Format_VYU, // for rgb422_apple texture, the layout is like rgb24: (v, y, u, )
         Format_User
     };
 
@@ -191,7 +193,10 @@ public:
     int planeCount() const;
     /*!
      * https://wiki.videolan.org/YUV
+     * bytesPerPixel()
      *  YUV420P: 1pix = 4Y+U+V, (4*8+8+8)/4 = 12
+     * bytesPerPixel(plane) is different, for example
+     * uyvy422 bytesPerPixel(0) = 8+8+8 = 24, while bytesPerPixel() = (2*8+8+8)/2 = 16
      */
     int bitsPerPixel() const;
     /// nv12: 16 for uv plane

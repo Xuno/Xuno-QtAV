@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -18,22 +18,6 @@
     License along with this library; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
-
-#ifdef GL_ES
-// Set default precision to medium
-precision mediump int;
-precision mediump float;
-#else
-#define highp
-#define mediump
-#define lowp
-#endif
-// >=1.40: texture(sampler2DRect,...). 'texture' is define in header
-#if __VERSION__ < 130
-#ifndef texture
-#define texture texture2D
-#endif
-#endif
 
 uniform sampler2D u_Texture0;
 varying vec2 v_TexCoords0;
@@ -55,7 +39,7 @@ uniform float u_gammaRGB;
 
 /***User Sampler code here***%1***/
 #ifndef USER_SAMPLER
-vec4 sample(sampler2D tex, vec2 pos)
+vec4 sample2d(sampler2D tex, vec2 pos)
 {
 #if defined(USED_FILTERS)
     vec3 sum = vec3(0.0);
@@ -83,7 +67,7 @@ void postprocess()
 }
 
 void main() {
-    vec4 c = sample(u_Texture0, v_TexCoords0);
+    vec4 c = sample2d(u_Texture0, v_TexCoords0);
     c = u_c * c;
 #ifndef HAS_ALPHA
     c.a = 1.0;

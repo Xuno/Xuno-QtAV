@@ -137,7 +137,7 @@ static const depend_component* get_depend_component(const depend_component* info
 
 void print_library_info()
 {
-    qDebug() << aboutQtAV_PlainText();
+    qDebug() << aboutQtAV_PlainText().toUtf8().constData();
     const depend_component* info = Internal::get_depend_component(0);
     while (info) {
         if (!qstrcmp(info->lib, "avutil"))
@@ -197,10 +197,18 @@ QString aboutQtAV_PlainText()
 
 QString aboutQtAV_HTML()
 {
-    static QString about = "<h3>XunoPlayer " XUNO_QTAV_VERSION_STR_LONG "</h3>\n"
-            "<p>" + QObject::tr("Fork project (Xuno-QtAV) of QtAV \n") + QTAV_VERSION_STR "</p>"
-            "<p>" + QObject::tr("A media playing library base on Qt and FFmpeg.\n") + "</p>"
-            "<p>" + QObject::tr("Distributed under the terms of LGPLv2.1 or later.\n") + "</p>";
+    static QString about = QString::fromLatin1("<h3>QtAV " QTAV_VERSION_STR_LONG "</h3>\n"
+            "<p>%1</p><p>%2</p><p>%3</p>"
+            "<p>Copyright (C) 2012-2016 Wang Bin (aka. Lucas Wang) <a href='mailto:wbsecg1@gmail.com'>wbsecg1@gmail.com</a></p>\n"
+            "<p>%4: <a href='http://qtav.org/donate.html'>http://qtav.org/donate.html</a></p>\n"
+            "<p>%5: <a href='https://github.com/wang-bin/QtAV'>https://github.com/wang-bin/QtAV</a></p>\n"
+            "<p>%6: <a href='http://qtav.org'>http://qtav.org</a></p>"
+           ).arg(QObject::tr("Multimedia framework base on Qt and FFmpeg.\n"))
+            .arg(QObject::tr("Distributed under the terms of LGPLv2.1 or later.\n"))
+            .arg(QObject::tr("Shanghai University->S3 Graphics->Deepin, Shanghai, China"))
+            .arg(QObject::tr("Donate"))
+            .arg(QObject::tr("Source"))
+            .arg(QObject::tr("Home page"));
     return about;
 }
 
@@ -259,9 +267,9 @@ static void qtav_ffmpeg_log_callback(void* ctx, int level,const char* fmt, va_li
     QString qmsg = QString().sprintf("[FFmpeg:%s] ", c ? c->item_name(ctx) : "?") + QString().vsprintf(fmt, vl);
     qmsg = qmsg.trimmed();
     if (level > AV_LOG_WARNING)
-        qDebug() << qmsg;
+        qDebug() << qPrintable(qmsg);
     else if (level > AV_LOG_PANIC)
-        qWarning() << qmsg;
+        qWarning() << qPrintable(qmsg);
 }
 
 #if 0

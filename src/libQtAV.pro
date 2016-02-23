@@ -5,10 +5,10 @@ QT += core gui
 #CONFIG *= ltcg
 greaterThan(QT_MAJOR_VERSION, 4) {
   lessThan(QT_MINOR_VERSION, 5):!no_gui_private {
-  contains(QT_CONFIG, opengles2)|contains(QT_CONFIG, dynamicgl) {
-    QT *= gui-private #dxva+egl
-    DEFINES *= QTAV_HAVE_GUI_PRIVATE=1
-  }
+    contains(QT_CONFIG, opengles2)|contains(QT_CONFIG, dynamicgl) {
+      QT *= gui-private #dxva+egl
+      DEFINES *= QTAV_HAVE_GUI_PRIVATE=1
+    }
   }
   contains(QT_CONFIG, opengl) {
       CONFIG *= config_opengl
@@ -47,7 +47,7 @@ config_uchardet {
 }
 exists($$PROJECTROOT/contrib/capi/capi.pri) {
   include($$PROJECTROOT/contrib/capi/capi.pri)
-  CONFIG *= capi
+  DEFINES *= QTAV_HAVE_CAPI=1
 } else {
   warning("contrib/capi is missing. run 'git submodule update --init' first")
 }
@@ -191,19 +191,25 @@ config_portaudio {
     #win32: LIBS *= -lwinmm #-lksguid #-luuid
 }
 config_openal {
-    SOURCES += output/audio/AudioOutputOpenAL.cpp
+    SOURCES *= output/audio/AudioOutputOpenAL.cpp
+    HEADERS *= capi/openal_api.h
+    SOURCES *= capi/openal_api.cpp
     DEFINES *= QTAV_HAVE_OPENAL=1
-    static_openal: DEFINES += AL_LIBTYPE_STATIC
-    win32 {
-      LIBS += -lOpenAL32 -lwinmm
-    } else:mac {
-      LIBS += -framework OpenAL
-      DEFINES += HEADER_OPENAL_PREFIX
-    } else:blackberry {
-      LIBS += -lOpenAL
-    } else {
-      LIBS += -lopenal
-      static_openal:!android: LIBS += -lasound
+    static_openal: DEFINES += AL_LIBTYPE_STATIC # openal-soft AL_API dllimport error. mac's macro is AL_BUILD_LIBRARY
+    ios: CONFIG *= config_openal_link
+    !capi|config_openal_link|static_openal {
+      DEFINES *= CAPI_LINK_OPENAL
+      win32 {
+        LIBS += -lOpenAL32 -lwinmm
+      } else:mac {
+        LIBS += -framework OpenAL
+        DEFINES += HEADER_OPENAL_PREFIX
+      } else:blackberry {
+        LIBS += -lOpenAL
+      } else {
+        LIBS += -lopenal
+        static_openal:!android: LIBS += -lasound
+      }
     }
 }
 config_opensl {
@@ -282,10 +288,16 @@ config_vda {
 }
 config_videotoolbox {
   DEFINES *= QTAV_HAVE_VIDEOTOOLBOX=1
-  SOURCES += codec/video/VideoDecoderVideoToolbox.cpp
-  LIBS += -framework CoreVideo -framework CoreFoundation -framework CoreMedia -framework VideoToolbox
+  SOURCES *= codec/video/VideoDecoderVideoToolbox.cpp
+  HEADERS *= codec/video/SurfaceInteropCV.h
+  SOURCES *= codec/video/SurfaceInteropCV.cpp
+  ios {
 # iOS use gles and IOSurface is private
-  !ios: LIBS += -framework IOSurface
+  } else {
+    SOURCES *= codec/video/SurfaceInteropIOSurface.cpp
+    LIBS += -framework IOSurface
+  }
+  LIBS += -framework CoreVideo -framework CoreFoundation -framework CoreMedia -framework VideoToolbox
 }
 
 config_gl|config_opengl {
@@ -321,8 +333,8 @@ config_libass {
     DEFINES += CAPI_LINK_ASS
   }
   DEFINES *= QTAV_HAVE_LIBASS=1
-  HEADERS *= subtitle/ass_api.h
-  SOURCES *= subtitle/ass_api.cpp
+  HEADERS *= capi/ass_api.h
+  SOURCES *= capi/ass_api.cpp
   SOURCES *= subtitle/SubtitleProcessorLibASS.cpp
 }
 capi {

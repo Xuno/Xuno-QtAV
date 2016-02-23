@@ -187,10 +187,20 @@ enum AVColorSpace av_frame_get_colorspace(const AVFrame *frame)
 {
     if (!frame)
         return AVCOL_SPC_NB;
-#if LIBAV_MODULE_CHECK(LIBAVUTIL, 54, 3, 0) //has AVFrame.colorspace
+#if LIBAV_MODULE_CHECK(LIBAVUTIL, 53, 16, 0) //8c02adc
     return frame->colorspace;
 #endif
     return AVCOL_SPC_NB;
+}
+
+enum AVColorRange av_frame_get_color_range(const AVFrame *frame)
+{
+    if (!frame)
+        return AVCOL_RANGE_UNSPECIFIED;
+#if LIBAV_MODULE_CHECK(LIBAVUTIL, 53, 16, 0) //8c02adc
+    return frame->color_range;
+#endif
+    return AVCOL_RANGE_UNSPECIFIED;
 }
 #endif //!FFMPEG_MODULE_CHECK(LIBAVUTIL, 52, 28, 101)
 #if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(52, 38, 100)
@@ -204,7 +214,7 @@ int av_pix_fmt_count_planes(AVPixelFormat pix_fmt)
 
     for (i = 0; i < desc->nb_components; i++)
         planes[desc->comp[i].plane] = 1;
-    for (i = 0; i < FF_ARRAY_ELEMS(planes); i++)
+    for (i = 0; i < (int)FF_ARRAY_ELEMS(planes); i++)
         ret += planes[i];
     return ret;
 }

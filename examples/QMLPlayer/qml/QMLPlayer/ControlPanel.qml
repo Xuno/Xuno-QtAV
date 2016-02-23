@@ -31,6 +31,7 @@ Rectangle {
     signal showInfo
     signal showHelp
     signal openFile
+    signal openUrl
 
     function setPlayingProgress(value) {
         playState = "play"
@@ -327,7 +328,7 @@ Rectangle {
         /*
         Button {
             id: backwardBtn
-            anchors.right: playBtn.left
+            anchors.right: stopBtn.left
             anchors.verticalCenter: playBtn.verticalCenter
             bgColor: "transparent"
             bgColorSelected: "transparent"
@@ -352,7 +353,8 @@ Rectangle {
                 //player.stop()
                 stop()
             }
-        }/*
+        }
+        /*
         Button {
             id: forwardBtn
             anchors.left: playBtn.right
@@ -376,8 +378,8 @@ Rectangle {
             checked: false
             bgColor: "transparent"
             bgColorSelected: "transparent"
-            width: Utils.scaled(25)
-            height: Utils.scaled(25)
+            width: Utils.scaled(30)
+            height: Utils.scaled(30)
             icon: Utils.resurl("theme/default/fullscreen.svg")
             iconChecked: Utils.resurl("theme/default/fullscreen.svg")
             visible: true
@@ -396,8 +398,8 @@ Rectangle {
             checked: false
             bgColor: "transparent"
             bgColorSelected: "transparent"
-            width: Utils.scaled(25)
-            height: Utils.scaled(25)
+            width: Utils.scaled(30)
+            height: Utils.scaled(30)
             icon: Utils.resurl("theme/default/volume.svg")
             iconChecked: Utils.resurl("theme/default/mute.svg")
             onHoveredChanged: {
@@ -410,34 +412,36 @@ Rectangle {
             anchors.right: parent.right
             anchors.rightMargin: Utils.scaled(50)
             anchors.verticalCenter: parent.verticalCenter
+            /*
             Button {
                 id: infoBtn
                 bgColor: "transparent"
                 bgColorSelected: "transparent"
-                width: Utils.scaled(25)
-                height: Utils.scaled(25)
+                width: Utils.scaled(30)
+                height: Utils.scaled(30)
                 icon: Utils.resurl("theme/default/info.svg")
                 visible: true
                 onClicked: showInfo()
-            }
+            }*/
             Button {
                 id: openFileBtn
                 bgColor: "transparent"
                 bgColorSelected: "transparent"
-                width: Utils.scaled(25)
-                height: Utils.scaled(25)
+                width: Utils.scaled(30)
+                height: Utils.scaled(30)
                 icon: Utils.resurl("theme/default/open.svg")
                 onClicked: openFile()
-            }
+                onPressAndHold: openUrl()
+            } /*
             Button {
                 id: helpBtn
                 bgColor: "transparent"
                 bgColorSelected: "transparent"
-                width: Utils.scaled(25)
-                height: Utils.scaled(25)
+                width: Utils.scaled(30)
+                height: Utils.scaled(30)
                 icon: Utils.resurl("theme/default/help.svg")
                 onClicked: showHelp()
-            }
+            }*/
         }
     }
 

@@ -39,6 +39,8 @@
 #endif //QTAV_HAVE(EGL_CAPI)
 #include "utils/Logger.h"
 
+#define BUG_GLES3_ANDROID 1 //FIXME: N7 android6 gles3 displays red images, only rgb32 is correct
+
 namespace QtAV {
 namespace OpenGLHelper {
 
@@ -92,7 +94,7 @@ static void glGetTexLevelParameteriv(GLenum target, GLint level, GLenum pname, G
 /// 16bit (R16 e.g.) texture does not support >8bit a BE channel, fallback to 2 channel texture
 int depth16BitTexture()
 {
-    static int depth = qgetenv("QTAV_TEXTURE16_DEPTH").toInt() == 16 ? 16 : 8;//8 ? 8 : 16;
+    static int depth = qgetenv("QTAV_TEXTURE16_DEPTH").toInt() == 8 ? 8 : 16;//8 ? 8 : 16;
     return depth;
 }
 
@@ -100,6 +102,61 @@ bool useDeprecatedFormats()
 {
     static int v = qgetenv("QTAV_GL_DEPRECATED").toInt() == 1;
     return v;
+}
+
+/// current shader works fine for gles 2~3 only with commonShaderHeader(). It's mainly for desktop core profile
+
+static QByteArray commonShaderHeader(QOpenGLShader::ShaderType type)
+{
+    QByteArray h;
+    if (isOpenGLES()) {
+        h += "precision mediump int;\n"
+             "precision mediump float;\n"
+             ;
+    } else {
+        h += "#define highp\n"
+             "#define mediump\n"
+             "#define lowp\n"
+             ;
+    }
+    if (type == QOpenGLShader::Fragment) {
+        // >=1.30: texture(sampler2DRect,...). 'texture' is defined in header
+        // we can't check GLSLVersion() here because it the actually version used can be defined by "#version"
+        h += "#if __VERSION__ < 130\n"
+             "#undef texture\n"
+             "#define texture texture2D\n"
+             "#endif // < 130\n"
+        ;
+    }
+    return h;
+}
+
+QByteArray compatibleShaderHeader(QOpenGLShader::ShaderType type)
+{
+#if BUG_GLES3_ANDROID
+    if (isOpenGLES())
+        return commonShaderHeader(type);
+#endif //BUG_GLES3_ANDROID
+    QByteArray h;
+    // #version directive must occur in a compilation unit before anything else, except for comments and white spaces. Default is 100 if not set
+    h.append("#version ").append(QByteArray::number(GLSLVersion()));
+    if (isOpenGLES() && QOpenGLContext::currentContext()->format().majorVersion() > 2)
+        h += " es";
+    h += "\n";
+    h += commonShaderHeader(type);
+    if (GLSLVersion() >= 130) { // gl(es) 3
+        if (type == QOpenGLShader::Vertex) {
+            h += "#define attribute in\n"
+                 "#define varying out\n"
+                    ;
+        } else if (type == QOpenGLShader::Fragment) {
+            h += "#define varying in\n"
+                 "#define gl_FragColor out_color\n"  //can not starts with 'gl_'
+                 "out vec4 gl_FragColor;\n"
+                 ;
+        }
+    }
+    return h;
 }
 
 int GLSLVersion()
@@ -113,10 +170,18 @@ int GLSLVersion()
     }
     const char* vs = (const char*)DYGL(glGetString(GL_SHADING_LANGUAGE_VERSION));
     int major = 0, minor = 0;
-    if (sscanf(vs, "%d.%d", &major, &minor) == 2)
+    // es: "OpenGL ES GLSL ES 1.00 (ANGLE 2.1.99...)" can use ""%*[ a-zA-Z] %d.%d" in sscanf, desktop: "2.1"
+    //QRegExp rx("(\\d+)\\.(\\d+)");
+    if (strncmp(vs, "OpenGL ES GLSL ES ", 18) == 0)
+        vs += 18;
+    if (sscanf(vs, "%d.%d", &major, &minor) == 2) {
         v = major * 100 + minor;
-    else
-        v = 0;
+    } else {
+        qWarning("Failed to detect glsl version using GL_SHADING_LANGUAGE_VERSION!");
+        v = 110;
+        if (isOpenGLES())
+            v = QOpenGLContext::currentContext()->format().majorVersion() >= 3 ? 300 : 100;
+    }
     return v;
 }
 
@@ -167,8 +232,9 @@ bool isOpenGLES()
 {
 #ifdef QT_OPENGL_DYNAMIC
     QOpenGLContext *ctx = QOpenGLContext::currentContext();
-    // desktop can create es compatible context
-    return qApp->testAttribute(Qt::AA_UseOpenGLES) || (ctx ? ctx->isOpenGLES() : QOpenGLContext::openGLModuleType() != QOpenGLContext::LibGL); //
+    // desktop openGLModuleType() can create es compatible context, so prefer QOpenGLContext::isOpenGLES().
+    // qApp->testAttribute(Qt::AA_UseOpenGLES) is what user requested, but not  the result can be different. reproduce: dygl set AA_ShareOpenGLContexts|AA_UseOpenGLES, fallback to desktop (why?)
+    return ctx ? ctx->isOpenGLES() : QOpenGLContext::openGLModuleType() != QOpenGLContext::LibGL;
 #endif //QT_OPENGL_DYNAMIC
 #ifdef QT_OPENGL_ES_2
     return true;
@@ -542,6 +608,11 @@ static QMatrix4x4 channelMap(const VideoFormat& fmt)
                                  0.0f, 0.0f, 0.0f, 1.0f,
                                  0.0f, 1.0f, 0.0f, 0.0f,
                                  0.0f, 0.0f, 0.0f, 1.0f);
+    case VideoFormat::Format_VYU:
+        return QMatrix4x4(0.0f, 1.0f, 0.0f, 0.0f,
+                                 0.0f, 0.0f, 1.0f, 0.0f,
+                                 1.0f, 0.0f, 0.0f, 0.0f,
+                                 0.0f, 0.0f, 0.0f, 1.0f);
     default:
         break;
     }
@@ -642,6 +713,7 @@ bool videoFormatToGL(const VideoFormat& fmt, GLint* internal_format, GLenum* dat
         }
     }
     static const fmt_entry pixfmt_to_gl_swizzele[] = {
+        {VideoFormat::Format_VYU, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE },
         {VideoFormat::Format_UYVY, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE },
         {VideoFormat::Format_YUYV, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE },
         {VideoFormat::Format_VYUY, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE },
