@@ -295,6 +295,7 @@ void Config::reload()
     setTimeout(settings.value(QString::fromLatin1("timeout"), 30.0).toReal());
     setAbortOnTimeout(settings.value(QString::fromLatin1("abort_timeout"), true).toBool());
     setForceFrameRate(settings.value(QString::fromLatin1("force_fps"), 0.0).toReal());
+    setFloatControlEnabled(settings.value(QString::fromLatin1("floatcontrol_enabled"), false).toBool());
     settings.beginGroup(QString::fromLatin1("decoder"));
     settings.beginGroup(QString::fromLatin1("video"));
     QString decs_default(QString::fromLatin1("FFmpeg"));
@@ -369,7 +370,7 @@ void Config::reload()
     QMap<QString,QVariant> tmpweb;
     tmpweb.insert(QString::fromLatin1("Xuno"),QString::fromLatin1("http://www.xuno.com/playlist_8bit.php"));
     tmpweb.insert(QString::fromLatin1("Google"),QString::fromLatin1("https://www.google.com"));
-    weblinks = settings.value(QString::fromLatin1("links"),tmpweb).toMap();
+    setWebLinks(settings.value(QString::fromLatin1("links"),tmpweb).toMap());
     settings.endGroup();
     mpData->is_loading = false;
 }
