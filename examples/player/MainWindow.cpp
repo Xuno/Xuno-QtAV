@@ -60,6 +60,7 @@
 #include "playlist/PlayList.h"
 #include "../common/common.h"
 #include <QUrl>
+#include "filters/netstreamfilter.h"
 
 
 
@@ -114,6 +115,7 @@ MainWindow::MainWindow(QWidget *parent) :
   , mCustomFPS(0.)
   , mPlayerScale(1.)
   , m_preview(0)
+  , mpNetStreamFilter(0)
 {
     XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
     XUNOpresetUrl=XUNOserverUrl+QString::fromLatin1("/getpreset.php?");
@@ -124,6 +126,7 @@ MainWindow::MainWindow(QWidget *parent) :
     mpChannelMenu = 0;
     mpAudioTrackAction = 0;
     mGlobalMouse = QPointF();
+
     setMouseTracking(true); //mouseMoveEvent without press.
     connect(this, SIGNAL(ready()), SLOT(processPendingActions()));
     //QTimer::singleShot(10, this, SLOT(setupUi()));
@@ -165,6 +168,7 @@ void MainWindow::initPlayer()
     //mpSubtitle->installTo(mpPlayer); //filter on frame
     mpSubtitle->setPlayer(mpPlayer);
     //mpPlayer->setAudioOutput(AudioOutputFactory::create(AudioOutputId_OpenAL));
+    installNetStreamFilter();
     EventFilter *ef = new EventFilter(mpPlayer);
     qApp->installEventFilter(ef);
     connect(ef, SIGNAL(helpRequested()), SLOT(help()));
@@ -1384,7 +1388,7 @@ QString MainWindow::aboutXunoQtAV_PlainText()
 QString MainWindow::aboutXunoQtAV_HTML()
 {
     static QString about = "<h3>XunoPlayer " XUNO_QTAV_VERSION_STR_LONG "</h3>\n"
-                "<p>" + QObject::tr("Fork project (Xuno-QtAV) of QtAV \n") + QTAV_VERSION_STR "</p>";
+                                                                        "<p>" + QObject::tr("Fork project (Xuno-QtAV) of QtAV \n") + QTAV_VERSION_STR "</p>";
     return about;
 }
 
@@ -2151,6 +2155,16 @@ void MainWindow::analyeUsedFPS()
                 mpImgSeqExtract->setFPS(st.video.frame_rate);
             }
         }
+}
+
+void MainWindow::installNetStreamFilter()
+{
+    if (mpNetStreamFilter==0 && mpPlayer){
+        mpNetStreamFilter = new NetStreamFilter(this);
+        mpNetStreamFilter->setEnabled(true);
+        mpNetStreamFilter->installTo(mpPlayer);
+    }
+
 }
 
 QString MainWindow::XUNO_QtAV_Version_String()

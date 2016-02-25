@@ -21,7 +21,8 @@ SOURCES += main.cpp \
     config/PropertyEditor.cpp \
     config/AVFormatConfigPage.cpp \
     config/AVFilterConfigPage.cpp \
-    filters/AVFilterSubtitle.cpp
+    filters/AVFilterSubtitle.cpp \
+    $$PWD/filters/netstreamfilter.cpp
 
 HEADERS += \
     MainWindow.h \
@@ -46,4 +47,5 @@ HEADERS += \
     config/AVFormatConfigPage.h \
     config/AVFilterConfigPage.h \
     filters/AVFilterSubtitle.h \
-    $$PWD/version.h
+    $$PWD/version.h \
+    $$PWD/filters/netstreamfilter.h

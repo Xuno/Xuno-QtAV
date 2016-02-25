@@ -28,6 +28,7 @@
 #include "config/ImageSequenceConfigPage.h"
 #include "config/ImageSequenceExtractControl.h"
 
+
 class QWidgetAction;
 class QToolButton;
 namespace QtAV {
@@ -59,6 +60,7 @@ class OSDFilter;
 class AVFilterSubtitle;
 class Preview;
 class ImageSequenceConfigPage;
+class NetStreamFilter;
 
 
 class MainWindow : public QWidget
@@ -192,6 +194,7 @@ private:
     bool isFileImgageSequence();
     bool applyCustomFPS();
     void analyeUsedFPS();
+    void installNetStreamFilter();
 
 
 private:
@@ -263,6 +266,9 @@ private:
     ImgSeqExtractControl *mpImgSeqExtract=0;
     QString aboutXunoQtAV_PlainText();
     QString aboutXunoQtAV_HTML();
+
+    NetStreamFilter *mpNetStreamFilter;
+
 };
 
 
