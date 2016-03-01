@@ -40,6 +40,9 @@ void NetStreamFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *fr
             //img.save(filename);
             //Nss.setBuffer(QByteArray::fromRawData((const char*)img.constBits(),img.byteCount()));
             Nss.setBuffer(QByteArray((const char*)img.constBits(),img.byteCount()));
+            if (!Nss.sentUDPDataBuffer()){
+                qDebug()<<"NetStreamFilter sentDataBuffer error";
+            }
             //QThread::msleep(50);
             //img.bits();
             if (!firstFrame){

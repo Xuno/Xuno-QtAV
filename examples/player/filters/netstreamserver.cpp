@@ -2,24 +2,33 @@
 #include <QDebug>
 
 static const int PayloadSize = 64 * 1024; // 64 KB
+static const int UDPDatagramSize = 512; // bytes
 
 NetStreamServer::NetStreamServer(QObject *parent) : QObject(parent)
 {
     qDebug()<<"NetStreamServer constructor";
-    connect(&tcpServer, SIGNAL(newConnection()),
-            this, SLOT(acceptConnection()));
-    connect(&tcpClient, SIGNAL(connected()), this, SLOT(startTransfer()));
-    connect(&tcpClient, SIGNAL(bytesWritten(qint64)),
-            this, SLOT(updateClientProgress(qint64)));
-    connect(&tcpClient, SIGNAL(error(QAbstractSocket::SocketError)),
+    //    connect(&tcpServer, SIGNAL(newConnection()),
+    //            this, SLOT(acceptConnection()));
+    //    connect(&tcpClient, SIGNAL(connected()), this, SLOT(startTransfer()));
+    //    connect(&tcpClient, SIGNAL(bytesWritten(qint64)),
+    //            this, SLOT(updateClientProgress(qint64)));
+    //    connect(&tcpClient, SIGNAL(error(QAbstractSocket::SocketError)),
+    //            this, SLOT(displayError(QAbstractSocket::SocketError)));
+
+    udpServer = new QUdpSocket(this);
+    connect(udpServer, SIGNAL(error(QAbstractSocket::SocketError)),
             this, SLOT(displayError(QAbstractSocket::SocketError)));
+
+    //udpServer->connectToHost(UDPHostAdress,UDPport,QIODevice::WriteOnly);
+
 
 }
 
 void NetStreamServer::start()
 {
     //startButton->setEnabled(false);
-    tcpServer.listen(QHostAddress::LocalHost,8888);
+    //tcpServer.listen(QHostAddress::LocalHost,8888);
+    //udpServer->bind(QHostAddress::LocalHost,8888);
 
     bytesWritten = 0;
     bytesReceived = 0;
@@ -160,20 +169,48 @@ void NetStreamServer::setTotalBytes(const qint64 &value)
     TotalBytes = value;
 }
 
+bool NetStreamServer::sentUDPDataBuffer()
+{
+    if (udpServer && !buffer.isEmpty()){
+        TotalBytes=buffer.size();
+        qint64 datagrams=TotalBytes/UDPDatagramSize;
+        int restBytes=TotalBytes%UDPDatagramSize;
+        bytesWritten=0;
+        //qDebug()<<"datagrams"<<datagrams<<"TotalBytes"<<TotalBytes<<"restBytes"<<restBytes;
+        QElapsedTimer timer;
+        timer.start();
+        for (int windowid=0;windowid<datagrams;windowid++){
+            QByteArray datagram = buffer.mid(UDPDatagramSize*windowid,UDPDatagramSize);
+            if (!datagram.isEmpty()){
+                bytesWritten+=udpServer->writeDatagram(datagram,UDPHostAdress,UDPport);
+            }
+        }
+        if (restBytes){
+            //qDebug()<<"restBytes"<<restBytes;
+            QByteArray datagram = buffer.right(restBytes);
+            bytesWritten+=udpServer->writeDatagram(datagram,UDPHostAdress,UDPport);
+        }
+        qDebug()<<"bytesWritten"<<bytesWritten<<timer.elapsed()<<"milliseconds";
+        return bytesWritten==TotalBytes;
+    }
+    return false;
+}
+
 void NetStreamServer::setBuffer(const QByteArray &value)
 {
-    if (!bufferReady){
-        buffer = value;
-        bufferReady=true;
+     buffer = value;
+//    if (!bufferReady){
+//        buffer = value;
+//        bufferReady=true;
 
-        //qDebug()<<"setBuffer"<<buffer.toHex().at(20)<<buffer.toHex().at(21);
-        //char * imageData = buffer.data();
-        //    for (int i=0;i<16;i=i+4){
-        //        qDebug()<<QString("%1 - R:%2 G:%3 B:%4 A:%5").arg(i/4).arg(QString::number(imageData[i],16).toUpper()).arg(QString::number(imageData[i+1],16).toUpper()).arg(QString::number(imageData[i+2],16).toUpper()).arg(QString::number(imageData[i+3],16).toUpper());
-        //    }
-    }else{
-        qDebug()<<"Not Redy setBuffer";
-    }
+//        //qDebug()<<"setBuffer"<<buffer.toHex().at(20)<<buffer.toHex().at(21);
+//        //char * imageData = buffer.data();
+//        //    for (int i=0;i<16;i=i+4){
+//        //        qDebug()<<QString("%1 - R:%2 G:%3 B:%4 A:%5").arg(i/4).arg(QString::number(imageData[i],16).toUpper()).arg(QString::number(imageData[i+1],16).toUpper()).arg(QString::number(imageData[i+2],16).toUpper()).arg(QString::number(imageData[i+3],16).toUpper());
+//        //    }
+//    }else{
+//        qDebug()<<"Not Redy setBuffer";
+//    }
 }
 
 //void NetStreamServer::updateServerProgress()
@@ -197,15 +234,20 @@ void NetStreamServer::displayError(QAbstractSocket::SocketError socketError)
     if (socketError == QTcpSocket::RemoteHostClosedError)
         return;
 
-    qDebug()<< tr("Network error")<<tr("The following error occurred: %1.").arg(tcpClient.errorString());
+    //qDebug()<< tr("Network error")<<tr("The following error occurred: %1.").arg(tcpClient.errorString());
 
     //tcpClient.close();
-    tcpServer.close();
+    //tcpServer.close();
     //    clientProgressBar->reset();
     //    serverProgressBar->reset();
     //    clientStatusLabel->setText(tr("Client ready"));
     //    serverStatusLabel->setText(tr("Server ready"));
     //    startButton->setEnabled(true);
+
+    if (udpServer){
+    qDebug()<< tr("Network error udpServer")<<tr("The following error occurred: %1.").arg(udpServer->errorString());
+    }
+
 }
 
 
