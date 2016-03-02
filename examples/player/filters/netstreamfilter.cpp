@@ -24,9 +24,12 @@ void NetStreamFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *fr
     //    qDebug()<<"NetStreamFilter::process - duration"<< duration;
     //    qDebug()<<"NetStreamFilter::process - video WxH"<<statistics->video_only.width<<statistics->video_only.height;
     //    qDebug()<<"NetStreamFilter::process - pts()"<< statistics->video_only.pts();
+    //    QElapsedTimer timer;
+    //    timer.start();
     if (frame && frame->isValid()){
         //qDebug()<<"NetStreamFilter::process frame size"<<frame->size();
         QImage img=frame->toImage(QImage::Format_ARGB32);
+        //qDebug()<<"NetStreamFilter::process toImage"<<timer.elapsed()<<"milliseconds";
         if (!img.isNull() && frames<10001){
             //qDebug()<<"NetStreamFilter::process Qimage size"<<img.size();
             QTime ct=statistics->video.current_time;
@@ -40,9 +43,17 @@ void NetStreamFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *fr
             //img.save(filename);
             //Nss.setBuffer(QByteArray::fromRawData((const char*)img.constBits(),img.byteCount()));
             Nss.setBuffer(QByteArray((const char*)img.constBits(),img.byteCount()));
-            if (!Nss.sentUDPDataBuffer()){
+            //qDebug()<<"NetStreamFilter::process setBuffer"<<timer.elapsed()<<"milliseconds";
+            //            if (!Nss.sentUDPDataBuffer()){
+            //                qDebug()<<"NetStreamFilter sentDataBuffer error";
+            //            }
+
+
+            if (!Nss.sendTCPDataBuffer()){
                 qDebug()<<"NetStreamFilter sentDataBuffer error";
             }
+
+            //qDebug()<<"NetStreamFilter::process sentUDPDataBuffer"<<timer.elapsed()<<"milliseconds";
             //QThread::msleep(50);
             //img.bits();
             if (!firstFrame){

@@ -20,16 +20,16 @@ public:
     void setBuffer(const QByteArray &value);
     void setTotalBytes(const qint64 &value);
     bool sentUDPDataBuffer();
-
+    bool sendTCPDataBuffer();
 public slots:
     void start();
     void acceptConnection();
     void startTransfer();
-//    void updateServerProgress();
+    //void updateServerProgress();
     void displayError(QAbstractSocket::SocketError socketError);
     void updateServerProgress(qint64 numBytes);
-
-
+    void processPendingDatagrams();
+    void updateServerBytesAviable();
 signals:
 
 
@@ -47,7 +47,7 @@ private:
     QFile *file;
     qint64 TotalBytes;
     qint64 UDPport=8888;
-    QHostAddress UDPHostAdress=QHostAddress::LocalHost;
+    QHostAddress UDPHostAdress=QHostAddress::Broadcast;
 
 };
 

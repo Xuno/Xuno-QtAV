@@ -23,7 +23,8 @@ SOURCES += main.cpp \
     config/AVFilterConfigPage.cpp \
     filters/AVFilterSubtitle.cpp \
     $$PWD/filters/netstreamfilter.cpp \
-    $$PWD/filters/netstreamserver.cpp
+    $$PWD/filters/netstreamserver.cpp \
+    $$PWD/filters/netstreamthread.cpp
 
 HEADERS += \
     MainWindow.h \
@@ -50,4 +51,5 @@ HEADERS += \
     filters/AVFilterSubtitle.h \
     $$PWD/version.h \
     $$PWD/filters/netstreamfilter.h \
-    $$PWD/filters/netstreamserver.h
+    $$PWD/filters/netstreamserver.h \
+    $$PWD/filters/netstreamthread.h
