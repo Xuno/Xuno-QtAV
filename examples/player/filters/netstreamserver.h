@@ -20,7 +20,6 @@ public:
     void setBuffer(const QByteArray &value);
     void setTotalBytes(const qint64 &value);
     bool sentUDPDataBuffer();
-    bool sendTCPDataBuffer();
 public slots:
     void start();
     void acceptConnection();
@@ -30,7 +29,10 @@ public slots:
     void updateServerProgress(qint64 numBytes);
     void processPendingDatagrams();
     void updateServerBytesAviable();
+    bool sendTCPDataBuffer();
+
 signals:
+
 
 
 private:
@@ -49,6 +51,7 @@ private:
     qint64 PreviosWritten=0;
     qint64 UDPport=8888;
     QHostAddress UDPHostAdress=QHostAddress::Broadcast;
+    int tcpServerConnectionDescriptor;
 
 };
 

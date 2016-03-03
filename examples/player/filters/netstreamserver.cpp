@@ -80,6 +80,8 @@ void NetStreamServer::acceptConnection()
     //    connect(tcpServerConnection, SIGNAL(readyRead()),
     //            this, SLOT(updateServerProgress()));
 
+    tcpServerConnectionDescriptor=tcpServerConnection->socketDescriptor();
+
     connect(tcpServerConnection, SIGNAL(connected()), this, SLOT(startTransfer()));
 
     connect(tcpServerConnection, SIGNAL(bytesWritten(qint64)), this, SLOT(updateServerProgress(qint64)));
@@ -155,11 +157,11 @@ void NetStreamServer::updateServerProgress(qint64 numBytes)
         //            qDebug()<<tr("Closed connection");
         //        startButton->setEnabled(true);
 
-        while (!bufferReady) {
-            QThread::msleep(5);
-        }
+//        while (!bufferReady) {
+//            QThread::msleep(5);
+//        }
 
-        sendTCPDataBuffer();
+//        sendTCPDataBuffer();
     }
 
 
@@ -171,6 +173,9 @@ bool NetStreamServer::sendTCPDataBuffer()
 {
    // qDebug()<<"sendTCPDataBuffer";
     if (!bufferReady && buffer.isEmpty()) return false;
+
+//    QTcpSocket *tcpServerConnectionT= new QTcpSocket(this);
+//    tcpServerConnectionT->setSocketDescriptor(tcpServerConnectionDescriptor);
 
 
     if (buffer.size() && bufferReady && tcpServerConnection && tcpServerConnection->isValid()){
@@ -257,6 +262,8 @@ void NetStreamServer::setBuffer(const QByteArray &value)
     if (!bufferReady){
         buffer = value;
         bufferReady=true;
+
+        sendTCPDataBuffer();
 
         //qDebug()<<"setBuffer"<<buffer.toHex().at(20)<<buffer.toHex().at(21);
         //char * imageData = buffer.data();
