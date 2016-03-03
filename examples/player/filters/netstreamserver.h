@@ -46,6 +46,7 @@ private:
     QProcess runprocess;
     QFile *file;
     qint64 TotalBytes;
+    qint64 PreviosWritten=0;
     qint64 UDPport=8888;
     QHostAddress UDPHostAdress=QHostAddress::Broadcast;
 

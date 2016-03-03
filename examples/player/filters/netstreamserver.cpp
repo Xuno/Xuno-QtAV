@@ -84,7 +84,7 @@ void NetStreamServer::acceptConnection()
 
     connect(tcpServerConnection, SIGNAL(bytesWritten(qint64)), this, SLOT(updateServerProgress(qint64)));
 
-    //connect(tcpServerConnection, SIGNAL(readyRead()), this, SLOT(updateServerBytesAviable()));
+    connect(tcpServerConnection, SIGNAL(readyRead()), this, SLOT(updateServerBytesAviable()));
 
 
     connect(tcpServerConnection, SIGNAL(error(QAbstractSocket::SocketError)),
@@ -132,31 +132,44 @@ void NetStreamServer::startTransfer()
         qDebug()<<"after";
         //bufferReady=false;
         qDebug()<<tr("Connected, sent rest")<<bytesToWrite;
+        if (bytesToWrite==0) {
+            bufferReady=false;
+        }
     }
 
 }
 
 void NetStreamServer::updateServerProgress(qint64 numBytes)
 {
-    qDebug()<<"updateServerProgress"<<numBytes<<bytesWritten;
+    qint64 deltaWritten=numBytes-PreviosWritten;
+    PreviosWritten=numBytes;
+    //qDebug()<<"updateServerProgress"<<numBytes<<bytesWritten;
     if (numBytes){
-        bytesWritten += numBytes;
+        bytesWritten += deltaWritten;
     }
 
     if (bytesWritten == TotalBytes) {
         bufferReady=false;
-        qDebug()<<"Buffer was sent";
+        //qDebug()<<"Buffer was sent";
         //           tcpServerConnection->close();
         //            qDebug()<<tr("Closed connection");
         //        startButton->setEnabled(true);
+
+        while (!bufferReady) {
+            QThread::msleep(5);
+        }
+
+        sendTCPDataBuffer();
     }
+
+
 
 
 }
 
 bool NetStreamServer::sendTCPDataBuffer()
 {
-    qDebug()<<"sendTCPDataBuffer";
+   // qDebug()<<"sendTCPDataBuffer";
     if (!bufferReady && buffer.isEmpty()) return false;
 
 
@@ -167,14 +180,15 @@ bool NetStreamServer::sendTCPDataBuffer()
         //            qDebug()<<QString("sT: %1 - R:%2 G:%3 B:%4 A:%5").arg(i/4).arg(QString::number(imageData[i],16).toUpper()).arg(QString::number(imageData[i+1],16).toUpper()).arg(QString::number(imageData[i+2],16).toUpper()).arg(QString::number(imageData[i+3],16).toUpper());
         //        }
         // called when the TCP client connected to the loopback server
-        qDebug()<<"before";
-        char * imageData = buffer.data();
+        //qDebug()<<"before";
+        //char * imageData = buffer.data();
         TotalBytes=buffer.size();
+        tcpServerConnection->waitForBytesWritten();
         bytesToWrite = TotalBytes - tcpServerConnection->write(buffer.data(),buffer.size());
         //buffer.clear();
-        qDebug()<<"after";
+        //qDebug()<<"after";
         //bufferReady=false;
-        qDebug()<<tr("TCPData sent rest")<<bytesToWrite;
+      //  qDebug()<<tr("TCPData sent rest")<<bytesToWrite;
         if (bytesToWrite==0) {
             bufferReady=false;
             return true;
@@ -250,7 +264,7 @@ void NetStreamServer::setBuffer(const QByteArray &value)
         //        qDebug()<<QString("%1 - R:%2 G:%3 B:%4 A:%5").arg(i/4).arg(QString::number(imageData[i],16).toUpper()).arg(QString::number(imageData[i+1],16).toUpper()).arg(QString::number(imageData[i+2],16).toUpper()).arg(QString::number(imageData[i+3],16).toUpper());
         //    }
     }else{
-        qDebug()<<"Not Redy setBuffer";
+        //qDebug()<<"Not Redy setBuffer";
     }
 }
 

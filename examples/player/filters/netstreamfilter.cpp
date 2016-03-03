@@ -49,9 +49,9 @@ void NetStreamFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *fr
             //            }
 
 
-            if (!Nss.sendTCPDataBuffer()){
-                qDebug()<<"NetStreamFilter sentDataBuffer error";
-            }
+//            if (!Nss.sendTCPDataBuffer()){
+//                qDebug()<<"NetStreamFilter sentDataBuffer error";
+//            }
 
             //qDebug()<<"NetStreamFilter::process sentUDPDataBuffer"<<timer.elapsed()<<"milliseconds";
             //QThread::msleep(50);
