@@ -10,6 +10,7 @@
 #include <QMessageBox>
 #include <QFile>
 #include <QElapsedTimer>
+#include "netstreamthread.h"
 
 class NetStreamServer : public QObject
 {
@@ -30,9 +31,10 @@ public slots:
     void processPendingDatagrams();
     void updateServerBytesAviable();
     bool sendTCPDataBuffer();
+    void bufferSent();
 
 signals:
-
+    void startThreadTransfer();
 
 
 private:
@@ -52,6 +54,7 @@ private:
     qint64 UDPport=8888;
     QHostAddress UDPHostAdress=QHostAddress::Broadcast;
     int tcpServerConnectionDescriptor;
+    NetStreamThread *TcpNetStreamThread=0;
 
 };
 

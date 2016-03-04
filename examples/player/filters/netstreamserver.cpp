@@ -1,5 +1,4 @@
 #include "netstreamserver.h"
-#include "netstreamthread.h"
 #include <QDebug>
 
 static const int PayloadSize = 64 * 1024; // 64 KB
@@ -11,8 +10,8 @@ NetStreamServer::NetStreamServer(QObject *parent) : QObject(parent)
     connect(&tcpServer, SIGNAL(newConnection()),
             this, SLOT(acceptConnection()));
 
-    //    connect(&tcpServer, SIGNAL(acceptError(QAbstractSocket::SocketError)),
-    //            this, SLOT(displayError(QAbstractSocket::SocketError)));
+        connect(&tcpServer, SIGNAL(acceptError(QAbstractSocket::SocketError)),
+                this, SLOT(displayError(QAbstractSocket::SocketError)));
 
     //    connect(&tcpClient, SIGNAL(connected()), this, SLOT(startTransfer()));
     //    connect(&tcpClient, SIGNAL(bytesWritten(qint64)),
@@ -76,25 +75,44 @@ void NetStreamServer::start()
 
 void NetStreamServer::acceptConnection()
 {
+    qDebug()<<"NetStreamServer acceptConnection";
     tcpServerConnection = tcpServer.nextPendingConnection();
     //    connect(tcpServerConnection, SIGNAL(readyRead()),
     //            this, SLOT(updateServerProgress()));
 
     tcpServerConnectionDescriptor=tcpServerConnection->socketDescriptor();
 
-    connect(tcpServerConnection, SIGNAL(connected()), this, SLOT(startTransfer()));
+    if (TcpNetStreamThread) {
+        delete(TcpNetStreamThread);
+        TcpNetStreamThread=0;
+    }
 
-    connect(tcpServerConnection, SIGNAL(bytesWritten(qint64)), this, SLOT(updateServerProgress(qint64)));
+    TcpNetStreamThread = new NetStreamThread(tcpServerConnectionDescriptor,&buffer);
 
-    connect(tcpServerConnection, SIGNAL(readyRead()), this, SLOT(updateServerBytesAviable()));
+    connect(TcpNetStreamThread, SIGNAL(bufferSent()), this, SLOT(bufferSent()));
+    connect(this, SIGNAL(startThreadTransfer()), TcpNetStreamThread, SLOT(startTransfer()));
+
+    // once a thread is not needed, it will be beleted later
+    connect(TcpNetStreamThread, SIGNAL(finished()), TcpNetStreamThread, SLOT(deleteLater()));
 
 
-    connect(tcpServerConnection, SIGNAL(error(QAbstractSocket::SocketError)),
-            this, SLOT(displayError(QAbstractSocket::SocketError)));
 
-    qDebug()<<tr("Accepted connection");
-    startTransfer();
-    tcpServer.close();
+    //TcpNetStreamThread->start();
+
+
+    //    connect(tcpServerConnection, SIGNAL(connected()), this, SLOT(startTransfer()));
+
+    //    connect(tcpServerConnection, SIGNAL(bytesWritten(qint64)), this, SLOT(updateServerProgress(qint64)));
+
+    //    connect(tcpServerConnection, SIGNAL(readyRead()), this, SLOT(updateServerBytesAviable()));
+
+
+    //    connect(tcpServerConnection, SIGNAL(error(QAbstractSocket::SocketError)),
+    //            this, SLOT(displayError(QAbstractSocket::SocketError)));
+
+    //    qDebug()<<tr("Accepted connection");
+    //    startTransfer();
+    //    tcpServer.close();
 }
 
 void NetStreamServer::startTransfer()
@@ -157,11 +175,11 @@ void NetStreamServer::updateServerProgress(qint64 numBytes)
         //            qDebug()<<tr("Closed connection");
         //        startButton->setEnabled(true);
 
-//        while (!bufferReady) {
-//            QThread::msleep(5);
-//        }
+        //        while (!bufferReady) {
+        //            QThread::msleep(5);
+        //        }
 
-//        sendTCPDataBuffer();
+        //        sendTCPDataBuffer();
     }
 
 
@@ -171,11 +189,11 @@ void NetStreamServer::updateServerProgress(qint64 numBytes)
 
 bool NetStreamServer::sendTCPDataBuffer()
 {
-   // qDebug()<<"sendTCPDataBuffer";
+    // qDebug()<<"sendTCPDataBuffer";
     if (!bufferReady && buffer.isEmpty()) return false;
 
-//    QTcpSocket *tcpServerConnectionT= new QTcpSocket(this);
-//    tcpServerConnectionT->setSocketDescriptor(tcpServerConnectionDescriptor);
+    //    QTcpSocket *tcpServerConnectionT= new QTcpSocket(this);
+    //    tcpServerConnectionT->setSocketDescriptor(tcpServerConnectionDescriptor);
 
 
     if (buffer.size() && bufferReady && tcpServerConnection && tcpServerConnection->isValid()){
@@ -193,7 +211,7 @@ bool NetStreamServer::sendTCPDataBuffer()
         //buffer.clear();
         //qDebug()<<"after";
         //bufferReady=false;
-      //  qDebug()<<tr("TCPData sent rest")<<bytesToWrite;
+        //  qDebug()<<tr("TCPData sent rest")<<bytesToWrite;
         if (bytesToWrite==0) {
             bufferReady=false;
             return true;
@@ -202,6 +220,12 @@ bool NetStreamServer::sendTCPDataBuffer()
 
     // QThread::msleep(1000);
     return false;
+}
+
+void NetStreamServer::bufferSent()
+{
+    bufferReady=false;
+    //qDebug()<<"TcpNetStreamThread bufferSent"<<bufferReady;
 }
 
 void NetStreamServer::processPendingDatagrams()
@@ -262,8 +286,7 @@ void NetStreamServer::setBuffer(const QByteArray &value)
     if (!bufferReady){
         buffer = value;
         bufferReady=true;
-
-        sendTCPDataBuffer();
+        //sendTCPDataBuffer();
 
         //qDebug()<<"setBuffer"<<buffer.toHex().at(20)<<buffer.toHex().at(21);
         //char * imageData = buffer.data();
@@ -272,6 +295,14 @@ void NetStreamServer::setBuffer(const QByteArray &value)
         //    }
     }else{
         //qDebug()<<"Not Redy setBuffer";
+    }
+    if (bufferReady && TcpNetStreamThread) {
+        if (!TcpNetStreamThread->isRunning()) {
+            TcpNetStreamThread->start();
+        }else{
+            //emit startThreadTransfer();
+            //TcpNetStreamThread->startTransfer();
+        }
     }
 }
 
