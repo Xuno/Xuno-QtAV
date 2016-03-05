@@ -10,12 +10,14 @@ NetStreamFilter::NetStreamFilter(QObject *parent)
     ,firstFrame(false)
 {
     qDebug()<<"NetStreamFilter constructor";
-    Nss.start();
+    Nss=new NetStreamServer(this);
+    Nss->start();
 }
 
 NetStreamFilter::~NetStreamFilter()
 {
     qDebug()<<"NetStreamFilter destructor";
+    delete Nss;
 }
 
 void NetStreamFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *frame)
@@ -42,7 +44,7 @@ void NetStreamFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *fr
             //            }
             //img.save(filename);
             //Nss.setBuffer(QByteArray::fromRawData((const char*)img.constBits(),img.byteCount()));
-            Nss.setBuffer(QByteArray((const char*)img.constBits(),img.byteCount()));
+            Nss->setBuffer(QByteArray((const char*)img.constBits(),img.byteCount()));
             //qDebug()<<"NetStreamFilter::process setBuffer"<<timer.elapsed()<<"milliseconds";
             //            if (!Nss.sentUDPDataBuffer()){
             //                qDebug()<<"NetStreamFilter sentDataBuffer error";
@@ -59,7 +61,7 @@ void NetStreamFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *fr
             if (!firstFrame){
                 QString filename=QString("saved_%1x%2_%3.bmp").arg(frame->width()).arg(frame->height()).arg(ct.toString("hhmmsszzz"));
                 qDebug()<<filename<<img.byteCount();
-                Nss.setTotalBytes((qint64)1001*img.byteCount());
+                Nss->setTotalBytes((qint64)1001*img.byteCount());
                 //Nss.startTransfer();
             }
             firstFrame=true;

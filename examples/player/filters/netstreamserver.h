@@ -17,6 +17,7 @@ class NetStreamServer : public QObject
     Q_OBJECT
 public:
     explicit NetStreamServer(QObject *parent = 0);
+    ~NetStreamServer();
 
     void setBuffer(const QByteArray &value);
     void setTotalBytes(const qint64 &value);
@@ -32,6 +33,7 @@ public slots:
     void updateServerBytesAviable();
     bool sendTCPDataBuffer();
     void bufferSent();
+    void finishTcpNetStreamThread(QObject* = 0);
 
 signals:
     void startThreadTransfer();
@@ -47,7 +49,7 @@ private:
     qint64 bytesToWrite;
     qint64 bytesWritten;
     qint64 bytesReceived;
-    QProcess runprocess;
+    //QProcess runprocess;
     QFile *file;
     qint64 TotalBytes;
     qint64 PreviosWritten=0;

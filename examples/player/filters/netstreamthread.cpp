@@ -1,6 +1,6 @@
 #include "netstreamthread.h"
-
 #include <QtNetwork>
+#define useSleep 0
 
 NetStreamThread::NetStreamThread(int socketDescriptor, QByteArray *_buffer, QObject *parent)
     : QThread(parent), socketDescriptor(socketDescriptor), buffer(_buffer)
@@ -20,24 +20,33 @@ void NetStreamThread::run()
         return;
     }
 
+    tcpSocket->setParent(0);
+
     connect(tcpSocket, SIGNAL(connected()), this, SLOT(startTransfer()),Qt::DirectConnection);
     //connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(readyRead()), Qt::DirectConnection);
     connect(tcpSocket, SIGNAL(bytesWritten(qint64)) , this, SLOT(updateServerProgress(qint64)), Qt::DirectConnection);
     connect(tcpSocket, SIGNAL(disconnected()), this, SLOT(disconnected()));
+    connect(tcpSocket, SIGNAL(destroyed(QObject*)), this, SLOT(tcpSocketDestroyed(QObject*)));
     PreviosWritten=0;
-//    TotalBytes=buffer->size();
-//    tcpSocket->write(*buffer);
-//    buffer->clear();
+#if (!useSleep)
+    TotalBytes=buffer->size();
+    tcpSocket->write(*buffer);
+    buffer->clear();
+    exec();
+#else
     forever{
-        while (buffer->isEmpty()) {
-            QThread::msleep(5);
-        }
-        TotalBytes=buffer->size();
-        if (TotalBytes && tcpSocket && tcpSocket->isOpen()){
-            tcpSocket->waitForBytesWritten();
-            bytesToWrite = TotalBytes - tcpSocket->write(*buffer);
+        if (isRunning()){
+            while (buffer->isEmpty()) {
+                QThread::msleep(5);
+            }
+            TotalBytes=buffer->size();
+            if (TotalBytes && tcpSocket && tcpSocket->isOpen()){
+                tcpSocket->waitForBytesWritten();
+                bytesToWrite = TotalBytes - tcpSocket->write(*buffer);
+            }
         }
     }
+#endif
 }
 
 void NetStreamThread::updateServerProgress(qint64 numBytes)
@@ -60,27 +69,36 @@ void NetStreamThread::disconnected()
 {
     qDebug() << "NetStreamThread" << socketDescriptor << " Disconnected";
     tcpSocket->deleteLater();
+
+}
+
+void NetStreamThread::tcpSocketDestroyed(QObject *)
+{
+    qDebug() << "NetStreamThread" << socketDescriptor << " tcpSocketDestroyed";
+    tcpSocket=0;
     exit(0);
 }
 
 void NetStreamThread::startTransfer()
 {
-    qDebug()<<"NetStreamThread::startTransfer";
-    qDebug()<<"buffer"<<buffer->size();
+//    qDebug()<<"NetStreamThread::startTransfer";
+//    qDebug()<<"buffer"<<buffer->size();
 
     if (buffer->size() && tcpSocket && tcpSocket->isOpen()){
-        qDebug()<<"tcpServerConnection"<<tcpSocket->isOpen();
-        qDebug()<<"before";
+//        qDebug()<<"tcpServerConnection"<<tcpSocket->isOpen();
+//        qDebug()<<"before";
         TotalBytes=buffer->size();
         bytesToWrite = TotalBytes - tcpSocket->write(*buffer);
-        tcpSocket->waitForBytesWritten();
+        //tcpSocket->waitForBytesWritten();
+        tcpSocket->flush();
         //buffer->clear();
-        qDebug()<<"after";
+//        qDebug()<<"after";
         //bufferReady=false;
-        qDebug()<<tr("Connected, sent rest")<<bytesToWrite;
+//        qDebug()<<tr("Connected, sent rest")<<bytesToWrite;
         if (bytesToWrite==0) {
             bufferReady=false;
-            //emit bufferSent();
+            emit bufferSent();
+            buffer->clear();
         }
     }
 }

@@ -24,7 +24,7 @@ protected:
     qint64 frames=0;
 
 private:
-    NetStreamServer Nss;
+    NetStreamServer *Nss;
 
 
 };

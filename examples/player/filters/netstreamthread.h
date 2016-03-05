@@ -33,6 +33,7 @@ private slots:
     //void readyRead();
     void updateServerProgress(qint64);
     void disconnected();
+    void tcpSocketDestroyed(QObject*);
 };
 
 #endif // NETSTREAMTHREAD_H

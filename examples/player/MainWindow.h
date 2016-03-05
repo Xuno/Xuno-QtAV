@@ -174,6 +174,7 @@ private slots:
     void syncVolumeUi(qreal value);
     void onImageSequenceConfig();
     void onImageSequenceToogledFrameExtractor(bool state);
+    void runMpvPlayer();
 
 protected:
     virtual void closeEvent(QCloseEvent *e);
@@ -186,6 +187,7 @@ protected:
     void mouseMoveEvent(QMouseEvent *e);
     void wheelEvent(QWheelEvent *e);
 
+
 private:
     void workaroundRendererSize();
     void reSizeByMovie();
@@ -195,6 +197,7 @@ private:
     bool applyCustomFPS();
     void analyeUsedFPS();
     void installNetStreamFilter();
+
 
 
 private:
@@ -268,6 +271,7 @@ private:
     QString aboutXunoQtAV_HTML();
 
     NetStreamFilter *mpNetStreamFilter;
+    qint64 mpvPlayerPorcessId=0;
 
 };
 

@@ -10,8 +10,8 @@ NetStreamServer::NetStreamServer(QObject *parent) : QObject(parent)
     connect(&tcpServer, SIGNAL(newConnection()),
             this, SLOT(acceptConnection()));
 
-        connect(&tcpServer, SIGNAL(acceptError(QAbstractSocket::SocketError)),
-                this, SLOT(displayError(QAbstractSocket::SocketError)));
+    connect(&tcpServer, SIGNAL(acceptError(QAbstractSocket::SocketError)),
+            this, SLOT(displayError(QAbstractSocket::SocketError)));
 
     //    connect(&tcpClient, SIGNAL(connected()), this, SLOT(startTransfer()));
     //    connect(&tcpClient, SIGNAL(bytesWritten(qint64)),
@@ -30,6 +30,20 @@ NetStreamServer::NetStreamServer(QObject *parent) : QObject(parent)
     //udpServer->connectToHost(UDPHostAdress,UDPport,QIODevice::WriteOnly);
 
 
+}
+
+NetStreamServer::~NetStreamServer()
+{
+
+    if (TcpNetStreamThread){
+        TcpNetStreamThread->exit();
+    }
+
+    if (tcpServerConnection && tcpServerConnection->isOpen()){
+        tcpServerConnection->abort();
+        delete tcpServerConnection;
+    }
+    tcpServer.close();
 }
 
 void NetStreamServer::start()
@@ -59,17 +73,7 @@ void NetStreamServer::start()
     qDebug()<<"3. tcpServer.serverPort()"<<tcpServer.serverPort();
     //tcpClient.connectToHost(QHostAddress::LocalHost, tcpServer.serverPort());
 
-    QString mpvparam;//="--vo-defaults=opengl:scale=ewa_lanczossharp:cscale=haasnsoft:dscale=mitchell:target-prim=bt.709:target-trc=srgb:scaler-resizes-only:no-deband:prescale-passes=2:prescale-downscaling-threshold=1.6:prescale=superxbr:superxbr-sharpness=0.7";
 
-    //    if (QApplication::arguments().size()>2){
-    //        QString arg=QApplication::arguments().at(2);
-    //        if (!arg.isEmpty()) mpvparam=arg;
-    //    }
-
-    qDebug()<<"Start mpv.com"<<QString("tcp://localhost:%1 %2").arg(tcpServer.serverPort()).arg(mpvparam);
-    //1228800
-
-    //runprocess.start("mpv.com", QStringList() << QString("tcp://localhost:%1 %2").arg(tcpServer.serverPort()).arg(mpvparam));
 
 }
 
@@ -90,10 +94,11 @@ void NetStreamServer::acceptConnection()
     TcpNetStreamThread = new NetStreamThread(tcpServerConnectionDescriptor,&buffer);
 
     connect(TcpNetStreamThread, SIGNAL(bufferSent()), this, SLOT(bufferSent()));
-    connect(this, SIGNAL(startThreadTransfer()), TcpNetStreamThread, SLOT(startTransfer()));
+    connect(this, SIGNAL(startThreadTransfer()), TcpNetStreamThread, SLOT(startTransfer()),Qt::QueuedConnection);
 
     // once a thread is not needed, it will be beleted later
     connect(TcpNetStreamThread, SIGNAL(finished()), TcpNetStreamThread, SLOT(deleteLater()));
+    connect(TcpNetStreamThread, SIGNAL(destroyed(QObject*)), this, SLOT(finishTcpNetStreamThread(QObject*)));
 
 
 
@@ -225,7 +230,15 @@ bool NetStreamServer::sendTCPDataBuffer()
 void NetStreamServer::bufferSent()
 {
     bufferReady=false;
+    //buffer.clear();
     //qDebug()<<"TcpNetStreamThread bufferSent"<<bufferReady;
+}
+
+void NetStreamServer::finishTcpNetStreamThread(QObject*)
+{
+    qDebug()<<"finishTcpNetStreamThread";
+    //TcpNetStreamThread->deleteLater();
+    TcpNetStreamThread=0;
 }
 
 void NetStreamServer::processPendingDatagrams()
@@ -300,7 +313,7 @@ void NetStreamServer::setBuffer(const QByteArray &value)
         if (!TcpNetStreamThread->isRunning()) {
             TcpNetStreamThread->start();
         }else{
-            //emit startThreadTransfer();
+            emit startThreadTransfer();
             //TcpNetStreamThread->startTransfer();
         }
     }
