@@ -1162,6 +1162,7 @@ void MainWindow::onStopPlay()
     unsetCursor();
     if (m_preview)
         m_preview->setFile(QString());
+    runMpvPlayerStop();
 }
 
 void MainWindow::onSpeedChange(qreal speed)
@@ -2160,10 +2161,17 @@ void MainWindow::analyeUsedFPS()
 
 void MainWindow::installNetStreamFilter()
 {
+    qDebug()<<"MainWindow::installNetStreamFilter";
     if (mpNetStreamFilter==0 && mpPlayer){
         mpNetStreamFilter = new NetStreamFilter(this);
         mpNetStreamFilter->setEnabled(true);
         mpNetStreamFilter->installTo(mpPlayer);
+        if (!mpvpipe) {
+            mpvpipe=new runmpvpipe();
+            connect(mpvpipe,SIGNAL(ready()),this,SLOT(runMpvPlayerRunned()));
+            connect(mpvpipe,SIGNAL(finished(int)),this,SLOT(runMpvPlayerFinished(int)));
+        }
+        mpNetStreamFilter->setMpvPipe(mpvpipe);
     }
 
 }
@@ -2174,16 +2182,38 @@ void MainWindow::runMpvPlayer()
     qreal fps=st.video.frame_rate;
     int frameW=st.video_only.width;
     int frameH=st.video_only.height;
-    const int bytesPerPixel=4;
-    int framebytes=frameW*frameH*bytesPerPixel;
-    int serverPort=8888;
-    QString mpvparam;//="--vo-defaults=opengl:scale=ewa_lanczossharp:cscale=haasnsoft:dscale=mitchell:target-prim=bt.709:target-trc=srgb:scaler-resizes-only:no-deband:prescale-passes=2:prescale-downscaling-threshold=1.6:prescale=superxbr:superxbr-sharpness=0.7";
-    //mpv.com "tcp://localhost:8888" --cache=no --demuxer=rawvideo --demuxer-rawvideo-mp-format=bgra --demuxer-rawvideo-size=1228800 --demuxer-rawvideo-fps=25  --demuxer-rawvideo-w=640 --demuxer-rawvideo-h=480 --no-audio
-    mpvparam = QString("tcp://127.0.0.1:%1 --cache=no --demuxer=rawvideo --demuxer-rawvideo-mp-format=bgra --demuxer-rawvideo-size=%2 --demuxer-rawvideo-fps=%3  --demuxer-rawvideo-w=%4 --demuxer-rawvideo-h=%5 --no-audio").arg(serverPort).arg(framebytes).arg(fps).arg(frameW).arg(frameH);
-    qDebug()<<"Start mpv.com"<<mpvparam;
-    QProcess::startDetached("mpv.com", mpvparam.split(" "),QApplication::applicationDirPath(),&mpvPlayerPorcessId);
-    qDebug()<<"mpv.com mpvPlayerPorcessId"<<mpvPlayerPorcessId;
+    //    const int bytesPerPixel=4;
+    //    int framebytes=frameW*frameH*bytesPerPixel;
+    //    int serverPort=8888;
 
+    if (mpvpipe){
+        mpvpipe->setFameInfo(frameW,frameH,fps);
+        mpvpipe->runApp();
+    }
+    //    QString mpvparam;//="--vo-defaults=opengl:scale=ewa_lanczossharp:cscale=haasnsoft:dscale=mitchell:target-prim=bt.709:target-trc=srgb:scaler-resizes-only:no-deband:prescale-passes=2:prescale-downscaling-threshold=1.6:prescale=superxbr:superxbr-sharpness=0.7";
+    //    //mpv.com "tcp://localhost:8888" --cache=no --demuxer=rawvideo --demuxer-rawvideo-mp-format=bgra --demuxer-rawvideo-size=1228800 --demuxer-rawvideo-fps=25  --demuxer-rawvideo-w=640 --demuxer-rawvideo-h=480 --no-audio
+    //    mpvparam = QString("tcp://127.0.0.1:%1 --cache=no --demuxer=rawvideo --demuxer-rawvideo-mp-format=bgra --demuxer-rawvideo-size=%2 --demuxer-rawvideo-fps=%3  --demuxer-rawvideo-w=%4 --demuxer-rawvideo-h=%5 --no-audio").arg(serverPort).arg(framebytes).arg(fps).arg(frameW).arg(frameH);
+    //    qDebug()<<"Start mpv.com"<<mpvparam;
+    //    QProcess::startDetached("mpv.com", mpvparam.split(" "),QApplication::applicationDirPath(),&mpvPlayerPorcessId);
+    //    qDebug()<<"mpv.com mpvPlayerPorcessId"<<mpvPlayerPorcessId;
+
+}
+
+void MainWindow::runMpvPlayerStop()
+{
+    if (mpvpipe){
+        mpvpipe->closeApp();
+    }
+}
+
+void MainWindow::runMpvPlayerRunned()
+{
+    qDebug()<<"MainWindow::runMpvPlayerRunned";
+}
+
+void MainWindow::runMpvPlayerFinished(int c)
+{
+    qDebug()<<"MainWindow::runMpvPlayerFinished"<<c;
 }
 
 QString MainWindow::XUNO_QtAV_Version_String()

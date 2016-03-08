@@ -6,6 +6,7 @@
 #include <QtAV/Statistics.h>
 #include <QtAV/VideoFrame.h>
 #include "netstreamserver.h"
+#include "runmpvpipe.h"
 
 
 class NetStreamFilter : public QtAV::VideoFilter
@@ -16,7 +17,7 @@ public:
     bool isSupported(QtAV::VideoFilterContext::Type ct) const {
         return ct == QtAV::VideoFilterContext::QtPainter || ct == QtAV::VideoFilterContext::X11;
     }
-
+    void setMpvPipe(runmpvpipe *value);
 
 protected:
     void process(QtAV::Statistics* statistics, QtAV::VideoFrame* frame);
@@ -24,7 +25,9 @@ protected:
     qint64 frames=0;
 
 private:
-    NetStreamServer *Nss;
+    NetStreamServer *Nss=0;
+    runmpvpipe *mpvpipe=0;
+    QByteArray buffer;
 
 
 };

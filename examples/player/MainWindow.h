@@ -27,6 +27,7 @@
 #include "config/configwebmemu.h"
 #include "config/ImageSequenceConfigPage.h"
 #include "config/ImageSequenceExtractControl.h"
+#include "filters/runmpvpipe.h"
 
 
 class QWidgetAction;
@@ -175,6 +176,9 @@ private slots:
     void onImageSequenceConfig();
     void onImageSequenceToogledFrameExtractor(bool state);
     void runMpvPlayer();
+    void runMpvPlayerStop();
+    void runMpvPlayerRunned();
+    void runMpvPlayerFinished(int c);
 
 protected:
     virtual void closeEvent(QCloseEvent *e);
@@ -272,6 +276,7 @@ private:
 
     NetStreamFilter *mpNetStreamFilter;
     qint64 mpvPlayerPorcessId=0;
+    runmpvpipe *mpvpipe=0;
 
 };
 
