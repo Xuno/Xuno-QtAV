@@ -168,7 +168,7 @@ void MainWindow::initPlayer()
     //mpSubtitle->installTo(mpPlayer); //filter on frame
     mpSubtitle->setPlayer(mpPlayer);
     //mpPlayer->setAudioOutput(AudioOutputFactory::create(AudioOutputId_OpenAL));
-    installNetStreamFilter();
+    //installNetStreamFilter();
     EventFilter *ef = new EventFilter(mpPlayer);
     qApp->installEventFilter(ef);
     connect(ef, SIGNAL(helpRequested()), SLOT(help()));
@@ -1127,7 +1127,7 @@ void MainWindow::onStartPlay()
     analyeUsedFPS();
     if (mpImgSeqExtract) mpImgSeqExtract->setEndTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
     reSizeByMovie();
-    QTimer::singleShot(100, this, SLOT(runMpvPlayer()));
+    //QTimer::singleShot(100, this, SLOT(runMpvPlayer()));
 }
 
 void MainWindow::onStopPlay()
@@ -1736,6 +1736,8 @@ void MainWindow::onBufferProgress(qreal percent)
 void MainWindow::onVideoEQEngineChanged()
 {
     VideoRenderer *vo = mpPlayer->renderer();
+    //vo->setRenderRAWImage(true);
+    //connect(vo,SIGNAL(onRenderRAWImage(const uchar*,int,int,int)),this,SLOT(renderedRAWImage(const uchar*,int,int,int)));
     VideoEQConfigPage::Engine e = mpVideoEQ->engine();
     if (e == VideoEQConfigPage::SWScale
             && vo->id() != VideoRendererId_X11 // X11 scales in the renderer
@@ -2214,6 +2216,12 @@ void MainWindow::runMpvPlayerRunned()
 void MainWindow::runMpvPlayerFinished(int c)
 {
     qDebug()<<"MainWindow::runMpvPlayerFinished"<<c;
+}
+
+void MainWindow::renderedRAWImage(const uchar *pixels, int w, int h, int bpp)
+{
+    Q_UNUSED(pixels);
+    qDebug()<<"MainWindow::renderedRAWImage"<<w<<h<<bpp;
 }
 
 QString MainWindow::XUNO_QtAV_Version_String()

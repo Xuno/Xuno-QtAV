@@ -200,6 +200,11 @@ public:
     bool setGammaRGB(qreal gammaRGB);
     qreal filterSharp() const;
     bool setFilterSharp(qreal filterSharp);
+    void setRenderRAWImage(bool s);
+
+//signals:
+//    void onRenderRAWImage(const uchar* pixels,int w,int h,int bpp);
+
 
 protected:
     VideoRenderer(VideoRendererPrivate &d);
@@ -214,6 +219,7 @@ protected:
     virtual void drawFrame() = 0; //You MUST reimplement this to display a frame. Other draw functions are not essential
     virtual void handlePaintEvent(); //has default. User don't have to implement it
     virtual void updateUi(); // by default post an UpdateRequest event for window and UpdateLater event for widget to ensure ui update
+    bool onRenderedRAWimage(const uchar *pixels,int w,int h,int bpp);
 
 private: // property change. used as signals in subclasses. implemented by moc
     virtual void sourceAspectRatioChanged(qreal) {}

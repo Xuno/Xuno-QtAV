@@ -47,6 +47,7 @@ class Q_AV_EXPORT OpenGLRendererBase : public VideoRenderer
 public:
     virtual ~OpenGLRendererBase();
     bool isSupported(VideoFormat::PixelFormat pixfmt) const Q_DECL_OVERRIDE;
+    void setRenderRAWImage(bool s);
 protected:
     virtual bool receiveFrame(const VideoFrame& frame) Q_DECL_OVERRIDE;
     //called in paintEvent before drawFrame() when required
@@ -68,6 +69,7 @@ private:
     bool onSetSaturation(qreal s) Q_DECL_OVERRIDE;
     bool onSetGammaRGB(qreal gammaRGB) Q_DECL_OVERRIDE;
     bool onSetFilterSharp(qreal filterSharp) Q_DECL_OVERRIDE;
+    bool isRenderRAWImage=true;
 protected:
     OpenGLRendererBase(OpenGLRendererBasePrivate &d);
 };

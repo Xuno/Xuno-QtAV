@@ -657,6 +657,25 @@ bool VideoRenderer::setFilterSharp(qreal filterSharp)
     return true;
 }
 
+bool VideoRenderer::onRenderedRAWimage(const uchar *pixels, int w, int h, int bpp)
+{
+    Q_UNUSED(bpp);
+    //qDebug()<<"VideoRenderer::renderedRAWimage"<<w<<h<<bpp;
+    if (w>0 && h>0){
+        //emit onRenderRAWImage(pixels,w,h,bpp);
+        QImage qi= QImage(pixels,w,h,QImage::Format_RGB32);
+        if (!qi.isNull()){
+            DPTR_D(VideoRenderer);
+            QString name=QString("GLfile-%1.bmp").arg(d.video_frame.timestamp()*1000);
+            QMatrix matrix;
+            matrix.scale(1,-1);
+            qi.transformed(matrix).rgbSwapped().save(name);
+            //qDebug()<<"VideoRenderer::drawFrame saved"<<name;
+        }
+    }
+    return true;
+}
+
 
 bool VideoRenderer::onSetBrightness(qreal b)
 {
@@ -733,4 +752,10 @@ void VideoRenderer::updateUi()
             QCoreApplication::instance()->postEvent(obj, new QEvent(QEvent::UpdateRequest));
     }
 }
+
+void VideoRenderer::setRenderRAWImage(bool s)
+{
+    Q_UNUSED(s);
+}
+
 } //namespace QtAV

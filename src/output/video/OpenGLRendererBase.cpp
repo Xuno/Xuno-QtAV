@@ -61,12 +61,17 @@ OpenGLRendererBase::OpenGLRendererBase(OpenGLRendererBasePrivate &d)
 
 OpenGLRendererBase::~OpenGLRendererBase()
 {
-   d_func().glv.setOpenGLContext(0);
+    d_func().glv.setOpenGLContext(0);
 }
 
 bool OpenGLRendererBase::isSupported(VideoFormat::PixelFormat pixfmt) const
 {
     return OpenGLVideo::isSupported(pixfmt);
+}
+
+void OpenGLRendererBase::setRenderRAWImage(bool s)
+{
+    isRenderRAWImage=s;
 }
 
 bool OpenGLRendererBase::receiveFrame(const VideoFrame& frame)
@@ -97,6 +102,17 @@ void OpenGLRendererBase::drawFrame()
         d.frame_changed = false;
     }
     d.glv.render(QRectF(), roi, d.matrix);
+
+    if (isRenderRAWImage && d.glv.openGLContext()){
+        int TEXTURE_WIDTH=d.renderer_width;//d.video_frame.width();
+        int TEXTURE_HEIGHT=d.renderer_height;//d.video_frame.height();
+        int bpp=4;
+        uchar *pixels;
+        pixels = new uchar[TEXTURE_WIDTH * TEXTURE_HEIGHT * bpp];
+        glReadPixels(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+        onRenderedRAWimage(pixels,TEXTURE_WIDTH,TEXTURE_HEIGHT,bpp);
+        delete []pixels;
+    }
 }
 
 void OpenGLRendererBase::onInitializeGL()
