@@ -80,6 +80,8 @@ public:
     virtual ~VideoRenderer();
     virtual VideoRendererId id() const = 0;
 
+    virtual uchar *getPixels(int &w, int &h, int &bpp);
+
     bool receive(const VideoFrame& frame);
     /*!
      * \brief setPreferredPixelFormat
@@ -206,6 +208,7 @@ public:
 //    void onRenderRAWImage(const uchar* pixels,int w,int h,int bpp);
 
 
+
 protected:
     VideoRenderer(VideoRendererPrivate &d);
     //TODO: batch drawBackground(color, region)=>loop drawBackground(color,rect)
@@ -220,6 +223,7 @@ protected:
     virtual void handlePaintEvent(); //has default. User don't have to implement it
     virtual void updateUi(); // by default post an UpdateRequest event for window and UpdateLater event for widget to ensure ui update
     bool onRenderedRAWimage(const uchar *pixels,int w,int h,int bpp);
+    void updateUiAfterRenderig(const uchar *pixels, int w, int h, int bpp);
 
 private: // property change. used as signals in subclasses. implemented by moc
     virtual void sourceAspectRatioChanged(qreal) {}

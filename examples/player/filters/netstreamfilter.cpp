@@ -3,13 +3,16 @@
 #include <QDebug>
 #include <QImage>
 #include <QThread>
+#include <QObject>
 
 
 NetStreamFilter::NetStreamFilter(QObject *parent)
     : VideoFilter(parent)
     ,firstFrame(false)
+    ,m_parent(parent)
 {
     qDebug()<<"NetStreamFilter constructor";
+    setObjectName("NetStreamFilter");
 //    Nss=new NetStreamServer(this);
 //    Nss->start();
 }
@@ -26,6 +29,23 @@ void NetStreamFilter::setMpvPipe(runmpvpipe *value)
     if (mpvpipe){
         mpvpipe->setBuffer(&buffer);
     }
+}
+
+void NetStreamFilter::customEvent(QEvent *event)
+{
+    qDebug()<<"NetStreamFilter::customEvent"<<event->type();
+    QtAV::VideoFilter::customEvent(event);
+}
+
+bool NetStreamFilter::event(QEvent *e)
+{
+    qDebug()<<"NetStreamFilter::event"<<e->type();
+    return QtAV::VideoFilter::event(e);
+}
+
+void NetStreamFilter::setPlayer(QtAV::AVPlayer *player)
+{
+    m_player=player;
 }
 
 void NetStreamFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *frame)
@@ -70,14 +90,32 @@ void NetStreamFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *fr
             //qDebug()<<"NetStreamFilter::process sentUDPDataBuffer"<<timer.elapsed()<<"milliseconds";
             //QThread::msleep(50);
             //img.bits();
-            if (!firstFrame){
-                QString filename=QString("saved_%1x%2_%3.bmp").arg(frame->width()).arg(frame->height()).arg(ct.toString("hhmmsszzz"));
-                qDebug()<<filename<<img.byteCount();
-                if (Nss) Nss->setTotalBytes((qint64)1001*img.byteCount());
-                //Nss.startTransfer();
-            }
+//            if (!firstFrame){
+//                QString filename=QString("saved_%1x%2_%3.bmp").arg(frame->width()).arg(frame->height()).arg(ct.toString("hhmmsszzz"));
+//                qDebug()<<filename<<img.byteCount();
+//                if (Nss) Nss->setTotalBytes((qint64)1001*img.byteCount());
+//                //Nss.startTransfer();
+//            }
             firstFrame=true;
             frames++;
+            if (m_player){
+                uchar *pixels=0;
+                int w;
+                int h;
+                int bpp;
+                pixels=m_player->renderer()->getPixels(w, h, bpp);
+                qDebug()<<"NetStreamFilter::process aferer get pixels"<<pixels<<w<<h<<bpp;
+                if (pixels && w>0 && h>0){
+                    QImage qi= QImage(pixels,w,h,QImage::Format_ARGB32);
+                    if (!qi.isNull()){
+                        QString name=QString("netStremFilterGLfile-%1.bmp").arg(ct.toString("hhmmsszzz"));
+                        QMatrix matrix;
+                        matrix.scale(1,-1);
+                        qi.transformed(matrix).save(name);//.rgbSwapped()
+                        qDebug()<<"NetStreamFilter::process saved"<<name;
+                    }
+                }
+            }
         }
     }
 }

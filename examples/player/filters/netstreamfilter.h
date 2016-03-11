@@ -5,6 +5,8 @@
 #include <QtAV/FilterContext.h>
 #include <QtAV/Statistics.h>
 #include <QtAV/VideoFrame.h>
+#include <QtAV/AVPlayer.h>>
+#include <QtAV/VideoRenderer.h>
 #include "netstreamserver.h"
 #include "runmpvpipe.h"
 
@@ -18,8 +20,13 @@ public:
         return ct == QtAV::VideoFilterContext::QtPainter || ct == QtAV::VideoFilterContext::X11;
     }
     void setMpvPipe(runmpvpipe *value);
+    void customEvent(QEvent *event);
+    bool event(QEvent *e);
+    void setPlayer(QtAV::AVPlayer *player);
 
 protected:
+    QObject *m_parent;
+    QtAV::AVPlayer *m_player=0;
     void process(QtAV::Statistics* statistics, QtAV::VideoFrame* frame);
     bool firstFrame;
     qint64 frames=0;

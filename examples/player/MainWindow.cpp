@@ -168,7 +168,7 @@ void MainWindow::initPlayer()
     //mpSubtitle->installTo(mpPlayer); //filter on frame
     mpSubtitle->setPlayer(mpPlayer);
     //mpPlayer->setAudioOutput(AudioOutputFactory::create(AudioOutputId_OpenAL));
-    //installNetStreamFilter();
+    installNetStreamFilter();
     EventFilter *ef = new EventFilter(mpPlayer);
     qApp->installEventFilter(ef);
     connect(ef, SIGNAL(helpRequested()), SLOT(help()));
@@ -871,6 +871,9 @@ bool MainWindow::setRenderer(QtAV::VideoRenderer *renderer)
     onVideoEQEngineChanged();
     mpOSD->installTo(mpRenderer);
     mpSubtitle->installTo(mpRenderer);
+
+    //mpRenderer->widget()->hide();
+
     return true;
 }
 
@@ -2168,6 +2171,7 @@ void MainWindow::installNetStreamFilter()
         mpNetStreamFilter = new NetStreamFilter(this);
         mpNetStreamFilter->setEnabled(true);
         mpNetStreamFilter->installTo(mpPlayer);
+        mpNetStreamFilter->setPlayer(mpPlayer);
         if (!mpvpipe) {
             mpvpipe=new runmpvpipe();
             connect(mpvpipe,SIGNAL(ready()),this,SLOT(runMpvPlayerRunned()));

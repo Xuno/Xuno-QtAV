@@ -62,6 +62,10 @@ OpenGLRendererBase::OpenGLRendererBase(OpenGLRendererBasePrivate &d)
 OpenGLRendererBase::~OpenGLRendererBase()
 {
     d_func().glv.setOpenGLContext(0);
+    //    if (m_RAWImagePixels){
+    //        delete []m_RAWImagePixels;
+    //        //m_RAWImagePixels = 0;
+    //    }
 }
 
 bool OpenGLRendererBase::isSupported(VideoFormat::PixelFormat pixfmt) const
@@ -72,6 +76,18 @@ bool OpenGLRendererBase::isSupported(VideoFormat::PixelFormat pixfmt) const
 void OpenGLRendererBase::setRenderRAWImage(bool s)
 {
     isRenderRAWImage=s;
+}
+
+uchar *OpenGLRendererBase::getPixels(int &w, int &h, int &bpp)
+{
+    qDebug()<<"OpenGLRendererBase::getPixels S"<<m_RAWImagePixels;
+    if (m_RAWImagePixels){
+        w=m_RAWImageWidth;
+        h=m_RAWImageHeiht;
+        bpp=m_RAWImageBPP;
+        return m_RAWImagePixels;
+    }
+    return 0;
 }
 
 bool OpenGLRendererBase::receiveFrame(const VideoFrame& frame)
@@ -99,19 +115,26 @@ void OpenGLRendererBase::drawFrame()
     // QRectF() means the whole viewport
     if (d.frame_changed) {
         d.glv.setCurrentFrame(d.video_frame);
-        d.frame_changed = false;
     }
+
     d.glv.render(QRectF(), roi, d.matrix);
 
-    if (isRenderRAWImage && d.glv.openGLContext()){
-        int TEXTURE_WIDTH=d.renderer_width;//d.video_frame.width();
-        int TEXTURE_HEIGHT=d.renderer_height;//d.video_frame.height();
-        int bpp=4;
-        uchar *pixels;
-        pixels = new uchar[TEXTURE_WIDTH * TEXTURE_HEIGHT * bpp];
-        glReadPixels(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-        onRenderedRAWimage(pixels,TEXTURE_WIDTH,TEXTURE_HEIGHT,bpp);
-        delete []pixels;
+    if (1 && d.frame_changed && isRenderRAWImage && d.glv.openGLContext()){
+
+        if (!m_RAWImagePixels){
+            m_RAWImageWidth=d.renderer_width;//d.video_frame.width();
+            m_RAWImageHeiht=d.renderer_height;//d.video_frame.height();
+            m_RAWImagePixels = new uchar[m_RAWImageWidth * m_RAWImageHeiht * m_RAWImageBPP];
+        }
+
+        if (m_RAWImagePixels){
+            glReadPixels(0, 0, m_RAWImageWidth, m_RAWImageHeiht, GL_BGRA, GL_UNSIGNED_BYTE, m_RAWImagePixels);
+            //onRenderedRAWimage(m_RAWImagePixels,m_RAWImageWidth,m_RAWImageHeiht,m_RAWImageBPP);
+        }
+
+    }
+    if (d.frame_changed) {
+        d.frame_changed = false;
     }
 }
 
@@ -159,6 +182,13 @@ void OpenGLRendererBase::onResizeEvent(int w, int h)
     resizeRenderer(w, h);
     d.setupAspectRatio();
     //QOpenGLWindow::resizeEvent(e); //will call resizeGL(). TODO:will call paintEvent()?
+    if (m_RAWImagePixels){
+        m_RAWImageWidth=w;
+        m_RAWImageHeiht=h;
+        delete []m_RAWImagePixels;
+        m_RAWImagePixels = 0;
+        m_RAWImagePixels = new uchar[m_RAWImageWidth * m_RAWImageHeiht * m_RAWImageBPP];
+    }
 }
 //TODO: out_rect not correct when top level changed
 void OpenGLRendererBase::onShowEvent()
