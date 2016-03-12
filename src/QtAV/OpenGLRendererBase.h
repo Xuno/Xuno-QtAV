@@ -47,8 +47,8 @@ class Q_AV_EXPORT OpenGLRendererBase : public VideoRenderer
 public:
     virtual ~OpenGLRendererBase();
     bool isSupported(VideoFormat::PixelFormat pixfmt) const Q_DECL_OVERRIDE;
-    void setRenderRAWImage(bool s);
-    uchar *getPixels(int &w, int &h, int &bpp);
+    void enableGetPixels(bool s);
+    bool getPixels(uchar *&pixels, int &w, int &h, int &bpp);
 protected:
     virtual bool receiveFrame(const VideoFrame& frame) Q_DECL_OVERRIDE;
     //called in paintEvent before drawFrame() when required
@@ -71,7 +71,7 @@ private:
     bool onSetGammaRGB(qreal gammaRGB) Q_DECL_OVERRIDE;
     bool onSetFilterSharp(qreal filterSharp) Q_DECL_OVERRIDE;
     bool isRenderRAWImage=true;
-    uchar *m_RAWImagePixels=0;
+    uchar *m_RAWImagePixels=nullptr;
     int m_RAWImageWidth=0;
     int m_RAWImageHeiht=0;
     int m_RAWImageBPP=4;

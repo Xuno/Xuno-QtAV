@@ -100,6 +100,7 @@ public:
      */
     bool prepareContext(VideoFilterContext*& ctx, Statistics* statistics = 0, VideoFrame* frame = 0);
     void apply(Statistics* statistics, VideoFrame *frame = 0);
+    virtual void onPostDraw() {}
 protected:
     VideoFilter(VideoFilterPrivate& d, QObject *parent = 0);
     virtual void process(Statistics* statistics, VideoFrame* frame = 0) = 0;

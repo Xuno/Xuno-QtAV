@@ -62,10 +62,10 @@ OpenGLRendererBase::OpenGLRendererBase(OpenGLRendererBasePrivate &d)
 OpenGLRendererBase::~OpenGLRendererBase()
 {
     d_func().glv.setOpenGLContext(0);
-    //    if (m_RAWImagePixels){
-    //        delete []m_RAWImagePixels;
-    //        //m_RAWImagePixels = 0;
-    //    }
+    if (m_RAWImagePixels){
+        delete []m_RAWImagePixels;
+        m_RAWImagePixels = nullptr;
+    }
 }
 
 bool OpenGLRendererBase::isSupported(VideoFormat::PixelFormat pixfmt) const
@@ -73,21 +73,22 @@ bool OpenGLRendererBase::isSupported(VideoFormat::PixelFormat pixfmt) const
     return OpenGLVideo::isSupported(pixfmt);
 }
 
-void OpenGLRendererBase::setRenderRAWImage(bool s)
+void OpenGLRendererBase::enableGetPixels(bool s)
 {
     isRenderRAWImage=s;
 }
 
-uchar *OpenGLRendererBase::getPixels(int &w, int &h, int &bpp)
+bool OpenGLRendererBase::getPixels(uchar *&pixels, int &w, int &h, int &bpp)
 {
-    qDebug()<<"OpenGLRendererBase::getPixels S"<<m_RAWImagePixels;
+    //qDebug()<<"OpenGLRendererBase::getPixels"<<m_RAWImagePixels;
     if (m_RAWImagePixels){
         w=m_RAWImageWidth;
         h=m_RAWImageHeiht;
         bpp=m_RAWImageBPP;
-        return m_RAWImagePixels;
+        pixels=m_RAWImagePixels;
+        return true;
     }
-    return 0;
+    return false;
 }
 
 bool OpenGLRendererBase::receiveFrame(const VideoFrame& frame)
@@ -129,7 +130,7 @@ void OpenGLRendererBase::drawFrame()
 
         if (m_RAWImagePixels){
             glReadPixels(0, 0, m_RAWImageWidth, m_RAWImageHeiht, GL_BGRA, GL_UNSIGNED_BYTE, m_RAWImagePixels);
-            //onRenderedRAWimage(m_RAWImagePixels,m_RAWImageWidth,m_RAWImageHeiht,m_RAWImageBPP);
+            //updateFiltersAfterDrawFrame();
         }
 
     }
@@ -183,10 +184,10 @@ void OpenGLRendererBase::onResizeEvent(int w, int h)
     d.setupAspectRatio();
     //QOpenGLWindow::resizeEvent(e); //will call resizeGL(). TODO:will call paintEvent()?
     if (m_RAWImagePixels){
+        delete []m_RAWImagePixels;
+        m_RAWImagePixels = nullptr;
         m_RAWImageWidth=w;
         m_RAWImageHeiht=h;
-        delete []m_RAWImagePixels;
-        m_RAWImagePixels = 0;
         m_RAWImagePixels = new uchar[m_RAWImageWidth * m_RAWImageHeiht * m_RAWImageBPP];
     }
 }

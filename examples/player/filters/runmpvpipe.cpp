@@ -21,8 +21,10 @@ runmpvpipe::runmpvpipe(QByteArray *_buffer, QObject *parent) :
 
 }
 
-void runmpvpipe::sendFrame()
+void runmpvpipe::sendFrame(const int &w, const int &h)
 {
+    //if frame that sent have other geomtry than was ininitially then skip sending raw image
+    if (w!=frameW || h!=frameH) return;
     if (file!=NULL && !buffer->isEmpty()){
         //qDebug()<<"runmpvpipe:sendFrame fwrite"<<buffer->size();
         qint64 written=fwrite(buffer->data(),1,buffer->size(),file);

@@ -24,12 +24,18 @@ public:
     bool event(QEvent *e);
     void setPlayer(QtAV::AVPlayer *player);
 
+public slots:
+    void onStarted();
+
+
 protected:
     QObject *m_parent;
     QtAV::AVPlayer *m_player=0;
     void process(QtAV::Statistics* statistics, QtAV::VideoFrame* frame);
+    void onPostDraw();
     bool firstFrame;
     qint64 frames=0;
+
 
 private:
     NetStreamServer *Nss=0;

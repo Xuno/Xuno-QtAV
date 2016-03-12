@@ -1130,7 +1130,7 @@ void MainWindow::onStartPlay()
     analyeUsedFPS();
     if (mpImgSeqExtract) mpImgSeqExtract->setEndTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
     reSizeByMovie();
-    //QTimer::singleShot(100, this, SLOT(runMpvPlayer()));
+    QTimer::singleShot(100, this, SLOT(runMpvPlayer()));
 }
 
 void MainWindow::onStopPlay()
@@ -2186,8 +2186,14 @@ void MainWindow::runMpvPlayer()
 {
     Statistics st=mpPlayer->statistics();
     qreal fps=st.video.frame_rate;
+#define useFrameGeometry 1
+#if (useFrameGeometry)
     int frameW=st.video_only.width;
     int frameH=st.video_only.height;
+#else
+    int frameW=mpPlayer->renderer()->rendererWidth();
+     int frameH=mpPlayer->renderer()->rendererHeight();
+#endif
     //    const int bytesPerPixel=4;
     //    int framebytes=frameW*frameH*bytesPerPixel;
     //    int serverPort=8888;

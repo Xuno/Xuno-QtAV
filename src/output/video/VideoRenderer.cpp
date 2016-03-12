@@ -48,13 +48,15 @@ VideoRenderer::~VideoRenderer()
 {
 }
 
-uchar* VideoRenderer::getPixels(int &w, int &h, int &bpp)
+
+bool VideoRenderer::getPixels(uchar *&pixels, int &w, int &h, int &bpp)
 {
     Q_UNUSED(w);
     Q_UNUSED(h);
     Q_UNUSED(bpp);
+    Q_UNUSED(pixels);
     qDebug()<<"VideoRenderer::getPixels";
-    return (0);
+    return false;
 }
 
 bool VideoRenderer::receive(const VideoFrame &frame)
@@ -666,84 +668,28 @@ bool VideoRenderer::setFilterSharp(qreal filterSharp)
     return true;
 }
 
-void VideoRenderer::updateUiAfterRenderig(const uchar *pixels, int w, int h, int bpp)
+void VideoRenderer::updateFiltersAfterDrawFrame()
 {
     DPTR_D(VideoRenderer);
-    QObject *obj = (QObject*)widget();
-    if (obj) {
-        // UpdateRequest only sync backing store but do not shedule repainting. UpdateLater does
-        // Copy from qwidget_p.h. QWidget::event() will convert UpdateLater to QUpdateLaterEvent and get it's region()
-        class QReadyRAWEvent : public QEvent
-        {
-        public:
-            explicit QReadyRAWEvent(const uchar *pixels, int w, int h, int bpp)
-                : QEvent(QEvent::User),
-                  m_pixels(pixels),
-                  m_w(w),
-                  m_h(h),
-                  m_bpp(bpp)
-            {}
-            ~QReadyRAWEvent() {}
-            inline const uchar *pixels() const { return m_pixels; }
-            inline const int &w() const { return m_w; }
-            inline const int &h() const { return m_h; }
-            inline const int &bpp() const { return m_bpp; }
-        protected:
-            const uchar *m_pixels;
-            int m_w;
-            int m_h;
-            int m_bpp;
-        };
-
-        if (!d.filters.isEmpty() && d.statistics) {
-            // vo filter will not modify video frame, no lock required
-            foreach(Filter* filter, d.filters) {
-                VideoFilter *vf = static_cast<VideoFilter*>(filter);
-                if (!vf) {
-                    qWarning("a null filter!");
-                    //d.filters.removeOne(filter);
-                    continue;
-                }
-                if (!vf->isEnabled())
-                    continue;
-//                // qpainter on video frame always runs on video thread. qpainter on renderer's paint device can work on rendering thread
-//                // Here apply filters on frame on video thread, for example, GPU filters
-//                if (!vf->context() || vf->context()->type() != VideoFilterContext::OpenGL)
-//                    continue;
-
-                qDebug()<<"VideoRenderer::updateUiAfterRenderig. postEvent(obj, new QReadyRAWEvent(pixels, w, h, bpp)"<<w<<h<<vf->objectName();
-                //QCoreApplication::instance()->postEvent(obj, new QReadyRAWEvent(pixels, w, h, bpp));
-                QCoreApplication::postEvent(vf, new QEvent(QEvent::User),Qt::HighEventPriority);
-
+    if (!d.filters.isEmpty() && d.statistics) {
+        // vo filter will not modify video frame, no lock required
+        foreach(Filter* filter, d.filters) {
+            VideoFilter *vf = static_cast<VideoFilter*>(filter);
+            if (!vf) {
+                qWarning("a null filter!");
+                //d.filters.removeOne(filter);
+                continue;
             }
+            if (!vf->isEnabled())
+                continue;
+            //  if (!vf->context() || vf->context()->type() != VideoFilterContext::OpenGL)
+            //  continue;
+
+            //qDebug()<<"VideoRenderer::updateUiAfterRenderig. postEvent("<<vf->objectName();
+            vf->onPostDraw();
+            //QCoreApplication::postEvent(vf, new QEvent(QEvent::User),Qt::HighEventPriority);
         }
-
-
-    } else {
-        obj = (QObject*)qwindow();
-        if (obj)
-            QCoreApplication::instance()->postEvent(obj, new QEvent(QEvent::UpdateRequest));
     }
-}
-
-bool VideoRenderer::onRenderedRAWimage(const uchar *pixels, int w, int h, int bpp)
-{
-    Q_UNUSED(bpp);
-    qDebug()<<"VideoRenderer::renderedRAWimage"<<w<<h<<bpp;
-    if (pixels && w>0 && h>0){
-        //emit onRenderRAWImage(pixels,w,h,bpp);
-        updateUiAfterRenderig(pixels,w,h,bpp);
-//        QImage qi= QImage(pixels,w,h,QImage::Format_ARGB32);
-//        if (!qi.isNull()){
-//            DPTR_D(VideoRenderer);
-//            QString name=QString("GLfile-%1.bmp").arg(d.video_frame.timestamp()*1000);
-//            QMatrix matrix;
-//            matrix.scale(1,-1);
-//            qi.transformed(matrix).save(name);//.rgbSwapped()
-//            qDebug()<<"VideoRenderer::drawFrame saved"<<name;
-//        }
-    }
-    return true;
 }
 
 
@@ -823,9 +769,5 @@ void VideoRenderer::updateUi()
     }
 }
 
-void VideoRenderer::setRenderRAWImage(bool s)
-{
-    Q_UNUSED(s);
-}
 
 } //namespace QtAV

@@ -14,7 +14,7 @@ class runmpvpipe : public QObject
 public:
     explicit runmpvpipe(QByteArray * _buffer=0, QObject *parent = 0);
     ~runmpvpipe();
-    void  sendFrame();
+    void  sendFrame(const int &w, const int &h);
     void runApp();
     void setFameInfo(QSize fsize, qreal _fps=25.);
     void setFameInfo(int w, int h, qreal fps=25.);
