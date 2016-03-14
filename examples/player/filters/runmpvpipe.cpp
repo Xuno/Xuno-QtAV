@@ -57,8 +57,6 @@ void runmpvpipe::runApp()
         //const char* app=;
 
         file =_popen(mpvAppEXE.append(" ").append(mpvparam).toLatin1().constData(),"wb");
-
-
         qDebug()<<"runmpvpipe::runApp"<<mpvAppEXE<<mpvparam<<mpvprocessID;
     }
 }

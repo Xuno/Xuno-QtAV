@@ -148,7 +148,7 @@ MiscPage::MiscPage()
     m_advancedFilter = new QCheckBox(tr("Enable Advanced Filters"));
     m_advancedFilter->setToolTip(tr("Enable Advanced Filters"));
     glpv->addWidget(m_advancedFilter, r, 0);
-    glpv->addWidget(new QLabel(tr("(movie restart required)")), r, 1);
+    glpv->addWidget(new QLabel(tr("(application restart required)")), r, 1);
     glpv->addItem(new QSpacerItem(178, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),++r,0);
     glpv->addItem(new QSpacerItem(140, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r,1);
 

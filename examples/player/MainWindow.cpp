@@ -2167,17 +2167,19 @@ void MainWindow::analyeUsedFPS()
 void MainWindow::installNetStreamFilter()
 {
     qDebug()<<"MainWindow::installNetStreamFilter";
-    if (mpNetStreamFilter==0 && mpPlayer){
-        mpNetStreamFilter = new NetStreamFilter(this);
-        mpNetStreamFilter->setEnabled(true);
-        mpNetStreamFilter->installTo(mpPlayer);
-        mpNetStreamFilter->setPlayer(mpPlayer);
-        if (!mpvpipe) {
-            mpvpipe=new runmpvpipe();
-            connect(mpvpipe,SIGNAL(ready()),this,SLOT(runMpvPlayerRunned()));
-            connect(mpvpipe,SIGNAL(finished(int)),this,SLOT(runMpvPlayerFinished(int)));
+    if (Config::instance().advancedFilterEnabled()){
+        if (mpNetStreamFilter==0 && mpPlayer){
+            mpNetStreamFilter = new NetStreamFilter(this);
+            mpNetStreamFilter->setEnabled(true);
+            mpNetStreamFilter->installTo(mpPlayer);
+            mpNetStreamFilter->setPlayer(mpPlayer);
+            if (!mpvpipe) {
+                mpvpipe=new runmpvpipe();
+                connect(mpvpipe,SIGNAL(ready()),this,SLOT(runMpvPlayerRunned()));
+                connect(mpvpipe,SIGNAL(finished(int)),this,SLOT(runMpvPlayerFinished(int)));
+            }
+            mpNetStreamFilter->setMpvPipe(mpvpipe);
         }
-        mpNetStreamFilter->setMpvPipe(mpvpipe);
     }
 
 }
@@ -2192,7 +2194,7 @@ void MainWindow::runMpvPlayer()
     int frameH=st.video_only.height;
 #else
     int frameW=mpPlayer->renderer()->rendererWidth();
-     int frameH=mpPlayer->renderer()->rendererHeight();
+    int frameH=mpPlayer->renderer()->rendererHeight();
 #endif
     //    const int bytesPerPixel=4;
     //    int framebytes=frameW*frameH*bytesPerPixel;
