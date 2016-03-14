@@ -144,7 +144,14 @@ MiscPage::MiscPage()
     glpv->addWidget(m_floatcontrol, r, 0);
     glpv->addWidget(new QLabel(tr("(application restart required)")), r, 1);
     glpv->addItem(new QSpacerItem(178, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),++r,0);
+
+    m_advancedFilter = new QCheckBox(tr("Enable Advanced Filters"));
+    m_advancedFilter->setToolTip(tr("Enable Advanced Filters"));
+    glpv->addWidget(m_advancedFilter, r, 0);
+    glpv->addWidget(new QLabel(tr("(movie restart required)")), r, 1);
+    glpv->addItem(new QSpacerItem(178, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),++r,0);
     glpv->addItem(new QSpacerItem(140, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r,1);
+
 
     vl->addWidget(playerView,1, Qt::AlignTop);
 
@@ -156,7 +163,7 @@ MiscPage::MiscPage()
 
 QString MiscPage::name() const
 {
-    return tr("Misc");
+    return tr("View");
 }
 
 
@@ -175,6 +182,7 @@ void MiscPage::applyFromUi()
             .setBufferValueI(m_buffer_valueI->value())
             .setForceVideoClockI(m_forceVideoClockI->isChecked())
             .setFloatControlEnabled(m_floatcontrol->isChecked())
+            .setAdvancedFilterEnabled(m_advancedFilter->isChecked())
             .setLogLevel(m_log->currentText().toLower())
             ;
 }
@@ -195,5 +203,6 @@ void MiscPage::applyToUi()
     m_buffer_valueI->setValue(Config::instance().bufferValueI());
     m_forceVideoClockI->setChecked(Config::instance().forceVideoClockI());
     m_floatcontrol->setChecked(Config::instance().floatControlEnabled());
+    m_advancedFilter->setChecked(Config::instance().advancedFilterEnabled());
     m_log->setCurrentIndex(m_log->findText(Config::instance().logLevel().toLower()));
 }
