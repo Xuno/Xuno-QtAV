@@ -2180,6 +2180,31 @@ void MainWindow::installNetStreamFilter()
             }
             mpNetStreamFilter->setMpvPipe(mpvpipe);
         }
+
+        mpvPlayerWindow = new QWidget(this);
+        mpvPlayerWindow->setWindowTitle(tr("XunoPlayer MPV view"));
+        //mpvPlayerWindow->setWindowFlags(Qt::Dialog);
+        //mpvPlayerWindow->setWindowFlags(this->windowFlags() & ~Qt::WindowCloseButtonHint & ~Qt::WindowMinMaxButtonsHint & Qt::CustomizeWindowHint);
+        mpvPlayerWindow->setMinimumHeight(125);//785
+        mpvPlayerWindow->setMinimumHeight(55);
+        mpvPlayerWindow->setStyleSheet("background-color:red;");
+        //mpvPlayerWindow->move(0,0);
+        //mpvPlayerWindow
+        if (mpRenderer){
+            QWidget *r = mpRenderer->widget();
+            //release old renderer and add new
+            if (r) {
+                mpvPlayerWindow->resize(r->size());
+                mpPlayerLayout->replaceWidget(r,mpvPlayerWindow);
+                r->setParent(mpvPlayerWindow);
+                r->move(r->pos().x()+r->size().width()-1,r->size().height()-1);
+            }
+        }
+        mpvPlayerWindow->show();
+
+        //mpPlayerLayout->addWidget(mpvPlayerWindow);
+       // mpvPlayerWindow->raise();
+
     }
 
 }

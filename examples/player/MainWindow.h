@@ -278,6 +278,7 @@ private:
     NetStreamFilter *mpNetStreamFilter;
     qint64 mpvPlayerPorcessId=0;
     runmpvpipe *mpvpipe=0;
+    QWidget *mpvPlayerWindow=0;
 
 };
 
