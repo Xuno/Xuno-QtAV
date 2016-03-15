@@ -2036,6 +2036,9 @@ void MainWindow::reSizeByMovie()
     }
     if (t.isValid() && (!t.isNull())) {
         resize(t);
+        if (Config::instance().advancedFilterEnabled()){
+            mpRenderer->widget()->move(st.video_only.width-1,st.video_only.height-1);
+        }
     }
 }
 
@@ -2197,13 +2200,13 @@ void MainWindow::installNetStreamFilter()
                 mpvPlayerWindow->resize(r->size());
                 mpPlayerLayout->replaceWidget(r,mpvPlayerWindow);
                 r->setParent(mpvPlayerWindow);
-                r->move(r->pos().x()+r->size().width()-1,r->size().height()-1);
+                r->move(-r->size().width()-1,r->size().height()-1);
             }
         }
         mpvPlayerWindow->show();
 
         //mpPlayerLayout->addWidget(mpvPlayerWindow);
-       // mpvPlayerWindow->raise();
+        // mpvPlayerWindow->raise();
 
     }
 
