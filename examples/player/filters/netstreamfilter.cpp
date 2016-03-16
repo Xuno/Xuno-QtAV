@@ -76,6 +76,7 @@ void NetStreamFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *fr
                     QMatrix matrix = QMatrix().scale(1,-1);
                     buffer=QByteArray((const char*) qi.transformed(matrix).bits(),byteCount);
                     mpvpipe->sendFrame(w,h);
+                    emit onSentFrame();
                 }
             }
         }

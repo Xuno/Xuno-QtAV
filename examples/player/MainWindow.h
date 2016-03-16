@@ -179,7 +179,7 @@ private slots:
     void runMpvPlayerStop();
     void runMpvPlayerRunned();
     void runMpvPlayerFinished(int c);
-    void renderedRAWImage(const uchar* pixels,int w,int h,int bpp);
+    void advacedFilterSentFrame();
 
 protected:
     virtual void closeEvent(QCloseEvent *e);

@@ -2171,18 +2171,6 @@ void MainWindow::installNetStreamFilter()
 {
     qDebug()<<"MainWindow::installNetStreamFilter";
     if (Config::instance().advancedFilterEnabled()){
-        if (mpNetStreamFilter==0 && mpPlayer){
-            mpNetStreamFilter = new NetStreamFilter(this);
-            mpNetStreamFilter->setEnabled(true);
-            mpNetStreamFilter->installTo(mpPlayer);
-            mpNetStreamFilter->setPlayer(mpPlayer);
-            if (!mpvpipe) {
-                mpvpipe=new runmpvpipe();
-                connect(mpvpipe,SIGNAL(ready()),this,SLOT(runMpvPlayerRunned()));
-                connect(mpvpipe,SIGNAL(finished(int)),this,SLOT(runMpvPlayerFinished(int)));
-            }
-            mpNetStreamFilter->setMpvPipe(mpvpipe);
-        }
 
         mpvPlayerWindow = new QWidget(this);
         mpvPlayerWindow->setWindowTitle(tr("XunoPlayer MPV view"));
@@ -2193,10 +2181,27 @@ void MainWindow::installNetStreamFilter()
         mpvPlayerWindow->setStyleSheet("background-color:red;");
         //mpvPlayerWindow->move(0,0);
         //mpvPlayerWindow
+
+
+        if (mpNetStreamFilter==0 && mpPlayer){
+            mpNetStreamFilter = new NetStreamFilter(this);
+            connect(mpNetStreamFilter, &NetStreamFilter::onSentFrame,this,&MainWindow::advacedFilterSentFrame);
+            mpNetStreamFilter->setEnabled(true);
+            mpNetStreamFilter->installTo(mpPlayer);
+            mpNetStreamFilter->setPlayer(mpPlayer);
+            if (!mpvpipe) {
+                mpvpipe=new runmpvpipe();
+                mpvpipe->setWidget(mpvPlayerWindow);
+                connect(mpvpipe,SIGNAL(ready()),this,SLOT(runMpvPlayerRunned()));
+                connect(mpvpipe,SIGNAL(finished(int)),this,SLOT(runMpvPlayerFinished(int)));
+            }
+            mpNetStreamFilter->setMpvPipe(mpvpipe);
+        }
+
         if (mpRenderer){
             QWidget *r = mpRenderer->widget();
             //release old renderer and add new
-            if (r) {
+            if (r && mpvPlayerWindow && mpPlayerLayout) {
                 mpvPlayerWindow->resize(r->size());
                 mpPlayerLayout->replaceWidget(r,mpvPlayerWindow);
                 r->setParent(mpvPlayerWindow);
@@ -2230,7 +2235,9 @@ void MainWindow::runMpvPlayer()
 
     if (mpvpipe){
         mpvpipe->setFameInfo(frameW,frameH,fps);
-        mpvpipe->runApp();
+        if (mpvpipe->runApp()){
+            //mpvpipe->moveMpvApp();
+        }
     }
     //    QString mpvparam;//="--vo-defaults=opengl:scale=ewa_lanczossharp:cscale=haasnsoft:dscale=mitchell:target-prim=bt.709:target-trc=srgb:scaler-resizes-only:no-deband:prescale-passes=2:prescale-downscaling-threshold=1.6:prescale=superxbr:superxbr-sharpness=0.7";
     //    //mpv.com "tcp://localhost:8888" --cache=no --demuxer=rawvideo --demuxer-rawvideo-mp-format=bgra --demuxer-rawvideo-size=1228800 --demuxer-rawvideo-fps=25  --demuxer-rawvideo-w=640 --demuxer-rawvideo-h=480 --no-audio
@@ -2258,10 +2265,17 @@ void MainWindow::runMpvPlayerFinished(int c)
     qDebug()<<"MainWindow::runMpvPlayerFinished"<<c;
 }
 
-void MainWindow::renderedRAWImage(const uchar *pixels, int w, int h, int bpp)
+void MainWindow::advacedFilterSentFrame()
 {
-    Q_UNUSED(pixels);
-    qDebug()<<"MainWindow::renderedRAWImage"<<w<<h<<bpp;
+    //qDebug()<<"MainWindow::advacedFilterSentFrame";
+    if (mpvpipe && !mpvpipe->getMovedApp()) {
+        QWidget *r=nullptr;
+        r=mpvpipe->moveMpvApp();
+        if (r){
+            //mpPlayerLayout->replaceWidget(r,mpvPlayerWindow);
+            //r->deleteLater();
+        }
+    }
 }
 
 QString MainWindow::XUNO_QtAV_Version_String()

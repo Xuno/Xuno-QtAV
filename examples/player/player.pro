@@ -62,3 +62,5 @@ FORMS += \
 RESOURCES += res/player.qrc
 #    theme.qrc
 
+LIBS+= -luser32
+
