@@ -16,7 +16,7 @@ runmpvpipe::runmpvpipe(QByteArray *_buffer, QObject *parent) :
 {
     qDebug()<<"runmpvpipe:constructor";
     mpvprocess=new QProcess(parent);
-    if (!MpvT) MpvT=new QThread(parent);
+    //if (!MpvT) MpvT=new QThread(parent);
     //mpvprocess->setProcessChannelMode(QProcess::ForwardedChannels);
     mpvprocess->setProcessChannelMode(QProcess::MergedChannels);
     mpvprocess->setInputChannelMode(QProcess::ForwardedInputChannel);
@@ -36,6 +36,7 @@ void runmpvpipe::sendFrame(const int &w, const int &h)
         qint64 written=fwrite(buffer->data(),1,buffer->size(),file);
         if (written!=buffer->size()){
             qDebug()<<"Error written fwrite"<<written<<buffer->size();
+            closeApp();
         }
         buffer->clear();
     }else if (mpvprocess && mpvprocess->isOpen() && !buffer->isEmpty()){
@@ -65,7 +66,8 @@ bool runmpvpipe::runApp()
         QString filepath=QString(mpvAppEXE).append(".com").append(" ").append(mpvparam);
         file =_popen(filepath.toLatin1().constData(),"wb");
         qDebug()<<"runmpvpipe::runApp"<<filepath<<mpvparam;
-        //started();
+        if (file==NULL) return false;
+        started();
         return true;
     }
     return false;
@@ -90,14 +92,14 @@ void runmpvpipe::setFameInfo(int w, int h, qreal _fps)
 void runmpvpipe::started()
 {
     qDebug()<<"runmpvpipe::started()";
-    emit ready();
+    if (file!=NULL) emit ready();
 }
 
 WId runmpvpipe::findAppWindow(QString ext)
 {
     if (ext=="exe"){
         // Windows: Find HWND by window title EXE
-        WId id = (WId)FindWindow(NULL, L"No file - mpv");
+        WId id = (WId)FindWindow(NULL, L"- - mpv");
 
         if (id) {
             qDebug()<<"Found by tile";
@@ -113,14 +115,14 @@ WId runmpvpipe::findAppWindow(QString ext)
         }
 
         if (!id) {
-            qDebug()<<"not found Window"<<id;
+            //qDebug()<<"not found Window"<<id;
             return -1;
         }
 
         return id;
     }else if (ext=="com"){
         // Windows: Find HWND by window title COM
-        WId id = (WId)FindWindow(NULL, L"C:\\WINDOWS\\system32\\cmd.exe");
+        WId id = (WId)FindWindow(NULL, L"AC:\\WINDOWS\\system32\\cmd.exe");
 
         if (id) {
             qDebug()<<"Found by tile";
@@ -130,13 +132,13 @@ WId runmpvpipe::findAppWindow(QString ext)
                 qDebug()<<"GetClassName"<<r<<QString::fromWCharArray(ClassName);
             }
         }else{
-            TCHAR ClassName[]=L"Windows Command Processor";
+            TCHAR ClassName[]=L"ConsoleWindowClass";
             id = (WId)FindWindowEx(NULL,NULL,ClassName,NULL);
             if (id) qDebug()<<"Found by ClassName";
         }
 
         if (!id) {
-            qDebug()<<"not found Window"<<id;
+            //qDebug()<<"not found Window"<<id;
             return -1;
         }
 
@@ -157,58 +159,79 @@ void runmpvpipe::setBuffer(QByteArray *value)
 
 void runmpvpipe::closeApp()
 {
+    if (mpvwindow!=nullptr){
+        mpvwindow->setParent(nullptr);
+        mpvwindow->destroy();
+        mpvwindow=nullptr;
+    }
     if (file != NULL){
+        qDebug()<<"runmpvpipe::closeApp";
         _pclose(file);
         file=NULL;
+        movedApp=false;
+        emit finished(true);
     }
 }
 
 QWidget * runmpvpipe::moveMpvApp()
 {
+     WId id = 0;
     if (movedApp) return nullptr;
-    //QThread::sleep(5);
-    QWindow* window = nullptr;
-    WId id = findAppWindow("com");
-    if (id!=-1) {
-        window = QWindow::fromWinId(id);
-        if (window != nullptr) {
-            window->hide();
-        }
-    }
-
+    //QThread::sleep(1);
+    QWindow* window1 = nullptr;
     id = findAppWindow("exe");
     if (id==-1) return nullptr;
-    window = nullptr;
-    window = QWindow::fromWinId(id);
-    if (window == nullptr) return nullptr;
-    window->show();
-    window->requestActivate();
-
-    //    QObject::connect(&t, &QTimer::timeout, [=]
-    //    {
-    //        qDebug() << "=== Inner QWindow ===";
-    //        qDebug() << "Geometry:" << window->geometry();
-    //        qDebug() << "Active?:" << window->isActive();
-    //        qDebug() << "Flags:" << window->flags();
-    //    });
-
+    window1 = nullptr;
+    window1 = QWindow::fromWinId(id);
+    if (window1 == nullptr) return nullptr;
+    window1->show();
+    window1->requestActivate();
 
     // Part 2
-    //if (mpvwidget) delete mpvwidget;
-    QWidget *mpvwidget1 = QWidget::createWindowContainer(window,mpvwidget);
+    //if (mpvwidget1) delete mpvwidget1;
+    QWidget *mpvwidget1 = QWidget::createWindowContainer(window1,mpvwidget);
     if (!mpvwidget1) return nullptr;
+    //if (mpvwindow) delete mpvwindow;
+    mpvwindow=window1;
     mpvwidget1->show();
+    //mpvwidget1->hide();
     mpvwidget1->resize(frameW,frameH);
-    movedApp=true;
+    mpvwidget1->move(0,0);
+
 
     //    QTimer t;
     //    t.start(2000);
 
+    QObject::connect(mpvwindow,&QWindow::destroyed, [=](QObject* a){
+        qDebug()<<"mpv mpvwindow destroyed"<<a;
+
+    });
+
+
     QObject::connect(mpvwidget1,&QWidget::destroyed, [=](QObject* a){
         qDebug()<<"mpv widject destroyed"<<a;
         movedApp=false;
-        emit finished(true);
     });
+
+
+    QWindow* window0 = nullptr;
+    id = findAppWindow("com");
+    if (id!=-1) {
+        window0 = QWindow::fromWinId(id);
+        if (window0 != nullptr) {
+            window0->show();
+            window0->requestActivate();
+            qDebug()<<"runmpvpipe::moveMpvApp hide com";
+             QWidget *mpvwidget0 = QWidget::createWindowContainer(window0,mpvwidget);
+             mpvwidget0->show();
+             mpvwidget0->resize(1,1);
+             mpvwidget0->move(-1,-1);
+             //mpvwidget0->hide();
+        }
+    }
+
+    movedApp=true;
+    started();
 
     return mpvwidget1;
 

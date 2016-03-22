@@ -50,6 +50,7 @@ private:
     FILE* file=NULL;
     WId findAppWindow(QString ext="exe");
     QWidget *mpvwidget=nullptr;
+    QWindow *mpvwindow=nullptr;
     bool movedApp=false;
 
 
