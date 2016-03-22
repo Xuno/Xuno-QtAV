@@ -37,18 +37,28 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
-
 #include <QtWidgets>
 #include <QMainWindow>
 #include <QTextDocument>
-#include <QWebView>
 #include <QNetworkProxyFactory>
 #include "XunoBrowser.h"
 
- XunoBrowser::XunoBrowser(QWidget *parent) : QDialog(parent)
-   , view(0)
-   , loading(0)
- {
+//--------- myWebEnginePage  -----------
+
+bool myWebEnginePage::acceptNavigationRequest(const QUrl &url, QWebEnginePage::NavigationType type, bool isMainFrame)
+{
+    qDebug()<<"myWebEnginePage"<<url<<type<<isMainFrame;
+    emit onClick(url);
+    return true;
+}
+
+//------------------------------------------------------
+
+
+XunoBrowser::XunoBrowser(QWidget *parent) : QDialog(parent)
+  , view(0)
+  , loading(0)
+{
     progress = 0;
 
     QNetworkProxyFactory::setUseSystemConfiguration(true);
@@ -64,21 +74,30 @@
     this->resize(QSize(600,40));
     this->show();
 
-    view = new QWebView(this);
-    view->page()->setLinkDelegationPolicy(QWebPage::DelegateAllLinks);
+    myWebEnginePage *page = new myWebEnginePage();
+
+    connect(page, SIGNAL(onClick(QUrl)), SLOT(linkClicked(QUrl)));
+
+    view = new QWebEngineView(this);
+    view->setPage((QWebEnginePage*)page);
+    //connect(view->page(), SIGNAL(urlChanged(QUrl)),SLOT(linkClicked(QUrl)));
+    //view->page()->setLinkDelegationPolicy(QWebEnginePage::DelegateAllLinks);
+    //TODO There is no way to connect a signal to run C++ code when a link is clicked. However, link clicks can be delegated to the Qt application instead of having the HTML handler engine process them by overloading the QWebEnginePage::acceptNavigationRequest() function. This is necessary when an HTML document is used as part of the user interface, and not to display external data, for example, when displaying a list of results. https://wiki.qt.io/Porting_from_QtWebKit_to_QtWebEngine
+
 
     connect(view, SIGNAL(titleChanged(QString)), SLOT(adjustTitle()));
     connect(view, SIGNAL(loadProgress(int)), SLOT(setProgress(int)));
     connect(view, SIGNAL(loadFinished(bool)), SLOT(finishLoading(bool)));
-    connect(view, SIGNAL(linkClicked(QUrl)), SLOT(linkClicked(QUrl)));
+    //connect(view, SIGNAL(linkClicked(QUrl)), SLOT(linkClicked(QUrl)));
+    //TODO There is no way to connect a signal .. https://wiki.qt.io/Porting_from_QtWebKit_to_QtWebEngine
 
 
 }
 
- XunoBrowser::~XunoBrowser() {
-     QWebSettings::clearMemoryCaches();
-     delete view;
- }
+XunoBrowser::~XunoBrowser() {
+    //QWebEngineSettings::clearMemoryCaches();
+    delete view;
+}
 
 void XunoBrowser::setUrl(const QUrl &url) {
     if (view->url()!=url) view->load(url);
@@ -144,13 +163,14 @@ void XunoBrowser::showEvent(QShowEvent *e)
 
 void XunoBrowser::linkClicked(QUrl url){
     qDebug("XunoBrowser::linkClicked %s",qPrintable(url.toString()));
-    if (url.toString().startsWith(XUNOContentUrl)){
-       clickedUrl=url;
-       this->hide();
-       emit clicked();
+    if (url.toString().startsWith(XUNOContentUrl) && !url.toString().contains("playlist")){
+        qDebug("XunoBrowser::linkClicked pass %s",qPrintable(url.toString()));
+        clickedUrl=url;
+        this->hide();
+        emit clicked();
     }else{
-        clickedUrl.clear();
-        view->load(url);
+        //        clickedUrl.clear();
+        //        view->load(url);
     }
 }
 
@@ -159,10 +179,12 @@ QUrl XunoBrowser::getClikedUrl(){
 }
 
 void XunoBrowser::resizeEvent(QResizeEvent* e) {
-   qDebug("XunoBrowser::resizeEvent");
-   if (view && view->isVisible()) {
+    qDebug("XunoBrowser::resizeEvent");
+    if (view && view->isVisible()) {
         view->resize(this->size());
-   }
-   QDialog::resizeEvent(e);
+    }
+    QDialog::resizeEvent(e);
 }
+
+
 
