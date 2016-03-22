@@ -63,9 +63,6 @@
 #include "filters/netstreamfilter.h"
 
 
-
-//#include <QWebView>
-
 /*
  *TODO:
  * disable a/v actions if player is 0;
@@ -245,14 +242,18 @@ void MainWindow::setupUi()
         detachedControl->setWindowFlags(detachedControl->windowFlags() & ~Qt::WindowCloseButtonHint);
         detachedControl->setMaximumHeight(125);//785
         detachedControl->setMaximumHeight(55);
-        detachedControl->resize(785,detachedControl->minimumHeight());
-
+        detachedControl->resize(800,detachedControl->minimumHeight());
+        this->move(QApplication::desktop()->screen()->rect().center() - this->rect().center());
+        detachedControl->move(this->pos().x(),this->pos().y()+this->rect().height());
         detachedControlLayout = new QVBoxLayout();
         detachedControlLayout->setContentsMargins(0,0,0,0);
         detachedControl->setLayout(detachedControlLayout);
         detachedControl->show();
         detachedControl->raise();
         mpControl = new QWidget(detachedControl);
+
+
+
     }else{
         mpControl = new QWidget(this);
     }
@@ -1231,6 +1232,12 @@ void MainWindow::resizeEvent(QResizeEvent *e)
 {
     Q_UNUSED(e);
     QWidget::resizeEvent(e);
+    if (mpvPlayerWindow1 && Config::instance().advancedFilterEnabled()) {
+        mpvPlayerWindow1->resize(e->size());
+//        if (mpRenderer){
+//            mpRenderer->widget()->move(0,0);
+//        }
+    }
     /*
     if (mpTitle)
         QLabelSetElideText(mpTitle, QFileInfo(mFile).fileName(), e->size().width());
@@ -2036,9 +2043,9 @@ void MainWindow::reSizeByMovie()
     }
     if (t.isValid() && (!t.isNull())) {
         resize(t);
-        if (Config::instance().advancedFilterEnabled()){
-            mpRenderer->widget()->move(st.video_only.width-1,st.video_only.height-1);
-        }
+//        if (Config::instance().advancedFilterEnabled()){
+//           //mpRenderer->widget()->move(st.video_only.width-1,st.video_only.height-1);
+//        }
     }
 }
 
@@ -2205,7 +2212,8 @@ void MainWindow::installNetStreamFilter()
                 mpvPlayerWindow->resize(r->size());
                 mpPlayerLayout->replaceWidget(r,mpvPlayerWindow);
                 r->setParent(mpvPlayerWindow);
-                r->move(-r->size().width()-1,r->size().height()-1);
+                r->move(0,0);
+                //r->move(-r->size().width()-1,r->size().height()-1);
             }
         }
         mpvPlayerWindow->show();
@@ -2251,6 +2259,7 @@ void MainWindow::runMpvPlayer()
 void MainWindow::runMpvPlayerStop()
 {
     if (mpvpipe){
+        //if (mpvPlayerWindow1) mpvPlayerWindow1->close();
         mpvpipe->closeApp();
     }
 }
@@ -2272,6 +2281,7 @@ void MainWindow::advacedFilterSentFrame()
         QWidget *r=nullptr;
         r=mpvpipe->moveMpvApp();
         if (r){
+            mpvPlayerWindow1=r;
             //mpPlayerLayout->replaceWidget(r,mpvPlayerWindow);
             //r->deleteLater();
         }
