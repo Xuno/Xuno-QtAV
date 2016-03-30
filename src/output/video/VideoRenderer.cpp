@@ -677,7 +677,7 @@ void VideoRenderer::updateFiltersAfterDrawFrame()
             //  continue;
 
             //qDebug()<<"VideoRenderer::updateUiAfterRenderig. postEvent("<<vf->objectName();
-            vf->onPostDraw();
+            //vf->onPostDraw();
             //QCoreApplication::postEvent(vf, new QEvent(QEvent::User),Qt::HighEventPriority);
         }
     }

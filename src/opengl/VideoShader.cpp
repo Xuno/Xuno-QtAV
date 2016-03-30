@@ -236,7 +236,7 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
         d.u_Texture[i] = shaderProgram->uniformLocation(tex_var);
         qDebug("%s: %d", tex_var.toUtf8().constData(), d.u_Texture[i]);
     }
-    qDebug("glGetUniformLocation(\"u_MVP_matrix\") = %d", d.u_MVP_matrix);
+    //qDebug("glGetUniformLocation(\"u_MVP_matrix\") = %d", d.u_MVP_matrix);
     qDebug("glGetUniformLocation(\"u_colorMatrix\") = %d", d.u_colorMatrix);
     qDebug("glGetUniformLocation(\"u_opacity\") = %d", d.u_opacity);
     qDebug("glGetUniformLocation(\"u_gammaRGB\") = %d", d.u_gammaRGB);
