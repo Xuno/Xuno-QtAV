@@ -5,31 +5,19 @@ QT += quick qml
 CONFIG *= qmlav-buildlib
 #QMAKE_RPATHLINKDIR
 #CONFIG *= qml_module relative_qt_rpath
-#https://github.com/wang-bin/QtAV/issues/368#issuecomment-73246253
-#http://qt-project.org/forums/viewthread/38438
-# mkspecs/features/qml_plugin.prf
-URI = QtAV #uri used in QtAVQmlPlugin::registerTypes(uri)
-greaterThan(QT_MAJOR_VERSION, 4) {
-  isEqual(QT_MAJOR_VERSION, 5) {
-    greaterThan(QT_MINOR_VERSION, 2) {
-QMAKE_MOC_OPTIONS += -Muri=$$URI # not sure what moc does
-    }
-  } else {
-QMAKE_MOC_OPTIONS += -Muri=$$URI # not sure what moc does
-  }
-}
+
 #var with '_' can not pass to pri?
 PROJECTROOT = $$PWD/..
 !include($$PROJECTROOT/src/libQtAV.pri): error("could not find libQtAV.pri")
 !include(libQmlAV.pri): error("could not find libQmlAV.pri")
 preparePaths($$OUT_PWD/../out)
-
+#https://github.com/wang-bin/QtAV/issues/368#issuecomment-73246253
+#http://qt-project.org/forums/viewthread/38438
+# mkspecs/features/qml_plugin.prf
+URI = QtAV #uri used in QtAVQmlPlugin::registerTypes(uri)
+qtAtLeast(5, 3): QMAKE_MOC_OPTIONS += -Muri=$$URI # not sure what moc does
 #DESTDIR = $$BUILD_DIR/bin/QtAV
-RESOURCES +=
-
-QML_FILES = $$PWD/Video.qml
-
-qtav_qml.files = $$PWD/qmldir $$PWD/Video.qml $$PWD/plugins.qmltypes
+qtav_qml.files = qmldir Video.qml plugins.qmltypes
 !static { #static lib copy error before ranlib. copy only in sdk_install
   plugin.files = $$DESTDIR/$$qtSharedLib($$NAME)
 }
@@ -45,7 +33,7 @@ if(equals(MAKEFILE_GENERATOR, MSVC.NET)|equals(MAKEFILE_GENERATOR, MSBUILD)) {
 for(f, plugin.files) {
   plugin.commands += $$escape_expand(\\n\\t)$$TRY_COPY $$shell_path($$f) $$shell_path($$plugin.path)
 }
-#join values seperated by space. so quote is needed
+#join values separated by space. so quote is needed
 #plugin.commands = $$join(plugin.commands,$$escape_expand(\\n\\t))
 OTHER_FILES += $$qtav_qml.files
 #just append as a string to $$QMAKE_POST_LINK
@@ -77,7 +65,7 @@ EXTRA_COPY_FILES = $$qtav_qml.files
 QMAKE_WRITE_DEFAULT_RC = 1
 QMAKE_TARGET_COMPANY = "Shanghai University->S3 Graphics->Deepin | wbsecg1@gmail.com"
 QMAKE_TARGET_DESCRIPTION = "QtAV QML module. QtAV Multimedia framework. http://qtav.org"
-QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2015 WangBin, wbsecg1@gmail.com"
+QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2016 WangBin, wbsecg1@gmail.com"
 QMAKE_TARGET_PRODUCT = "QtAV QML"
 
 SOURCES += \

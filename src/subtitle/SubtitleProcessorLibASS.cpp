@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Media play library based on Qt and LibASS
-    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2014-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -446,6 +446,7 @@ void SubtitleProcessorLibASS::updateFontCache()
     // fonts in assets and qrc may change. so check before appFontsDir
     static const QStringList kFontsDirs = QStringList()
             << qApp->applicationDirPath().append(QLatin1String("/fonts"))
+            << qApp->applicationDirPath() // for winrt
             << QStringLiteral("assets:/fonts")
             << QStringLiteral(":/fonts")
             << Internal::Path::appFontsDir()

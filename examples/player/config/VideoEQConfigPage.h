@@ -24,11 +24,12 @@
 #include <QWidget>
 #include <QNetworkReply>
 
+QT_BEGIN_NAMESPACE
 class QCheckBox;
 class QComboBox;
 class QPushButton;
 class QSlider;
-class QDoubleSpinBox;
+QT_END_NAMESPACE
 class VideoEQConfigPage : public QWidget
 {
     Q_OBJECT

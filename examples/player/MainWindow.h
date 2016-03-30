@@ -30,8 +30,10 @@
 #include "filters/runmpvpipe.h"
 
 
+QT_BEGIN_NAMESPACE
 class QWidgetAction;
 class QToolButton;
+QT_END_NAMESPACE
 namespace QtAV {
 class AudioOutput;
 class AVError;
@@ -43,6 +45,7 @@ class LibAVFilterVideo;
 class SubtitleFilter;
 class VideoPreviewWidget;
 }
+QT_BEGIN_NAMESPACE
 class QMenu;
 class QTimeEdit;
 class QVBoxLayout;
@@ -51,6 +54,7 @@ class QPushButton;
 class QSpinBox;
 class QCheckBox;
 class QTimeEdit;
+QT_END_NAMESPACE
 class Button;
 class Slider;
 class PlayList;
@@ -123,6 +127,7 @@ private slots:
     void seek();
     void seek(qint64 msec);
     void seek(QTime time);
+    void seek(int);
     void showHideVolumeBar();
     void setVolume();
     void tryHideControlBar();

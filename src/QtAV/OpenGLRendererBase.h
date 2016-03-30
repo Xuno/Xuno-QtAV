@@ -1,8 +1,8 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014-2016 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
-*   This file is part of QtAV
+*   This file is part of QtAV (from 2014)
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -49,6 +49,7 @@ public:
     bool isSupported(VideoFormat::PixelFormat pixfmt) const Q_DECL_OVERRIDE;
     void enableGetPixels(bool s);
     bool getPixels(uchar *&pixels, int &w, int &h, int &bpp);
+    OpenGLVideo* opengl() const Q_DECL_OVERRIDE;
 protected:
     virtual bool receiveFrame(const VideoFrame& frame) Q_DECL_OVERRIDE;
     //called in paintEvent before drawFrame() when required

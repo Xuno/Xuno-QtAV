@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
@@ -22,6 +22,7 @@
 #include "OpenGLHelper.h"
 #include <string.h> //strstr
 #include <QtCore/QCoreApplication>
+#include <QtCore/QRegExp>
 #include <QtGui/QMatrix4x4>
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
 #if QT_VERSION >= QT_VERSION_CHECK(4, 8, 0)
@@ -45,52 +46,6 @@ namespace QtAV {
 namespace OpenGLHelper {
 
 // glGetTexParameteriv is supported by es2 does not support GL_TEXTURE_INTERNAL_FORMAT.
-// glGetTexLevelParameteriv is supported by es3.1
-static void glGetTexLevelParameteriv(GLenum target, GLint level, GLenum pname, GLint *params)
-{
-#ifdef QT_OPENGL_DYNAMIC
-    QOpenGLContext *ctx = QOpenGLContext::currentContext();
-    if (!ctx)
-        return;
-    if (isOpenGLES()) {
-        typedef void (QOPENGLF_APIENTRYP glGetTexLevelParameteriv_t)(GLenum, GLint, GLenum, GLint*);
-        static glGetTexLevelParameteriv_t GetTexLevelParameteriv = 0;
-        if (!GetTexLevelParameteriv) {
-            GetTexLevelParameteriv = (glGetTexLevelParameteriv_t)ctx->getProcAddress("glGetTexLevelParameteriv");
-#ifdef Q_OS_WIN
-            if (!GetTexLevelParameteriv) {
-                qDebug("resolve glGetTexLevelParameteriv from dso");
-                GetTexLevelParameteriv = (glGetTexLevelParameteriv_t)GetProcAddress((HMODULE)QOpenGLContext::openGLModuleHandle(), "glGetTexLevelParameteriv");
-            }
-#endif
-            if (!GetTexLevelParameteriv) {
-                qWarning("can not resolve glGetTexLevelParameteriv");
-                return;
-            }
-        }
-        GetTexLevelParameteriv(target, level, pname, params);
-        return;
-    }
-    QOpenGLFunctions_1_0* f = 0;
-    f = ctx->versionFunctions<QOpenGLFunctions_1_0>();
-    if (!f)
-        return;
-    f->glGetTexLevelParameteriv(target, level, pname, params);
-#else
-#if defined(GL_ES_VERSION_3_1)
-    ::glGetTexLevelParameteriv(target, level, pname, params);
-#elif defined(GL_ES_VERSION_2_0) //also defined in es3.0
-    Q_UNUSED(target);
-    Q_UNUSED(level);
-    Q_UNUSED(pname);
-    Q_UNUSED(params);
-    qDebug("OpenGL ES2 and 3.0 does not support glGetTexLevelParameteriv");
-#elif !defined(QT_OPENGL_ES)
-    ::glGetTexLevelParameteriv(target, level, pname, params);
-#endif //GL_ES_VERSION_3_1
-#endif
-}
-
 /// 16bit (R16 e.g.) texture does not support >8bit a BE channel, fallback to 2 channel texture
 int depth16BitTexture()
 {
@@ -104,10 +59,18 @@ bool useDeprecatedFormats()
     return v;
 }
 
+QString removeComments(const QString &code)
+{
+    QString c(code);
+    c.remove(QRegExp(QStringLiteral("(/\\*([^*]|(\\*+[^*/]))*\\*+/)|(//[^\r^\n]*)")));
+    return c;
+}
+
 /// current shader works fine for gles 2~3 only with commonShaderHeader(). It's mainly for desktop core profile
 
 static QByteArray commonShaderHeader(QOpenGLShader::ShaderType type)
 {
+    // TODO: check useDeprecatedFormats() or useDeprecated()?
     QByteArray h;
     if (isOpenGLES()) {
         h += "precision mediump int;\n"
@@ -123,7 +86,6 @@ static QByteArray commonShaderHeader(QOpenGLShader::ShaderType type)
         // >=1.30: texture(sampler2DRect,...). 'texture' is defined in header
         // we can't check GLSLVersion() here because it the actually version used can be defined by "#version"
         h += "#if __VERSION__ < 130\n"
-             "#undef texture\n"
              "#define texture texture2D\n"
              "#endif // < 130\n"
         ;
@@ -313,52 +275,6 @@ bool isPBOSupported() {
     return support;
 }
 
-// glActiveTexture in Qt4 on windows release mode crash for me
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-#ifndef QT_OPENGL_ES
-// APIENTRY may be not defined(why? linux es2). or use QOPENGLF_APIENTRY
-// use QGLF_APIENTRY for Qt4 crash, why? APIENTRY is defined in windows header
-#ifndef APIENTRY
-// QGLF_APIENTRY is in Qt4,8+
-#if defined(QGLF_APIENTRY)
-#define APIENTRY QGLF_APIENTRY
-#elif defined(GL_APIENTRY)
-#define APIENTRY GL_APIENTRY
-#endif //QGLF_APIENTRY
-#endif //APIENTRY
-typedef void (APIENTRY *type_glActiveTexture) (GLenum);
-static type_glActiveTexture qtav_glActiveTexture = 0;
-
-static void qtavResolveActiveTexture()
-{
-    const QGLContext *context = QGLContext::currentContext();
-    qtav_glActiveTexture = (type_glActiveTexture)context->getProcAddress(QLatin1String("glActiveTexture"));
-    if (!qtav_glActiveTexture) {
-        qDebug("resolve glActiveTextureARB");
-        qtav_glActiveTexture = (type_glActiveTexture)context->getProcAddress(QLatin1String("glActiveTextureARB"));
-    }
-    //Q_ASSERT(qtav_glActiveTexture);
-}
-#endif //QT_OPENGL_ES
-#endif //QT_VERSION
-
-void glActiveTexture(GLenum texture)
-{
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-#ifndef QT_OPENGL_ES
-    if (!qtav_glActiveTexture)
-        qtavResolveActiveTexture();
-    if (!qtav_glActiveTexture)
-        return;
-    qtav_glActiveTexture(texture);
-#else
-    ::glActiveTexture(texture);
-#endif //QT_OPENGL_ES
-#else
-    QOpenGLContext::currentContext()->functions()->glActiveTexture(texture);
-#endif
-}
-
 typedef struct {
     GLint internal_format;
     GLenum format;
@@ -425,6 +341,10 @@ bool test_gl_param(const gl_param_t& gp, bool* has_16 = 0)
         qWarning("%s: current context is null", __FUNCTION__);
         return false;
     }
+    if (!gl().GetTexLevelParameteriv) {
+        qDebug("Do not support glGetTexLevelParameteriv. test_gl_param returns false");
+        return false;
+    }
     GLuint tex;
     DYGL(glGenTextures(1, &tex));
     DYGL(glBindTexture(GL_TEXTURE_2D, tex));
@@ -434,10 +354,10 @@ bool test_gl_param(const gl_param_t& gp, bool* has_16 = 0)
 #ifndef GL_TEXTURE_INTERNAL_FORMAT //only in desktop
 #define GL_TEXTURE_INTERNAL_FORMAT 0x1003
 #endif
-    OpenGLHelper::glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &param);
+    gl().GetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &param);
     // TODO: check glGetError()?
     if (param != gp.internal_format) {
-        qDebug("Do not support texture internal format: %#x", gp.internal_format);
+        qDebug("Do not support texture internal format: %#x (result %#x)", gp.internal_format, param);
         DYGL(glDeleteTextures(1, &tex));
         return false;
     }
@@ -459,7 +379,7 @@ bool test_gl_param(const gl_param_t& gp, bool* has_16 = 0)
     }
     param = 0;
     if (pname)
-        OpenGLHelper::glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, pname, &param);
+        gl().GetTexLevelParameteriv(GL_TEXTURE_2D, 0, pname, &param);
     if (param) {
         qDebug("16 bit texture depth: %d.\n", (int)param);
         *has_16 = (int)param == 16;
@@ -492,7 +412,7 @@ bool hasRG()
     }
     qDebug("check gl es>=3 rg");
     if (QOpenGLContext::currentContext())
-        has_rg = isOpenGLES() && QOpenGLContext::currentContext()->format().majorVersion() > 2;
+        has_rg = isOpenGLES() && QOpenGLContext::currentContext()->format().majorVersion() > 2; // Mesa GLES3 does not support (from qt)
     return has_rg;
 }
 
@@ -737,14 +657,15 @@ bool videoFormatToGL(const VideoFormat& fmt, GLint* internal_format, GLenum* dat
     GLenum *d_f = data_format;
     GLenum *d_t = data_type;
     gl_param_t* gp = (gl_param_t*)get_gl_param();
+    const int nb_planes = fmt.planeCount();
     if (gp == gl_param_desktop && (
-                fmt.planeCount() == 2 // nv12 UV plane is 16bit, but we use rg
+                nb_planes == 2 // nv12 UV plane is 16bit, but we use rg
                 || (OpenGLHelper::depth16BitTexture() == 16 && OpenGLHelper::has16BitTexture() && fmt.isBigEndian() && fmt.bitsPerComponent() > 8) // 16bit texture does not support be channel now
                 )) {
         gp = (gl_param_t*)gl_param_desktop_fallback;
-        qDebug("desktop_fallback for %s", fmt.planeCount() == 2 ? "bi-plane format" : "16bit big endian channel");
+        qDebug("desktop_fallback for %s", nb_planes == 2 ? "bi-plane format" : "16bit big endian channel");
     }
-    for (int p = 0; p < fmt.planeCount(); ++p) {
+    for (int p = 0; p < nb_planes; ++p) {
         // for packed rgb(swizzle required) and planar formats
         const int c = (fmt.channels(p)-1) + 4*((fmt.bitsPerComponent() + 7)/8 - 1);
         if (gp[c].format == 0)
@@ -753,6 +674,11 @@ bool videoFormatToGL(const VideoFormat& fmt, GLint* internal_format, GLenum* dat
         *(i_f++) = f.internal_format;
         *(d_f++) = f.format;
         *(d_t++) = f.type;
+    }
+    if (nb_planes > 2 && data_format[2] == GL_LUMINANCE && fmt.bytesPerPixel(1) == 1) { // QtAV uses the same shader for planar and semi-planar yuv format
+        internal_format[2] = data_format[2] = GL_ALPHA;
+        if (nb_planes == 4)
+            internal_format[3] = data_format[3] = data_format[2]; // vec4(,,,A)
     }
     if (mat)
         *mat = channelMap(fmt);

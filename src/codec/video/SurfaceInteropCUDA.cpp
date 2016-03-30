@@ -1,8 +1,8 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2015 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
-*   This file is part of QtAV
+*   This file is part of QtAV (from 2015)
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -30,12 +30,12 @@
 namespace QtAV {
 namespace cuda {
 
-InteropResource::InteropResource(CUdevice d, CUvideodecoder decoder, CUvideoctxlock declock)
+InteropResource::InteropResource()
     : cuda_api()
-    , dev(d)
-    , ctx(NULL)
-    , dec(decoder)
-    , lock(declock)
+    , dev(0)
+    , ctx(0)
+    , dec(0)
+    , lock(0)
 {
     memset(res, 0, sizeof(res));
 }
@@ -53,7 +53,8 @@ InteropResource::~InteropResource()
         CUDA_WARN(cuStreamDestroy(res[1].stream));
 
     // FIXME: we own the context. But why crash to destroy ctx? CUDA_ERROR_INVALID_VALUE
-    //CUDA_ENSURE(cuCtxDestroy(ctx));
+    if (!share_ctx && ctx)
+        CUDA_ENSURE(cuCtxDestroy(ctx));
 }
 
 void* InteropResource::mapToHost(const VideoFormat &format, void *handle, int picIndex, const CUVIDPROCPARAMS &param, int width, int height, int coded_height)
@@ -67,7 +68,7 @@ void* InteropResource::mapToHost(const VideoFormat &format, void *handle, int pi
     CUVIDAutoUnmapper unmapper(this, dec, devptr);
     Q_UNUSED(unmapper);
     uchar* host_data = NULL;
-    const size_t host_size = pitch*coded_height*3/2;
+    const unsigned int host_size = pitch*coded_height*3/2;
     CUDA_ENSURE(cuMemAllocHost((void**)&host_data, host_size), NULL);
     // copy to the memory not allocated by cuda is possible but much slower
     CUDA_ENSURE(cuMemcpyDtoH(host_data, devptr, host_size), NULL);
@@ -89,9 +90,95 @@ void* InteropResource::mapToHost(const VideoFormat &format, void *handle, int pi
     else
         *f = frame.to(format);
 
-    cuMemFreeHost(host_data);
+    CUDA_ENSURE(cuMemFreeHost(host_data), f);
     return f;
 }
+
+#ifndef QT_NO_OPENGL
+HostInteropResource::HostInteropResource()
+    : InteropResource()
+{
+    memset(&host_mem, 0, sizeof(host_mem));
+    host_mem.index = -1;
+}
+
+HostInteropResource::~HostInteropResource()
+{
+    if (ctx) { //cuMemFreeHost need the context of mem allocated, it's shared context, or own context
+        CUDA_WARN(cuCtxPushCurrent(ctx));
+    }
+    if (host_mem.data) { //FIXME: CUDA_ERROR_INVALID_VALUE
+        CUDA_ENSURE(cuMemFreeHost(host_mem.data));
+        host_mem.data = NULL;
+    }
+    if (ctx) {
+        CUDA_WARN(cuCtxPopCurrent(NULL));
+    }
+}
+
+bool HostInteropResource::map(int picIndex, const CUVIDPROCPARAMS &param, GLuint tex, int w, int h, int H, int plane)
+{
+    Q_UNUSED(w);
+    if (host_mem.index != picIndex || !host_mem.data) {
+        AutoCtxLock locker((cuda_api*)this, lock);
+        Q_UNUSED(locker);
+
+        CUdeviceptr devptr;
+        unsigned int pitch;
+        //qDebug("index: %d=>%d, plane: %d", host_mem.index, picIndex, plane);
+        CUDA_ENSURE(cuvidMapVideoFrame(dec, picIndex, &devptr, &pitch, const_cast<CUVIDPROCPARAMS*>(&param)), false);
+        CUVIDAutoUnmapper unmapper(this, dec, devptr);
+        Q_UNUSED(unmapper);
+        if (!ensureResource(pitch, H)) //copy height is coded height
+            return false;
+        // the same thread (context) as cuMemAllocHost, so no ccontext switch is needed
+        CUDA_ENSURE(cuMemcpyDtoH(host_mem.data, devptr, pitch*H*3/2), NULL);
+        host_mem.index = picIndex;
+    }
+    // map to texture
+    //qDebug("map plane %d @%d", plane, picIndex);
+    GLint iformat[2];
+    GLenum format[2], dtype[2];
+    OpenGLHelper::videoFormatToGL(VideoFormat::Format_NV12, iformat, format, dtype);
+    DYGL(glBindTexture(GL_TEXTURE_2D, tex));
+    const int chroma = plane != 0;
+    // chroma pitch for gl is 1/2 (gl_rg)
+    // texture height is not coded height!
+    DYGL(glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, host_mem.pitch>>chroma, h>>chroma, format[plane], dtype[plane], host_mem.data + chroma*host_mem.pitch*host_mem.height));
+    //DYGL(glTexImage2D(GL_TEXTURE_2D, 0, iformat[plane], host_mem.pitch>>chroma, h>>chroma, 0, format[plane], dtype[plane], host_mem.data + chroma*host_mem.pitch*host_mem.height));
+    return true;
+}
+
+bool HostInteropResource::unmap(GLuint)
+{
+    return true;
+}
+
+bool HostInteropResource::ensureResource(int pitch, int height)
+{
+    if (host_mem.data && host_mem.pitch == pitch && host_mem.height == height)
+        return true;
+    if (host_mem.data) {
+        CUDA_ENSURE(cuMemFreeHost(host_mem.data), false);
+        host_mem.data = NULL;
+    }
+    qDebug("allocate cuda host mem. %dx%d=>%dx%d", host_mem.pitch, host_mem.height, pitch, height);
+    host_mem.pitch = pitch;
+    host_mem.height = height;
+    if (!ctx) {
+        CUDA_ENSURE(cuCtxCreate(&ctx, CU_CTX_SCHED_BLOCKING_SYNC, dev), false);
+        CUDA_WARN(cuCtxPopCurrent(&ctx));
+        share_ctx = false;
+    }
+    if (!share_ctx) // cuMemFreeHost will be called in dtor which is not the current thread.
+        CUDA_WARN(cuCtxPushCurrent(ctx));
+    // NV12
+    CUDA_ENSURE(cuMemAllocHost((void**)&host_mem.data, pitch*height*3/2), NULL);
+    if (!share_ctx)
+        CUDA_WARN(cuCtxPopCurrent(NULL)); //can be null or &ctx
+    return true;
+}
+#endif //QT_NO_OPENGL
 
 void SurfaceInteropCUDA::setSurface(int picIndex, CUVIDPROCPARAMS param, int width, int height, int surface_height)
 {
@@ -165,8 +252,8 @@ public:
 #endif //EGL_VERSION_1_5
 };
 
-EGLInteropResource::EGLInteropResource(CUdevice d, CUvideodecoder decoder, CUvideoctxlock declock)
-    : InteropResource(d, decoder, declock)
+EGLInteropResource::EGLInteropResource()
+    : InteropResource()
     , egl(new EGL())
     , dll9(NULL)
     , d3d9(NULL)
@@ -177,6 +264,8 @@ EGLInteropResource::EGLInteropResource(CUdevice d, CUvideodecoder decoder, CUvid
     , surface9_nv12(NULL)
     , query9(NULL)
 {
+    ctx = NULL; //need a context created with d3d (TODO: check it?)
+    share_ctx = false;
 }
 
 EGLInteropResource::~EGLInteropResource()
@@ -260,6 +349,10 @@ bool EGLInteropResource::ensureD3D9CUDA(int w, int h, int W, int H)
     TexRes &r = res[0];// 1 NV12 texture
     if (r.w == w && r.h == h && r.W == W && r.H == H && r.cuRes)
         return true;
+    if (share_ctx) {
+        share_ctx = false;
+        ctx = NULL;
+    }
     if (!ctx) {
         // TODO: how to use pop/push decoder's context without the context in opengl context
         if (!ensureD3DDevice())
@@ -512,10 +605,6 @@ bool EGLInteropResource::map(IDirect3DSurface9* surface, GLuint tex, int w, int 
 #if QTAV_HAVE(CUDA_GL)
 namespace QtAV {
 namespace cuda {
-GLInteropResource::GLInteropResource(CUdevice d, CUvideodecoder decoder, CUvideoctxlock lk)
-    : InteropResource(d, decoder, lk)
-{}
-
 bool GLInteropResource::map(int picIndex, const CUVIDPROCPARAMS &param, GLuint tex, int w, int h, int H, int plane)
 {
     AutoCtxLock locker((cuda_api*)this, lock);

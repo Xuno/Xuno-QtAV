@@ -2,6 +2,7 @@
 
 copy /y %QTDIR%\bin\av*.dll bin
 copy /y %QTDIR%\bin\sw*.dll bin
+if exist %QTDIR%\bin\ass.dll copy /y %QTDIR%\bin\ass.dll bin
 if exist %QTDIR%\bin\libass.dll copy /y %QTDIR%\bin\libass.dll bin
 if exist %QTDIR%\bin\po*.dll copy /y %QTDIR%\bin\po*.dll bin
 if exist %QTDIR%\bin\msvc*.dll copy /y %QTDIR%\bin\msvc*.dll bin
@@ -23,12 +24,14 @@ if "%mode%" == "debug" (
   if exist %QTDIR%\plugins\platforms xcopy /syi %QTDIR%\plugins\platforms bin\plugins\platforms > NUL
   if exist %QTDIR%\plugins\imageformats xcopy /syi %QTDIR%\plugins\imageformats bin\plugins\imageformats > NUL
   if exist %QTDIR%\plugins\iconengines xcopy /syi %QTDIR%\plugins\iconengines bin\plugins\iconengines > NUL
+  if exist %QTDIR%\plugins\sqldrivers xcopy /syi %QTDIR%\plugins\sqldrivers bin\plugins\sqldrivers > NUL
   if exist %QTDIR%\qml\Qt xcopy /syi %QTDIR%\qml\Qt bin\qml\Qt > NUL
   if exist %QTDIR%\qml\QtQml xcopy /syi %QTDIR%\qml\QtQml bin\qml\QtQml > NUL
   if exist %QTDIR%\qml\QtQuick xcopy /syi %QTDIR%\qml\QtQuick bin\qml\QtQuick > NUL
   if exist %QTDIR%\bin\Qt5Core.dll copy /y %QTDIR%\bin\Qt5Core.dll bin
   if exist %QTDIR%\bin\Qt5Gui.dll copy /y %QTDIR%\bin\Qt5Gui.dll bin
   if exist %QTDIR%\bin\Qt5OpenGL.dll copy /y %QTDIR%\bin\Qt5OpenGL.dll bin
+  if exist %QTDIR%\bin\Qt5Sql.dll copy /y %QTDIR%\bin\Qt5Sql.dll bin
   if exist %QTDIR%\bin\Qt5Svg.dll copy /y %QTDIR%\bin\Qt5Svg.dll bin
   if exist %QTDIR%\bin\Qt5Widgets.dll copy /y %QTDIR%\bin\Qt5Widgets.dll bin
   if exist %QTDIR%\bin\Qt5Network.dll copy /y %QTDIR%\bin\Qt5Network.dll bin
@@ -38,6 +41,7 @@ if "%mode%" == "debug" (
   if exist bin\lib*GL*d.dll del bin\lib*GL*d.dll
 :: delete debug dlls. assume no *dd.dll
   forfiles /S /M *d.dll /P bin /C "cmd /C del @path"
+  forfiles /S /M *.pdb /P bin /C "cmd /C del @path"
 )
 dir bin
 xcopy /syi tools\install_sdk\mkspecs mkspecs

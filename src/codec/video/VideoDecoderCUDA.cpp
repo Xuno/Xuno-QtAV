@@ -88,8 +88,7 @@ public:
     VideoDecoderId id() const Q_DECL_OVERRIDE;
     QString description() const Q_DECL_OVERRIDE;
     void flush() Q_DECL_OVERRIDE;
-    QTAV_DEPRECATED bool decode(const QByteArray &encoded) Q_DECL_FINAL;
-    bool decode(const Packet &packet) Q_DECL_OVERRIDE Q_DECL_FINAL;
+    bool decode(const Packet &packet) Q_DECL_OVERRIDE;
     virtual VideoFrame frame() Q_DECL_OVERRIDE;
 
     // properties
@@ -160,7 +159,7 @@ public:
       , deinterlace(cudaVideoDeinterlaceMode_Adaptive)
       , yuv_range(ColorRange_Limited)
       , nb_dec_surface(kMaxDecodeSurfaces)
-      , copy_mode(VideoDecoderCUDA::GenericCopy) //TODO: check whether intel driver is used
+      , copy_mode(VideoDecoderCUDA::DirectCopy)
     {
 #if QTAV_HAVE(DLLAPI_CUDA)
         can_load = dllapi::testLoad("nvcuvid");
@@ -182,6 +181,7 @@ public:
             return;
         if (!isLoaded()) //cuda_api
             return;
+        interop_res = cuda::InteropResourcePtr();
     }
     ~VideoDecoderCUDAPrivate() {
         if (bitstream_filter_ctx)
@@ -199,6 +199,30 @@ public:
     bool initCuda();
     bool releaseCuda();
     bool createCUVIDDecoder(cudaVideoCodec cudaCodec, int cw, int ch);
+    void createInterop() {
+        if (copy_mode == VideoDecoderCUDA::ZeroCopy) {
+#if QTAV_HAVE(CUDA_GL)
+            if (!OpenGLHelper::isOpenGLES())
+                interop_res = cuda::InteropResourcePtr(new cuda::GLInteropResource());
+#endif //QTAV_HAVE(CUDA_GL)
+#if QTAV_HAVE(CUDA_EGL)
+            if (OpenGLHelper::isOpenGLES())
+                interop_res = cuda::InteropResourcePtr(new cuda::EGLInteropResource());
+#endif //QTAV_HAVE(CUDA_EGL)
+        }
+#ifndef QT_NO_OPENGL
+        else if (copy_mode == VideoDecoderCUDA::DirectCopy) {
+            interop_res = cuda::InteropResourcePtr(new cuda::HostInteropResource());
+        }
+#endif //QT_NO_OPENGL
+        if (!interop_res)
+            return;
+        interop_res->setDevice(cudev);
+        interop_res->setShareContext(cuctx); //it not share the context, interop res will create it's own context, context switch is slow
+        interop_res->setDecoder(dec);
+        interop_res->setLock(vid_ctx_lock);
+    }
+
     bool createCUVIDParser();
     bool flushParser();
     bool processDecodedData(CUVIDPARSERDISPINFO *cuviddisp, VideoFrame* outFrame = 0);
@@ -244,6 +268,7 @@ public:
             // how about parser.ulMaxNumDecodeSurfaces? recreate?
             AVCodecID codec = mapCodecToFFmpeg(cuvidfmt->codec);
             p->setBSF(codec);
+            p->createInterop();
         }
         //TODO: lavfilter
         return 1;
@@ -312,7 +337,7 @@ VideoDecoderCUDA::VideoDecoderCUDA():
     setProperty("detail_copyMode", QString("%1\n%2\n%3\%4")
                 .arg(tr("Performace: ZeroCopy > DirectCopy > GenericCopy"))
                 .arg(tr("ZeroCopy: no copy back from GPU to System memory. Directly render the decoded data on GPU"))
-                .arg(tr("DirectCopy: copy back to host memory but video frames use the same host memory address and maybe not safe"))
+                .arg(tr("DirectCopy: copy back to host memory but video frames and map to GL texture"))
                 .arg(tr("GenericCopy: copy back to host memory and each video frame"))
                 );
     Q_UNUSED(QObject::tr("ZeroCopy"));
@@ -343,55 +368,6 @@ void VideoDecoderCUDA::flush()
     DPTR_D(VideoDecoderCUDA);
     d.frame_queue.clear();
     d.surface_in_use.fill(false);
-}
-
-bool VideoDecoderCUDA::decode(const QByteArray &encoded)
-{
-    if (!isAvailable())
-        return false;
-    DPTR_D(VideoDecoderCUDA);
-    if (!d.parser) {
-        qWarning("CUVID parser not ready");
-        return false;
-    }
-    uint8_t *outBuf = 0;
-    int outBufSize = 0;
-    // h264_mp4toannexb_filter does not use last parameter 'keyFrame', so just set 0
-    //return: 0: not changed, no outBuf allocated. >0: ok. <0: fail
-    int filtered = av_bitstream_filter_filter(d.bitstream_filter_ctx, d.codec_ctx, NULL, &outBuf, &outBufSize
-                                              , (const uint8_t*)encoded.constData(), encoded.size()
-                                              , 0);//d.is_keyframe);
-    //qDebug("%s @%d filtered=%d outBuf=%p, outBufSize=%d", __FUNCTION__, __LINE__, filtered, outBuf, outBufSize);
-    if (filtered < 0) {
-        qDebug("failed to filter: %s", av_err2str(filtered));
-    }
-    unsigned char *payload = outBuf;
-    unsigned long payload_size = outBufSize;
-#if 0 // see ffmpeg.c. FF_INPUT_BUFFER_PADDING_SIZE for alignment issue
-    QByteArray data_with_pad;
-    if (filtered > 0) {
-        data_with_pad.resize(outBufSize + FF_INPUT_BUFFER_PADDING_SIZE);
-        data_with_pad.fill(0);
-        memcpy(data_with_pad.data(), outBuf, outBufSize);
-        payload = (unsigned char*)data_with_pad.constData();
-        payload_size = data_with_pad.size();
-    }
-#endif
-    CUVIDSOURCEDATAPACKET cuvid_pkt;
-    memset(&cuvid_pkt, 0, sizeof(CUVIDSOURCEDATAPACKET));
-    cuvid_pkt.payload = payload;// (unsigned char *)encoded.constData();
-    cuvid_pkt.payload_size = payload_size; //encoded.size();
-    cuvid_pkt.flags = CUVID_PKT_TIMESTAMP;
-    cuvid_pkt.timestamp = 0;// ?
-    //TODO: fill NALU header for h264? https://devtalk.nvidia.com/default/topic/515571/what-the-data-format-34-cuvidparsevideodata-34-can-accept-/
-    d.doParseVideoData(&cuvid_pkt);
-    if (filtered > 0) {
-        av_freep(&outBuf);
-    }
-    // callbacks are in the same thread as this. so no queue is required?
-    //qDebug("frame queue size on decode: %d", d.frame_queue.size());
-    return !d.frame_queue.isEmpty();
-    // video thread: if dec.hasFrame() keep pkt for the next loop and not decode, direct display the frame
 }
 
 bool VideoDecoderCUDA::decode(const Packet &packet)
@@ -520,11 +496,15 @@ bool VideoDecoderCUDAPrivate::open()
     if (!isLoaded()) //cuda_api
         return false;
     if (!cuctx)
-        available = initCuda();
+        initCuda();
     setBSF(codec_ctx->codec_id);
     // max decoder surfaces is computed in createCUVIDDecoder. createCUVIDParser use the value
-    return createCUVIDDecoder(mapCodecFromFFmpeg(codec_ctx->codec_id), codec_ctx->coded_width, codec_ctx->coded_height)
-            && createCUVIDParser();
+    if (!createCUVIDDecoder(mapCodecFromFFmpeg(codec_ctx->codec_id), codec_ctx->coded_width, codec_ctx->coded_height))
+        return false;
+    if (!createCUVIDParser())
+        return false;
+    available = true;
+    return true;
 }
 
 bool VideoDecoderCUDAPrivate::initCuda()
@@ -541,7 +521,7 @@ bool VideoDecoderCUDAPrivate::initCuda()
     description = QStringLiteral("CUDA device: %1 %2.%3 %4 MHz @%5").arg(QLatin1String((const char*)devname)).arg(major).arg(minor).arg(clockRate/1000).arg(cudev);
 
     // cuD3DCtxCreate > cuGLCtxCreate(deprecated) > cuCtxCreate (fallback if d3d and gl return status is failed)
-    CUDA_ENSURE(cuCtxCreate(&cuctx, CU_CTX_SCHED_BLOCKING_SYNC, cudev), false); //CU_CTX_SCHED_AUTO?
+    CUDA_ENSURE(cuCtxCreate(&cuctx, CU_CTX_SCHED_BLOCKING_SYNC, cudev), false); //CU_CTX_SCHED_AUTO: slower in my test
     CUDA_ENSURE(cuCtxPopCurrent(&cuctx), false);
     CUDA_ENSURE(cuvidCtxLockCreate(&vid_ctx_lock, cuctx), 0);
     {
@@ -560,7 +540,7 @@ bool VideoDecoderCUDAPrivate::releaseCuda()
 {
     available = false;
     if (cuctx)
-        CUDA_WARN(cuCtxPushCurrent(cuctx)); //cuMemFreeHost need the context
+        CUDA_WARN(cuCtxPushCurrent(cuctx)); //cuMemFreeHost need the context of cuMemAllocHost which was called in VideoThread, while releaseCuda() in dtor can be called in any thread
     if (!can_load)
         return true;
     if (dec) {
@@ -634,19 +614,6 @@ bool VideoDecoderCUDAPrivate::createCUVIDDecoder(cudaVideoCodec cudaCodec, int c
     available = false;
     CUDA_ENSURE(cuvidCreateDecoder(&dec, &dec_create_info), false);
     available = true;
-    if (copy_mode == VideoDecoderCUDA::ZeroCopy) {
-#if QTAV_HAVE(CUDA_GL)
-        // TODO: runtime gles check
-        if (!OpenGLHelper::isOpenGLES())
-            interop_res = cuda::InteropResourcePtr(new cuda::GLInteropResource(cudev, dec, vid_ctx_lock));
-#endif //QTAV_HAVE(CUDA_GL)
-#if QTAV_HAVE(CUDA_EGL)
-        // TODO: runtime gles check
-        if (OpenGLHelper::isOpenGLES())
-            interop_res = cuda::InteropResourcePtr(new cuda::EGLInteropResource(cudev, dec, vid_ctx_lock));
-#endif //QTAV_HAVE(CUDA_EGL)
-
-    }
     return true;
 }
 
@@ -765,8 +732,8 @@ bool VideoDecoderCUDAPrivate::processDecodedData(CUVIDPARSERDISPINFO *cuviddisp,
         //qDebug("cuCtxPopCurrent %p", cuctx);
 
         VideoFrame frame;
-        if (copy_mode == VideoDecoderCUDA::ZeroCopy && interop_res) {
-            if (OpenGLHelper::isOpenGLES()) {
+        if (copy_mode != VideoDecoderCUDA::GenericCopy && interop_res) {
+            if (OpenGLHelper::isOpenGLES() && copy_mode == VideoDecoderCUDA::ZeroCopy) {
                 proc_params.Reserved[0] = pitch; // TODO: pass pitch to setSurface()
                 frame = VideoFrame(codec_ctx->width, codec_ctx->height, VideoFormat::Format_RGB32);
                 frame.setBytesPerLine(codec_ctx->width * 4); //used by gl to compute texture size

@@ -69,6 +69,7 @@
  * use action's value to set player's parameters when start to play a new file
  */
 
+
 #define AVDEBUG() \
     qDebug("%s %s @%d", __FILE__, __FUNCTION__, __LINE__);
 
@@ -206,7 +207,7 @@ void MainWindow::initPlayer()
     connect(mpVideoEQ, SIGNAL(filterSharpChanged(int)),  this, SLOT(onFilterSharpChanged(int)));
 
 
-    connect(mpCaptureBtn, SIGNAL(clicked()), mpPlayer->videoCapture(), SLOT(request()));
+    connect(mpCaptureBtn, SIGNAL(clicked()), mpPlayer->videoCapture(), SLOT(capture()));
 
     emit ready(); //emit this signal after connection. otherwise the slots may not be called for the first time
 }
@@ -714,9 +715,8 @@ void MainWindow::setupUi()
     connect(mpPlayPauseBtn, SIGNAL(clicked()), SLOT(togglePlayPause()));
     connect(mpInfoBtn, SIGNAL(clicked()), SLOT(showInfo()));
     //valueChanged can be triggered by non-mouse event
-    //TODO: connect sliderMoved(int) to preview(int)
+    connect(mpTimeSlider, SIGNAL(sliderMoved(int)), SLOT(seek(int)));
     connect(mpTimeSlider, SIGNAL(sliderPressed()), SLOT(seek()));
-    connect(mpTimeSlider, SIGNAL(sliderReleased()), SLOT(seek()));
     connect(mpTimeSlider, SIGNAL(onLeave()), SLOT(onTimeSliderLeave()));
     connect(mpTimeSlider, SIGNAL(onHover(int,int)), SLOT(onTimeSliderHover(int,int)));
     //connect(mpWebBtn, SIGNAL(clicked()), SLOT(onXunoBrowser()));
@@ -928,6 +928,7 @@ void MainWindow::play(const QString &name)
 
     setClockType();
 
+    qDebug() << Config::instance().avformatOptions();
     PlayListItem item;
     item.setUrl(mFile);
     item.setTitle(mTitle);
@@ -1174,13 +1175,13 @@ void MainWindow::onSpeedChange(qreal speed)
     mpSpeed->setText(QString::fromLatin1("%1").arg(speed, 4, 'f', 2, QLatin1Char('0')));
 }
 
-void MainWindow::seek()
+void MainWindow::seek(int value)
 {
     mpPlayer->setSeekType(AccurateSeek);
-    mpPlayer->seek((qint64)mpTimeSlider->value());
+    mpPlayer->seek((qint64)value);
     if (!m_preview || !Config::instance().previewEnabled())
         return;
-    m_preview->setTimestamp(mpTimeSlider->value());
+    m_preview->setTimestamp(value);
     m_preview->preview();
     m_preview->setWindowFlags(m_preview->windowFlags() |Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
     m_preview->resize(Config::instance().previewWidth(), Config::instance().previewHeight());
@@ -1195,6 +1196,11 @@ void MainWindow::seek(qint64 msec)
 void MainWindow::seek(QTime time)
 {
     mpPlayer->seek((qint64)QTime(0,0,0).msecsTo(time));
+}
+
+void MainWindow::seek()
+{
+    seek(mpTimeSlider->value());
 }
 
 void MainWindow::showHideVolumeBar()
@@ -1356,8 +1362,10 @@ void MainWindow::wheelEvent(QWheelEvent *e)
     if (!mpRenderer || !mpRenderer->widget()) {
         return;
     }
+    QPoint dp;
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     qreal deg = e->angleDelta().y()/8;
+    dp = e->pixelDelta();
 #else
     qreal deg = e->delta()/8;
 #endif //QT_VERSION
@@ -1381,9 +1389,10 @@ void MainWindow::wheelEvent(QWheelEvent *e)
 
     QRectF viewport = QRectF(mpRenderer->mapToFrame(QPointF(0, 0)), mpRenderer->mapToFrame(QPointF(mpRenderer->rendererWidth(), mpRenderer->rendererHeight())));
     //qDebug("vo: (%.1f, %.1f)=> frame: (%.1f, %.1f)", p.x(), p.y(), fp.x(), fp.y());
-
     qreal zoom = 1.0 + deg*3.14/180.0;
-    //qDebug("deg: %d, %d zoom: %.2f", e->angleDelta().x(), e->angleDelta().y(), zoom);
+    if (!dp.isNull()) {
+        zoom = 1.0 + (qreal)dp.y()/100.0;
+    }
     QTransform m;
     m.translate(fp.x(), fp.y());
     m.scale(1.0/zoom, 1.0/zoom);

@@ -1,8 +1,8 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2013-2016 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
-*   This file is part of QtAV
+*   This file is part of QtAV (from 2013)
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -18,9 +18,14 @@
     License along with this library; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
-
+//if qt<5.3, remove lines: sed '/\/\/IF_QT53/,/\/\/ENDIF_QT53/d'
 import QtQuick 2.0
+//IF_QT53
 import QtQuick.Dialogs 1.2
+/*
+//ENDIF_QT53
+import QtQuick.Dialogs 1.1 /*
+*/
 //import QtMultimedia 5.0
 import QtAV 1.6
 import QtQuick.Window 2.1
@@ -213,11 +218,32 @@ Rectangle {
             onDoubleClicked: {
                 control.toggleVisible()
             }
+            onClicked: {
+                if (playList.state === "show")
+                    return
+                if (playList.state === "hide")
+                    playList.state = "ready"
+                else
+                    playList.state = "hide"
+
+            }
+
             onMouseXChanged: {
-                if (root.width - mouseX < configPanel.width) {
+                if (mouseX > root.width || mouseX < 0
+                        || mouseY > root.height || mouseY < 0)
+                    return;
+                if (mouseX < Utils.scaled(20)) {
+                    if (playList.state === "hide") {
+                        playList.state = "ready"
+                    }
+                }
+
+                if (root.width - mouseX < configPanel.width) { //qt5.6 mouseX is very large if mouse released
+                    //console.log("configPanel show: root width: " + root.width + " mouseX: " + mouseX + "panel width: " + configPanel.width)
                     configPanel.state = "show"
                 } else {
                     configPanel.state = "hide"
+                    //console.log("configPanel hide: root width: " + root.width + " mouseX: " + mouseX + "panel width: " + configPanel.width)
                 }
                 if (player.playbackState == MediaPlayer.StoppedState || !player.hasVideo)
                     return;
@@ -348,11 +374,12 @@ Rectangle {
     Item {
         id: configPage
         anchors.right: configPanel.left
-        anchors.rightMargin: 10
+        anchors.rightMargin: -configPanel.anchors.rightMargin*Utils.scaled(20)/configPanel.width
         //anchors.bottom: control.top
         y: Math.max(0, Math.min(configPanel.selectedY, root.height - pageLoader.height - control.height))
-        width: parent.width < 4*configPanel.width ? parent.width - configPanel.width : parent.width/2 + configPanel.width
-        height: Utils.scaled(200)
+        width: parent.width < 4*configPanel.width ? parent.width - configPanel.width : parent.width/2 + configPanel.width -16
+       // height: maxHeight
+        readonly property real maxHeight: control.y //- Math.max(0, configPanel.selectedY)
         Loader {
             id: pageLoader
             anchors.right: parent.right
@@ -361,6 +388,7 @@ Rectangle {
             onLoaded: {
                 if (!item)
                     return
+                item.maxHeight = configPage.maxHeight
                 if (item.information) {
                     item.information = {
                         source: player.source,
@@ -388,18 +416,6 @@ Rectangle {
             onExternalAudioChanged: player.externalAudio = file
             onAudioTrackChanged: player.audioTrack = track
             onSubtitleTrackChanged: player.internalSubtitleTrack = track
-            onZeroCopyChanged: {
-                var opt = player.videoCodecOptions
-                if (value) {
-                    opt["copyMode"] = "ZeroCopy"
-                } else {
-                    if (Qt.platform.os == "osx")
-                        opt["copyMode"] = "LazyCopy"
-                    else
-                        opt["copyMode"] = "OptimizedCopy"
-                }
-                player.videoCodecOptions = opt
-            }
         }
     }
     ConfigPanel {
@@ -416,35 +432,32 @@ Rectangle {
                 pageLoader.item.visible = true
         }
         onSelectedUrlChanged: pageLoader.source = selectedUrl
-        states: [
-            State {
-                name: "show"
-                PropertyChanges {
-                    target: configPanel
-                    opacity: 0.9
-                    anchors.rightMargin: 0
-                }
-            },
-            State {
-                name: "hide"
-                PropertyChanges {
-                    target: configPanel
-                    opacity: 0
-                    anchors.rightMargin: -configPanel.width
-                }
-            }
-        ]
-        transitions: [
-            Transition {
-                from: "*"; to: "*"
-                PropertyAnimation {
-                    properties: "opacity,anchors.rightMargin"
-                    easing.type: Easing.OutQuart
-                    duration: 500
-                }
-            }
-        ]
     }
+
+    PlayListPanel {
+        id: playList
+        anchors {
+            top: parent.top
+            left: parent.left
+            bottom: control.top
+        }
+        width: Math.min(parent.width, Utils.scaled(480)) - Utils.scaled(20)
+        Connections {
+            target: player
+            // onStatusChanged: too late to call status is wrong value
+            onDurationChanged: {
+                if (player.duration <= 0)
+                    return
+                playList.addHistory(player.source.toString(), player.duration)
+            }
+        }
+        onPlay: {
+            player.source = source
+            if (start > 0)
+                player.seek(start)
+        }
+    }
+
     ControlPanel {
         id: control
         anchors {
@@ -479,14 +492,17 @@ Rectangle {
         }
         volume: player.volume
         onOpenFile: fileDialog.open()
+        //IF_QT53
         onOpenUrl: urlDialog.open()
+        //ENDIF_QT53
         onShowInfo: pageLoader.source = "MediaInfoPage.qml"
         onShowHelp: pageLoader.source = "About.qml"
     }
+//IF_QT53
     Dialog {
         id: urlDialog
         standardButtons: StandardButton.Open | StandardButton.Cancel
-        title: qsTr("Open a url")
+        title: qsTr("Open a URL")
         Rectangle {
             color: "black"
             anchors.top: parent.top
@@ -501,22 +517,47 @@ Rectangle {
         }
         onAccepted: player.source = urlEdit.displayText
     }
-
+//ENDIF_QT53
     FileDialog {
         id: fileDialog
         title: "Please choose a media file"
+        selectMultiple: true
         folder: PlayerConfig.lastFile
         onAccepted: {
-            PlayerConfig.lastFile = fileUrl.toString()
-            player.source = fileDialog.fileUrl
-            //player.stop() //remove this if autoLoad works
-            //player.play()
+            var sub, av
+            for (var i = 0; i < fileUrls.length; ++i) {
+                var s = fileUrls[i].toString()
+                if (s.endsWith(".srt")
+                        || s.endsWith(".ass")
+                        || s.endsWith(".ssa")
+                        || s.endsWith(".sub")
+                        || s.endsWith(".idx") //vob
+                        || s.endsWith(".mpl2")
+                        || s.endsWith(".smi")
+                        || s.endsWith(".sami")
+                        || s.endsWith(".sup")
+                        || s.endsWith(".txt"))
+                    sub = fileUrls[i]
+                else
+                    av = fileUrls[i]
+            }
+            if (sub) {
+                subtitle.autoLoad = false
+                subtitle.file = sub
+            } else {
+                subtitle.autoLoad = PlayerConfig.subtitleAutoLoad
+                subtitle.file = ""
+            }
+            if (av) {
+                player.source = av
+                PlayerConfig.lastFile = av
+            }
         }
     }
     Connections {
         target: Qt.application
         onStateChanged: { //since 5.1
-            if (Qt.platform.os !== "android")
+            if (Qt.platform.os === "winrt" || Qt.platform.os === "winphone") //paused by system
                 return
             // winrt is handled by system
             switch (Qt.application.state) {
@@ -527,6 +568,18 @@ Rectangle {
             default:
                 break
             }
+        }
+    }
+    Connections {
+        target: PlayerConfig
+        onZeroCopyChanged: {
+            var opt = player.videoCodecOptions
+            if (PlayerConfig.zeroCopy) {
+                opt["copyMode"] = "ZeroCopy"
+            } else {
+                opt["copyMode"] = "OptimizedCopy"
+            }
+            player.videoCodecOptions = opt
         }
     }
 }

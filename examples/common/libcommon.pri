@@ -153,7 +153,7 @@ defineTest(genRC) {
     QMAKE_TARGET_COMPANY = "Aaex Corp. http://www.xuno.com. https://github.com/Xuno/Xuno-QtAV"
     QMAKE_TARGET_DESCRIPTION = "XunoPlayer"
     QMAKE_TARGET_COPYRIGHT = ""
-    QMAKE_TARGET_PRODUCT = "Xuno-QtAV player"
+    QMAKE_TARGET_PRODUCT = "Xuno-QtAV player $$1"
     export(RC_ICONS)
     export(QMAKE_TARGET_COMPANY)
     export(QMAKE_TARGET_DESCRIPTION)

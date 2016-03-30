@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
@@ -25,6 +25,7 @@
 #include <QtCore/QRegExp>
 #include "QtAV/version.h"
 #include "QtAV/private/AVCompat.h"
+#include "utils/internal.h"
 #include "utils/Logger.h"
 
 unsigned QtAV_Version()
@@ -188,7 +189,7 @@ QString aboutQtAV_PlainText()
 
 QString aboutQtAV_HTML()
 {
-    static QString about = QString::fromLatin1("<h3>QtAV " QTAV_VERSION_STR_LONG "</h3>\n"
+    static QString about = QString::fromLatin1("<img src='qrc:/QtAV.svg'><h3>QtAV " QTAV_VERSION_STR_LONG "</h3>\n"
             "<p>%1</p><p>%2</p><p>%3</p>"
             "<p>Copyright (C) 2012-2016 Wang Bin (aka. Lucas Wang) <a href='mailto:wbsecg1@gmail.com'>wbsecg1@gmail.com</a></p>\n"
             "<p>%4: <a href='http://qtav.org/donate.html'>http://qtav.org/donate.html</a></p>\n"
@@ -244,6 +245,10 @@ void setFFmpegLogLevel(const QByteArray &level)
         Internal::gAVLogLevel = AV_LOG_VERBOSE;
     else if (level == "debug")
         Internal::gAVLogLevel = AV_LOG_DEBUG;
+#ifdef AV_LOG_TRACE
+    else if (level == "trace")
+        Internal::gAVLogLevel = AV_LOG_TRACE;
+#endif
     else
         Internal::gAVLogLevel = AV_LOG_INFO;
     av_log_set_level(Internal::gAVLogLevel);
@@ -261,6 +266,55 @@ static void qtav_ffmpeg_log_callback(void* ctx, int level,const char* fmt, va_li
         qDebug() << qPrintable(qmsg);
     else if (level > AV_LOG_PANIC)
         qWarning() << qPrintable(qmsg);
+}
+
+QString avformatOptions()
+{
+    static QString opts;
+    if (!opts.isEmpty())
+        return opts;
+    void* obj =  const_cast<void*>(reinterpret_cast<const void*>(avformat_get_class()));
+    opts = Internal::optionsToString((void*)&obj);
+    opts.append(ushort('\n'));
+    av_register_all();
+    AVInputFormat *i = NULL;
+    while ((i = av_iformat_next(i))) {
+        QString opt(Internal::optionsToString((void*)&i->priv_class).trimmed());
+        if (opt.isEmpty())
+            continue;
+        opts.append(QStringLiteral("options for input format %1:\n%2\n\n")
+                    .arg(QLatin1String(i->name))
+                    .arg(opt));
+    }
+    AVOutputFormat *o = NULL;
+    while ((o = av_oformat_next(o))) {
+        QString opt(Internal::optionsToString((void*)&o->priv_class).trimmed());
+        if (opt.isEmpty())
+            continue;
+        opts.append(QStringLiteral("options for output format %1:\n%2\n\n")
+                    .arg(QLatin1String(o->name))
+                    .arg(opt));
+    }
+    return opts;
+}
+
+QString avcodecOptions()
+{
+    static QString opts;
+    if (!opts.isEmpty())
+        return opts;
+    void* obj = const_cast<void*>(reinterpret_cast<const void*>(avcodec_get_class()));
+    opts = Internal::optionsToString((void*)&obj);
+    opts.append(ushort('\n'));
+    avcodec_register_all();
+    AVCodec* c = NULL;
+    while ((c=av_codec_next(c))) {
+        QString opt(Internal::optionsToString((void*)&c->priv_class).trimmed());
+        if (opt.isEmpty())
+            continue;
+        opts.append(QStringLiteral("Options for codec %1:\n%2\n\n").arg(QLatin1String(c->name)).arg(opt));
+    }
+    return opts;
 }
 
 #if 0
@@ -331,6 +385,44 @@ const QStringList& supportedSubtitleMimeTypes()
     return s_subtitle_mimes;
 }
 #endif
+
+
+/*
+ * AVColorSpace:
+ * libav11 libavutil54.3.0 pixfmt.h, ffmpeg2.1*libavutil52.48.101 frame.h
+ * ffmpeg2.5 pixfmt.h. AVFrame.colorspace
+ * earlier versions: avcodec.h, avctx.colorspace
+ */
+ColorSpace colorSpaceFromFFmpeg(AVColorSpace cs)
+{
+    switch (cs) {
+    // from ffmpeg: order of coefficients is actually GBR
+    case AVCOL_SPC_RGB: return ColorSpace_GBR;
+    case AVCOL_SPC_BT709: return ColorSpace_BT709;
+    case AVCOL_SPC_BT470BG: return ColorSpace_BT601;
+    case AVCOL_SPC_SMPTE170M: return ColorSpace_BT601;
+    default: return ColorSpace_Unknown;
+    }
+}
+
+ColorRange colorRangeFromFFmpeg(AVColorRange cr)
+{
+    switch (cr) {
+    case AVCOL_RANGE_MPEG: return ColorRange_Limited;
+    case AVCOL_RANGE_JPEG: return ColorRange_Full;
+    default: return ColorRange_Unknown;
+    }
+}
+
+namespace
+{
+static const struct RegisterMetaTypes {
+    RegisterMetaTypes() {
+        qRegisterMetaType<QtAV::MediaStatus>("QtAV::MediaStatus");
+    }
+} _registerMetaTypes;
+}
+
 // TODO: static link. move all into 1
 namespace {
 class InitFFmpegLog {

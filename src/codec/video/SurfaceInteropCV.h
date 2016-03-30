@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV (from 2016)
@@ -32,10 +32,14 @@ namespace cv {
 VideoFormat::PixelFormat format_from_cv(int cv);
 
 typedef uint32_t GLuint; // define here to avoid including gl headers which are not required by decoder
+typedef uint32_t GLenum;
+typedef int32_t  GLint;
+
+// FIXME: not texture if change from InteropCVOpenGLES to InteropCVPixelBuffer
 enum InteropType {
     InteropCVPixelBuffer,   // osx+ios
     InteropIOSurface,       // osx
-    InteropCVOpenGL,        // osx
+    InteropCVOpenGL,        // osx, not implemented
     InteropCVOpenGLES,       // ios
     InteropAuto
 };
@@ -43,6 +47,7 @@ enum InteropType {
 class InteropResource
 {
 public:
+    InteropResource();
     // Must have CreateInteropXXX in each implemention
     static InteropResource* create(InteropType type);
     virtual ~InteropResource() {}
@@ -57,13 +62,13 @@ public:
     /*!
      * \brief map
      * \param buf vt decoded buffer
-     * \param tex opengl texture
+     * \param texInOut opengl texture. You can modify it
      * \param w frame width(visual width) without alignment, <= dxva surface width
      * \param h frame height(visual height)
      * \param plane useless now
      * \return true if success
      */
-    virtual bool map(CVPixelBufferRef buf, GLuint tex, int w, int h, int plane) = 0;
+    virtual bool map(CVPixelBufferRef buf, GLuint *texInOut, int w, int h, int plane) = 0;
     virtual bool unmap(CVPixelBufferRef buf, GLuint tex) {
         Q_UNUSED(buf);
         Q_UNUSED(tex);
@@ -76,6 +81,12 @@ public:
         Q_UNUSED(planeHeight);
         return 0;
     }
+    void getParametersGL(OSType cvpixfmt, GLint* internalFormat, GLenum* format, GLenum* dataType, int plane = 0);
+private:
+    OSType m_cvfmt;
+    GLint m_iformat[4];
+    GLenum m_format[4];
+    GLenum m_dtype[4];
 };
 typedef QSharedPointer<InteropResource> InteropResourcePtr;
 

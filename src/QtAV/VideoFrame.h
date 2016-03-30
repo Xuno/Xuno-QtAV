@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
@@ -23,7 +23,6 @@
 #define QTAV_VIDEOFRAME_H
 
 #include <QtAV/QtAV_Global.h>
-#include <QtAV/CommonTypes.h>
 #include <QtAV/Frame.h>
 #include <QtAV/VideoFormat.h>
 #include <QtCore/QSize>
@@ -52,9 +51,8 @@ public:
 
     VideoFrame();
     //must set planes and linesize manually if data is empty
+    // must set planes and linesize manually
     VideoFrame(int width, int height, const VideoFormat& format, const QByteArray& data = QByteArray());
-    //set planes and linesize manually or call init
-    QTAV_DEPRECATED VideoFrame(const QByteArray& data, int width, int height, const VideoFormat& format);
     VideoFrame(const QImage& image);
     VideoFrame(const VideoFrame &other);
     ~VideoFrame();

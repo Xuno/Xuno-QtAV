@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV (from 2016)
@@ -21,7 +21,7 @@
 
 #include "SurfaceInteropCV.h"
 #include "QtAV/VideoFrame.h"
-#include "utils/OpenGLHelper.h"
+#include "opengl/OpenGLHelper.h"
 
 namespace QtAV {
 typedef struct {
@@ -57,6 +57,7 @@ VideoFormat::PixelFormat format_from_cv(int cv)
 extern InteropResource* CreateInteropCVPixelbuffer();
 extern InteropResource* CreateInteropIOSurface();
 extern InteropResource* CreateInteropCVOpenGL();
+extern InteropResource* CreateInteropCVOpenGLES();
 InteropResource* InteropResource::create(InteropType type)
 {
     if (type == InteropAuto) {
@@ -64,6 +65,7 @@ InteropResource* InteropResource::create(InteropType type)
         type = InteropIOSurface;
 #else
         type = InteropCVPixelBuffer;
+        type = InteropCVOpenGLES;
 #endif
     }
     switch (type) {
@@ -71,10 +73,20 @@ InteropResource* InteropResource::create(InteropType type)
 #ifdef Q_OS_MACX
     case InteropIOSurface: return CreateInteropIOSurface();
     //case InteropCVOpenGL: return CreateInteropCVOpenGL();
+#else
+    case InteropCVOpenGLES: return CreateInteropCVOpenGLES();
 #endif
     default: return NULL;
     }
     return NULL;
+}
+
+InteropResource::InteropResource()
+    : m_cvfmt(0)
+{
+    memset(m_iformat, 0, sizeof(m_iformat));
+    memset(m_format, 0, sizeof(m_format));
+    memset(m_dtype, 0, sizeof(m_dtype));
 }
 
 bool InteropResource::stridesForWidth(int cvfmt, int width, int *strides, VideoFormat::PixelFormat *outFmt)
@@ -106,6 +118,18 @@ bool InteropResource::stridesForWidth(int cvfmt, int width, int *strides, VideoF
     return true;
 }
 
+void InteropResource::getParametersGL(OSType cvpixfmt, GLint *internalFormat, GLenum *format, GLenum *dataType, int plane)
+{
+    if (cvpixfmt != m_cvfmt) {
+        const VideoFormat fmt(format_from_cv(cvpixfmt));
+        OpenGLHelper::videoFormatToGL(fmt, m_iformat, m_format, m_dtype);
+        m_cvfmt = cvpixfmt;
+    }
+    *internalFormat = m_iformat[plane];
+    *format = m_format[plane];
+    *dataType = m_dtype[plane];
+}
+
 void SurfaceInteropCV::setSurface(CVPixelBufferRef buf, int w, int h)
 {
     m_surface = buf;
@@ -127,7 +151,7 @@ void* SurfaceInteropCV::map(SurfaceType type, const VideoFormat &fmt, void *hand
     if (!m_surface)
         return 0;
     if (type == GLTextureSurface) {
-        if (m_resource->map(m_surface, *((GLuint*)handle), frame_width, frame_height, plane))
+        if (m_resource->map(m_surface, (GLuint*)handle, frame_width, frame_height, plane))
             return handle;
     } else if (type == HostMemorySurface) {
         return mapToHost(fmt, handle, plane);
@@ -193,7 +217,7 @@ void* SurfaceInteropCV::mapToHost(const VideoFormat &format, void *handle, int p
 class InteropResourceCVPixelBuffer Q_DECL_FINAL : public InteropResource
 {
 public:
-    bool map(CVPixelBufferRef buf, GLuint tex, int w, int h, int plane) Q_DECL_OVERRIDE;
+    bool map(CVPixelBufferRef buf, GLuint *tex, int w, int h, int plane) Q_DECL_OVERRIDE;
 };
 
 InteropResource* CreateInteropCVPixelbuffer()
@@ -201,31 +225,23 @@ InteropResource* CreateInteropCVPixelbuffer()
     return new InteropResourceCVPixelBuffer();
 }
 
-bool InteropResourceCVPixelBuffer::map(CVPixelBufferRef buf, GLuint tex, int w, int h, int plane)
+bool InteropResourceCVPixelBuffer::map(CVPixelBufferRef buf, GLuint *tex, int w, int h, int plane)
 {
     Q_UNUSED(h);
     Q_UNUSED(w);
     CVPixelBufferLockBaseAddress(buf, 0);
-    GLint iformat[4]; //TODO: compute once only if cfbuf format changed
-    GLenum format[4];
-    GLenum dtype[4];
-    const VideoFormat fmt(format_from_cv(CVPixelBufferGetPixelFormatType(buf)));
-    OpenGLHelper::videoFormatToGL(fmt, iformat, format, dtype);
-    // TODO: move the followings to videoFormatToGL()?
-    if (plane > 1 && format[2] == GL_LUMINANCE && fmt.bytesPerPixel(1) == 1) { // QtAV uses the same shader for planar and semi-planar yuv format
-        iformat[2] = format[2] = GL_ALPHA;
-        if (plane == 4)
-            iformat[3] = format[3] = format[2]; // vec4(,,,A)
-    }
-    const int texture_w = CVPixelBufferGetBytesPerRowOfPlane(buf, plane)/OpenGLHelper::bytesOfGLFormat(format[plane], dtype[plane]);
+    GLint iformat;
+    GLenum format, dtype;
+    getParametersGL(CVPixelBufferGetPixelFormatType(buf), &iformat, &format, &dtype, plane); //TODO: call once when format changed
+    const int texture_w = CVPixelBufferGetBytesPerRowOfPlane(buf, plane)/OpenGLHelper::bytesOfGLFormat(format, dtype);
     //qDebug("cv plane%d width: %d, stride: %d, tex width: %d", plane, CVPixelBufferGetWidthOfPlane(buf, plane), CVPixelBufferGetBytesPerRowOfPlane(buf, plane), texture_w);
     // get address results in internal copy
-    DYGL(glBindTexture(GL_TEXTURE_2D, tex));
+    DYGL(glBindTexture(GL_TEXTURE_2D, *tex));
     DYGL(glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0
                          , texture_w
                          , CVPixelBufferGetHeightOfPlane(buf, plane)
-                         , format[plane]
-                         , dtype[plane]
+                         , format
+                         , dtype
                          , (uint8_t*)CVPixelBufferGetBaseAddressOfPlane(buf, plane)));
     CVPixelBufferUnlockBaseAddress(buf, 0);
     return true;

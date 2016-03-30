@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
@@ -463,21 +463,8 @@ QRegion VideoRenderer::backgroundRegion() const
     return QRegion(0, 0, rendererWidth(), rendererHeight()) - QRegion(d_func().out_rect);
 }
 
-bool VideoRenderer::needUpdateBackground() const
-{
-    DPTR_D(const VideoRenderer);
-    const QRect rendererRect(QPoint(), rendererSize());
-    return d.update_background || !d.video_frame.isValid()
-            || d.out_rect.intersected(rendererRect)  != rendererRect;
-}
-
 void VideoRenderer::drawBackground()
 {
-}
-
-bool VideoRenderer::needDrawFrame() const
-{
-    return d_func().video_frame.isValid();
 }
 
 void VideoRenderer::handlePaintEvent()
@@ -489,7 +476,8 @@ void VideoRenderer::handlePaintEvent()
         //lock is required only when drawing the frame
         QMutexLocker locker(&d.img_mutex);
         Q_UNUSED(locker);
-        if (!d.filters.isEmpty() && d.statistics) {
+        // do not apply filters if d.video_frame is already filtered. e.g. rendering an image and resize window to repaint
+        if (!d.video_frame.metaData(QStringLiteral("gpu_filtered")).toBool() && !d.filters.isEmpty() && d.statistics) {
             // vo filter will not modify video frame, no lock required
             foreach(Filter* filter, d.filters) {
                 VideoFilter *vf = static_cast<VideoFilter*>(filter);
@@ -502,10 +490,13 @@ void VideoRenderer::handlePaintEvent()
                     continue;
                 // qpainter on video frame always runs on video thread. qpainter on renderer's paint device can work on rendering thread
                 // Here apply filters on frame on video thread, for example, GPU filters
-                if (!vf->context() || vf->context()->type() != VideoFilterContext::OpenGL)
-                    continue;
+
                 //vf->prepareContext(d.filter_context, d.statistics, 0);
+                //if (!vf->context() || vf->context()->type() != VideoFilterContext::OpenGL)
+                if (!vf->isSupported(VideoFilterContext::OpenGL))
+                    continue;
                 vf->apply(d.statistics, &d.video_frame); //painter and paint device are ready, pass video frame is ok.
+                d.video_frame.setMetaData(QStringLiteral("gpu_filtered"), true);
             }
         }
         /* begin paint. how about QPainter::beginNativePainting()?

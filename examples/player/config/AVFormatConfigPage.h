@@ -23,11 +23,11 @@
 #include "ConfigPageBase.h"
 #include <QtCore/QVariant>
 
+QT_BEGIN_NAMESPACE
 class QCheckBox;
 class QSpinBox;
 class QLineEdit;
-class QGroupBox;
-class QVBoxLayout;
+QT_END_NAMESPACE
 class AVFormatConfigPage : public ConfigPageBase
 {
     Q_OBJECT

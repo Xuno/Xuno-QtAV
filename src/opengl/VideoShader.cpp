@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV (from 2014)
@@ -21,11 +21,13 @@
 
 #include "QtAV/VideoShader.h"
 #include "QtAV/private/VideoShader_p.h"
-#include "QtAV/ColorTransform.h"
-#include "utils/OpenGLHelper.h"
+#include "ColorTransform.h"
+#include "opengl/OpenGLHelper.h"
 #include <cmath>
 #include <QtCore/QCoreApplication>
 #include <QtCore/QFile>
+#include <QtCore/QRegExp>
+#include <QtCore/QStringList>
 #include "utils/Logger.h"
 
 #define YUVA_DONE 0
@@ -34,105 +36,7 @@
 //#define QTAV_DEBUG_GLSL
 
 namespace QtAV {
-
-TexturedGeometry::TexturedGeometry(int texCount, int count, Triangle t)
-    : tri(t)
-    , points_per_tex(count)
-    , nb_tex(texCount)
-{
-    if (texCount < 1)
-        texCount = 1;
-    v.resize(nb_tex*points_per_tex);
-}
-
-void TexturedGeometry::setTextureCount(int value)
-{
-    if (value < 1)
-        value = 1;
-    if (value == nb_tex)
-        return;
-    nb_tex = value;
-    v.resize(nb_tex*points_per_tex);
-}
-
-int TexturedGeometry::textureCount() const
-{
-    return nb_tex;
-}
-
-int TexturedGeometry::size() const
-{
-    return nb_tex * textureSize();
-}
-
-int TexturedGeometry::textureSize() const
-{
-    return textureVertexCount() * stride();
-}
-
-int TexturedGeometry::mode() const
-{
-    if (tri == Strip)
-        return GL_TRIANGLE_STRIP;
-    return GL_TRIANGLE_FAN;
-}
-
-void TexturedGeometry::setPoint(int index, const QPointF &p, const QPointF &tp, int texIndex)
-{
-    setGeometryPoint(index, p, texIndex);
-    setTexturePoint(index, tp, texIndex);
-}
-
-void TexturedGeometry::setGeometryPoint(int index, const QPointF &p, int texIndex)
-{
-    v[texIndex*points_per_tex + index].x = p.x();
-    v[texIndex*points_per_tex + index].y = p.y();
-}
-
-void TexturedGeometry::setTexturePoint(int index, const QPointF &tp, int texIndex)
-{
-    v[texIndex*points_per_tex + index].tx = tp.x();
-    v[texIndex*points_per_tex + index].ty = tp.y();
-}
-
-void TexturedGeometry::setRect(const QRectF &r, const QRectF &tr, int texIndex)
-{
-    setPoint(0, r.topLeft(), tr.topLeft(), texIndex);
-    setPoint(1, r.bottomLeft(), tr.bottomLeft(), texIndex);
-    if (tri == Strip) {
-        setPoint(2, r.topRight(), tr.topRight(), texIndex);
-        setPoint(3, r.bottomRight(), tr.bottomRight(), texIndex);
-    } else {
-        setPoint(3, r.topRight(), tr.topRight(), texIndex);
-        setPoint(2, r.bottomRight(), tr.bottomRight(), texIndex);
-    }
-}
-
-void TexturedGeometry::setGeometryRect(const QRectF &r, int texIndex)
-{
-    setGeometryPoint(0, r.topLeft(), texIndex);
-    setGeometryPoint(1, r.bottomLeft(), texIndex);
-    if (tri == Strip) {
-        setGeometryPoint(2, r.topRight(), texIndex);
-        setGeometryPoint(3, r.bottomRight(), texIndex);
-    } else {
-        setGeometryPoint(3, r.topRight(), texIndex);
-        setGeometryPoint(2, r.bottomRight(), texIndex);
-    }
-}
-
-void TexturedGeometry::setTextureRect(const QRectF &tr, int texIndex)
-{
-    setTexturePoint(0, tr.topLeft(), texIndex);
-    setTexturePoint(1, tr.bottomLeft(), texIndex);
-    if (tri == Strip) {
-        setTexturePoint(2, tr.topRight(), texIndex);
-        setTexturePoint(3, tr.bottomRight(), texIndex);
-    } else {
-        setTexturePoint(3, tr.topRight(), texIndex);
-        setTexturePoint(2, tr.bottomRight(), texIndex);
-    }
-}
+extern QVector<Uniform> ParseUniforms(const QByteArray& text, GLuint programId = 0);
 
 VideoShader::VideoShader(VideoShaderPrivate &d):
     DPTR_INIT(&d)
@@ -204,9 +108,17 @@ const char* VideoShader::vertexShader() const
 #endif
     }
     vert.prepend(OpenGLHelper::compatibleShaderHeader(QOpenGLShader::Vertex));
+
+    if (userShaderHeader(QOpenGLShader::Vertex)) {
+        QByteArray header("*/");
+        header.append(userShaderHeader(QOpenGLShader::Vertex));
+        header += "/*";
+        vert.replace("%userHeader%", header);
+    }
+
 #ifdef QTAV_DEBUG_GLSL
     QString s(vert);
-    s.remove(QRegExp(QStringLiteral("(/\\*([^*]|(\\*+[^*/]))*\\*+/)")));
+    s = OpenGLHelper::removeComments(s);
     qDebug() << s.toUtf8().constData();
 #endif //QTAV_DEBUG_GLSL
     return vert.constData();
@@ -226,7 +138,8 @@ const char* VideoShader::fragmentShader() const
         qWarning("Empty fragment shader!");
         return 0;
     }
-    if (d.video_format.planeCount() == 2) //TODO: nv21 must be swapped
+    const int nb_planes = d.video_format.planeCount();
+    if (nb_planes == 2) //TODO: nv21 must be swapped
         frag.prepend("#define IS_BIPLANE\n");
     if (OpenGLHelper::hasRG() && !OpenGLHelper::useDeprecatedFormats())
         frag.prepend("#define USE_RG\n");
@@ -261,9 +174,32 @@ const char* VideoShader::fragmentShader() const
     if (textureTarget() == GL_TEXTURE_RECTANGLE)
         frag.prepend("#define MULTI_COORD\n");
     frag.prepend(OpenGLHelper::compatibleShaderHeader(QOpenGLShader::Fragment));
+
+    QByteArray header("*/");
+    if (userShaderHeader(QOpenGLShader::Fragment))
+        header.append(userShaderHeader(QOpenGLShader::Fragment));
+    header += "\n";
+    header += "uniform vec2 u_texelSize[" + QByteArray::number(nb_planes) + "];\n";
+    header += "/*";
+    frag.replace("%userHeader%", header);
+
+    if (userSample()) {
+        QByteArray sample_code("*/\n#define USER_SAMPLER\n");
+        sample_code.append(userSample());
+        sample_code += "/*";
+        frag.replace("%userSample%", sample_code);
+    }
+
+    if (userPostProcess()) {
+        QByteArray pp_code("*/");
+        pp_code.append(userPostProcess());
+        pp_code += "/*";
+        frag.replace("%userPostProcess%", pp_code);
+    }
+    frag.replace("%planes%", QByteArray::number(nb_planes));
 #ifdef QTAV_DEBUG_GLSL
     QString s(frag);
-    s.remove(QRegExp(QStringLiteral("(/\\*([^*]|(\\*+[^*/]))*\\*+/)")));
+    s = OpenGLHelper::removeComments(s);
     qDebug() << s.toUtf8().constData();
 #endif //QTAV_DEBUG_GLSL
     return frag.constData();
@@ -280,9 +216,9 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
     }
     shaderProgram = program();
     if (!shaderProgram->isLinked()) {
-        compile(shaderProgram);
+        build(shaderProgram);
     }
-    d.u_MVP_matrix = shaderProgram->uniformLocation("u_MVP_matrix");
+    d.u_Matrix = shaderProgram->uniformLocation("u_Matrix");
     // fragment shader
     d.u_colorMatrix = shaderProgram->uniformLocation("u_colorMatrix");
     d.u_to8 = shaderProgram->uniformLocation("u_to8");
@@ -292,11 +228,13 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
     d.u_filterkernel = shaderProgram->uniformLocation("u_filterkernel");
     d.u_pixeloffsetkernel = shaderProgram->uniformLocation("u_pixeloffsetkernel");
     d.u_c = shaderProgram->uniformLocation("u_c");
+    d.u_texelSize = shaderProgram->uniformLocation("u_texelSize");
     d.u_Texture.resize(textureLocationCount());
+    qDebug("uniform locations:");
     for (int i = 0; i < d.u_Texture.size(); ++i) {
         const QString tex_var = QStringLiteral("u_Texture%1").arg(i);
         d.u_Texture[i] = shaderProgram->uniformLocation(tex_var);
-        qDebug("glGetUniformLocation(\"%s\") = %d", tex_var.toUtf8().constData(), d.u_Texture[i]);
+        qDebug("%s: %d", tex_var.toUtf8().constData(), d.u_Texture[i]);
     }
     qDebug("glGetUniformLocation(\"u_MVP_matrix\") = %d", d.u_MVP_matrix);
     qDebug("glGetUniformLocation(\"u_colorMatrix\") = %d", d.u_colorMatrix);
@@ -304,10 +242,29 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
     qDebug("glGetUniformLocation(\"u_gammaRGB\") = %d", d.u_gammaRGB);
     qDebug("glGetUniformLocation(\"u_pix\") = %d", d.u_pix);
     qDebug("glGetUniformLocation(\"u_filterkernel\") = %d", d.u_filterkernel);
+    qDebug("u_Matrix: %d", d.u_Matrix);
+    qDebug("u_colorMatrix: %d", d.u_colorMatrix);
+    qDebug("u_opacity: %d", d.u_opacity);
     if (d.u_c >= 0)
-        qDebug("glGetUniformLocation(\"u_c\") = %d", d.u_c);
+        qDebug("u_c: %d", d.u_c);
     if (d.u_to8 >= 0)
-        qDebug("glGetUniformLocation(\"u_to8\") = %d", d.u_to8);
+        qDebug("u_to8: %d", d.u_to8);
+    if (d.u_texelSize >= 0)
+        qDebug("u_texelSize: %d", d.u_texelSize);
+
+    d.user_uniforms[VertexShader].clear();
+    d.user_uniforms[FragmentShader].clear();
+    if (userShaderHeader(QOpenGLShader::Vertex)) {
+        qDebug("user uniform locations in vertex shader:");
+        d.user_uniforms[VertexShader] = ParseUniforms(QByteArray(userShaderHeader(QOpenGLShader::Vertex)), shaderProgram->programId());
+    }
+    if (userShaderHeader(QOpenGLShader::Fragment)) {
+        qDebug("user uniform locations in fragment shader:");
+        d.user_uniforms[FragmentShader] = ParseUniforms(QByteArray(userShaderHeader(QOpenGLShader::Fragment)), shaderProgram->programId());
+    }
+    d.rebuild_program = false;
+    d.update_builtin_uniforms = true;
+    programReady(); // program and uniforms are ready
 }
 
 int VideoShader::textureLocationCount() const
@@ -328,7 +285,7 @@ int VideoShader::textureLocation(int channel) const
 
 int VideoShader::matrixLocation() const
 {
-    return d_func().u_MVP_matrix;
+    return d_func().u_Matrix;
 }
 
 int VideoShader::colorMatrixLocation() const
@@ -365,6 +322,19 @@ int VideoShader::channelMapLocation() const
     return d_func().u_c;
 }
 
+int VideoShader::texelSizeLocation() const
+{
+    return d_func().u_texelSize;
+}
+
+int VideoShader::uniformLocation(const char *name) const
+{
+    DPTR_D(const VideoShader);
+    if (!d.program)
+        return -1;
+    return d.program->uniformLocation(name); //TODO: store in a hash
+}
+
 int VideoShader::textureTarget() const
 {
     return d_func().texture_target;
@@ -373,6 +343,11 @@ int VideoShader::textureTarget() const
 void VideoShader::setTextureTarget(int type)
 {
     d_func().texture_target = type;
+}
+
+void VideoShader::setMaterialType(qint32 value)
+{
+    d_func().material_type = value;
 }
 
 VideoFormat VideoShader::videoFormat() const
@@ -399,6 +374,15 @@ bool VideoShader::update(VideoMaterial *material)
 {
     if (!material)
         return false;
+    DPTR_D(VideoShader);
+    const qint32 mt = material->type();
+    if (mt != d.material_type || d.rebuild_program) {
+        // TODO: use shader program cache (per shader), check shader type
+        qDebug("Rebuild shader program requested: %d. Material type %d=>%d", d.rebuild_program, d.material_type, mt);
+        program()->removeAllShaders(); //not linked
+        material->initializeShader(this);
+        initialize();
+    }
     if (!material->bind())
         return false;
 
@@ -430,11 +414,32 @@ bool VideoShader::update(VideoMaterial *material)
     setVideoFormat(fmt);
     // uniforms begin
     program()->bind(); //glUseProgram(id). for glUniform
+    if (!setUserUniformValues()) {
+        if (!d.user_uniforms[VertexShader].isEmpty()) {
+            for (int i = 0; i < d.user_uniforms[VertexShader].size(); ++i) {
+                Uniform& u = d.user_uniforms[VertexShader][i];
+                setUserUniformValue(u);
+                if (u.dirty)
+                    u.setGL();
+            }
+        }
+        if (!d.user_uniforms[FragmentShader].isEmpty()) {
+            for (int i = 0; i < d.user_uniforms[FragmentShader].size(); ++i) {
+                Uniform& u = d.user_uniforms[FragmentShader][i];
+                setUserUniformValue(u);
+                if (u.dirty)
+                    u.setGL();
+            }
+        }
+    }
+    if (!d.update_builtin_uniforms)
+        return true;
+    d.update_builtin_uniforms = false;
     // all texture ids should be binded when renderering even for packed plane!
     const int nb_planes = fmt.planeCount(); //number of texture id
+    // TODO: sample2D array
     for (int i = 0; i < nb_planes; ++i) {
         // use glUniform1i to swap planes. swap uv: i => (3-i)%3
-        // TODO: in shader, use uniform sample2D u_Texture[], and use glUniform1iv(u_Texture, 3, {...})
         program()->setUniformValue(textureLocation(i), (GLint)i);
     }
     if (nb_planes < textureLocationCount()) {
@@ -442,13 +447,15 @@ bool VideoShader::update(VideoMaterial *material)
             program()->setUniformValue(textureLocation(i), (GLint)(nb_planes - 1));
         }
     }
-    //qDebug() << "color mat " << material->colorMatrix();
+    program()->setUniformValue(opacityLocation(), (GLfloat)1.0);
     program()->setUniformValue(colorMatrixLocation(), material->colorMatrix());
     if (d_func().u_to8 >= 0)
         program()->setUniformValue(d_func().u_to8, material->vectorTo8bit());
     if (channelMapLocation() >= 0)
         program()->setUniformValue(channelMapLocation(), material->channelMap());
     //program()->setUniformValue(matrixLocation(), material->matrix()); //what about sgnode? state.combindMatrix()?
+    if (texelSizeLocation() >= 0)
+        program()->setUniformValueArray(texelSizeLocation(), material->texelSize().constData(), nb_planes);
     // uniform end. attribute begins
     program()->setUniformValue(gammaRGBLocation(), (GLfloat)material->gammaRGB());
     program()->setUniformValue(pixeloffsetLocation(), material->pixeloffset());
@@ -472,9 +479,12 @@ QByteArray VideoShader::shaderSourceFromFile(const QString &fileName) const
     return src;
 }
 
-void VideoShader::compile(QOpenGLShaderProgram *shaderProgram)
+bool VideoShader::build(QOpenGLShaderProgram *shaderProgram)
 {
-    Q_ASSERT_X(!shaderProgram->isLinked(), "VideoShader::compile()", "Compile called multiple times!");
+    if (shaderProgram->isLinked()) {
+        qWarning("Shader program is already linked");
+    }
+    shaderProgram->removeAllShaders();
     shaderProgram->addShaderFromSourceCode(QOpenGLShader::Vertex, vertexShader());
     shaderProgram->addShaderFromSourceCode(QOpenGLShader::Fragment, fragmentShader());
     int maxVertexAttribs = 0;
@@ -498,7 +508,14 @@ void VideoShader::compile(QOpenGLShaderProgram *shaderProgram)
     if (!shaderProgram->link()) {
         qWarning("QSGMaterialShader: Shader compilation failed:");
         qWarning() << shaderProgram->log();
+        return false;
     }
+    return true;
+}
+
+void VideoShader::rebuildLater()
+{
+    d_func().rebuild_program = true;
 }
 
 VideoMaterial::VideoMaterial()
@@ -521,7 +538,7 @@ void VideoMaterial::setCurrentFrame(const VideoFrame &frame)
         d.target = new_target;
         d.init_textures_required = true;
     }
-
+    // TODO: check hw interop change. if change from an interop owns texture to not owns texture, VideoShader must recreate textures because old textures are deleted by previous interop
     const VideoFormat fmt(frame.format());
     const int bpc_old = d.bpc;
     d.bpc = fmt.bitsPerComponent();
@@ -584,15 +601,21 @@ VideoFormat VideoMaterial::currentFormat() const
 
 VideoShader* VideoMaterial::createShader() const
 {
-    DPTR_D(const VideoMaterial);
     VideoShader *shader = new VideoShader();
-    shader->setVideoFormat(d.video_format);
-    shader->setTextureTarget(d.target);
+    initializeShader(shader);
     //resize texture locations to avoid access format later
     return shader;
 }
 
-QString VideoMaterial::typeName(qint64 value)
+void VideoMaterial::initializeShader(VideoShader *shader) const
+{
+    DPTR_D(const VideoMaterial);
+    shader->setVideoFormat(d.video_format);
+    shader->setTextureTarget(d.target);
+    shader->setMaterialType(type());
+}
+
+QString VideoMaterial::typeName(qint32 value)
 {
     return QString("gl material 16to8bit: %1, planar: %2, has alpha: %3, 2d texture: %4, 2nd plane rg: %5")
             .arg(!!(value&1))
@@ -603,7 +626,7 @@ QString VideoMaterial::typeName(qint64 value)
             ;
 }
 
-qint64 VideoMaterial::type() const
+qint32 VideoMaterial::type() const
 {
     DPTR_D(const VideoMaterial);
     const VideoFormat &fmt = d.video_format;
@@ -645,13 +668,20 @@ void VideoMaterial::bindPlane(int p, bool updateTexture)
 {
     DPTR_D(VideoMaterial);
     GLuint &tex = d.textures[p];
-    OpenGLHelper::glActiveTexture(GL_TEXTURE0 + p); //0 must active?
+    gl().ActiveTexture(GL_TEXTURE0 + p); //0 must active?
     if (!updateTexture) {
         DYGL(glBindTexture(d.target, tex));
         return;
     }
     // try_pbo ? pbo_id : 0. 0= > interop.createHandle
+    GLuint tex0 = tex;
     if (d.frame.map(GLTextureSurface, &tex, p)) {
+        if (tex0 != tex) {
+            if (d.owns_texture[tex0])
+                DYGL(glDeleteTextures(1, &tex0));
+            d.owns_texture.remove(tex0);
+            d.owns_texture[tex] = false;
+        }
         DYGL(glBindTexture(d.target, tex)); // glActiveTexture was called, but maybe bind to 0 in map
         return;
     }
@@ -681,9 +711,9 @@ void VideoMaterial::bindPlane(int p, bool updateTexture)
     //qDebug("bpl[%d]=%d width=%d", p, frame.bytesPerLine(p), frame.planeWidth(p));
     DYGL(glBindTexture(d.target, tex));
     //d.setupQuality();
+    //DYGL(glTexParameteri(d.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+    //DYGL(glTexParameteri(d.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
     // This is necessary for non-power-of-two textures
-    DYGL(glTexParameteri(d.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
-    DYGL(glTexParameteri(d.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)); //TODO: remove. only call once
     DYGL(glTexSubImage2D(d.target, 0, 0, 0, d.texture_upload_size[p].width(), d.texture_upload_size[p].height(), d.data_format[p], d.data_type[p], d.try_pbo ? 0 : d.frame.constBits(p)));
     if (false) { //texture_upload_size[].width()*gl_bpp != bytesPerLine[]
         for (int y = 0; y < d.plane0Size.height(); ++y)
@@ -816,6 +846,23 @@ QSize VideoMaterial::frameSize() const
 {
     return QSize(d_func().width, d_func().height);
 }
+
+QSizeF VideoMaterial::texelSize(int plane) const
+{
+    DPTR_D(const VideoMaterial);
+    return QSizeF(1.0/(qreal)d.texture_size[plane].width(), 1.0/(qreal)d.texture_size[plane].height());
+}
+
+QVector<QVector2D> VideoMaterial::texelSize() const
+{
+    return d_func().v_texel_size;
+}
+
+QSize VideoMaterial::textureSize(int plane) const
+{
+    return d_func().texture_size[plane];
+}
+
 QRectF VideoMaterial::normalizedROI(const QRectF &roi) const
 {
     return mapToTexture(0, roi, 1);
@@ -934,8 +981,10 @@ bool VideoMaterialPrivate::initPBO(int plane, int size)
         try_pbo = false;
         return false;
     }
+    //pb.setUsagePattern(QOpenGLBuffer::DynamicCopy);
     qDebug("Allocate PBO size %d", size);
     pb.allocate(size);
+    pb.release(); //bind to 0
     return true;
 }
 
@@ -959,8 +1008,14 @@ VideoMaterialPrivate::~VideoMaterialPrivate()
         return;
     }
     if (!textures.isEmpty()) {
-        DYGL(glDeleteTextures(textures.size(), textures.data()));
+        for (int i = 0; i < textures.size(); ++i) {
+            GLuint &tex = textures[i];
+            if (owns_texture[tex])
+                DYGL(glDeleteTextures(1, &tex));
+        }
+        //DYGL(glDeleteTextures(textures.size(), textures.data()));
     }
+    owns_texture.clear();
     textures.clear();
     pbo.clear();
 }
@@ -989,16 +1044,6 @@ bool VideoMaterialPrivate::updateTextureParameters(const VideoFormat& fmt)
     qDebug() << "texture data format: " << data_format;
     qDebug() << "texture data type: " << data_type;
     qDebug("///////////bpp %d, bpc: %d", fmt.bytesPerPixel(), fmt.bitsPerComponent());
-    /*!
-     * GLES internal_format == data_format, GL_LUMINANCE_ALPHA is 2 bytes
-     * so if NV12 use GL_LUMINANCE_ALPHA, YV12 use GL_ALPHA
-     */
-    // TODO: move the followings to videoFormatToGL()?
-    if (nb_planes > 2 && data_format[2] == GL_LUMINANCE && fmt.bytesPerPixel(1) == 1) { // QtAV uses the same shader for planar and semi-planar yuv format
-        internal_format[2] = data_format[2] = GL_ALPHA;
-        if (nb_planes == 4)
-            internal_format[3] = data_format[3] = data_format[2]; // vec4(,,,A)
-    }
     for (int i = 0; i < nb_planes; ++i) {
         const int bpp_gl = OpenGLHelper::bytesOfGLFormat(data_format[i], data_type[i]);
         const int pad = std::ceil((qreal)(texture_size[i].width() - effective_tex_width[i])/(qreal)bpp_gl);
@@ -1007,8 +1052,11 @@ bool VideoMaterialPrivate::updateTextureParameters(const VideoFormat& fmt)
         effective_tex_width[i] /= bpp_gl; //fmt.bytesPerPixel(i);
         //effective_tex_width_ratio =
         qDebug("texture width: %d - %d = pad: %d. bpp(gl): %d", texture_size[i].width(), effective_tex_width[i], pad, bpp_gl);
+        if (target == GL_TEXTURE_RECTANGLE)
+            v_texel_size[i] = QVector2D(1.0, 1.0);
+        else
+            v_texel_size[i] = QVector2D(1.0/(float)texture_size[i].width(), 1.0/(float)texture_size[i].height());
     }
-
     /*
      * there are 2 fragment shaders: rgb and yuv.
      * only 1 texture for packed rgb. planar rgb likes yuv
@@ -1019,12 +1067,19 @@ bool VideoMaterialPrivate::updateTextureParameters(const VideoFormat& fmt)
      * Which means the number of texture id equals to plane count
      */
     // always delete old textures otherwise old textures are not initialized with correct parameters
-    if (textures.size() > nb_planes) {
+    if (textures.size() > nb_planes) { //TODO: why check this?
         const int nb_delete = textures.size() - nb_planes;
-        qDebug("delete %d textures", nb_delete);
+        qDebug("try to delete %d textures", nb_delete);
         if (!textures.isEmpty()) {
-            DYGL(glDeleteTextures(nb_delete, textures.data() + nb_planes));
+            for (int i = 0; i < nb_delete; ++i) {
+                GLuint &t = textures[nb_planes+i];
+                qDebug("try to delete texture[%d]: %u. can delete: %d", nb_planes+i, t, owns_texture[t]);
+                if (owns_texture[t])
+                    DYGL(glDeleteTextures(1, &t));
+            }
+            //DYGL(glDeleteTextures(nb_delete, textures.data() + nb_planes));
         }
+        owns_texture.clear();
     }
     textures.resize(nb_planes);
     init_textures_required = true;
@@ -1052,6 +1107,7 @@ bool VideoMaterialPrivate::ensureResources()
             || (plane1_linesize > 0 && frame.bytesPerLine(1) != plane1_linesize)) { // no need to check height if plane 0 sizes are equal?
         update_textures = true;
         //qDebug("---------------------update texture: %dx%d, %s", width, frame.height(), video_format.name().toUtf8().constData());
+        v_texel_size.resize(nb_planes);
         texture_size.resize(nb_planes);
         texture_upload_size.resize(nb_planes);
         effective_tex_width.resize(nb_planes);
@@ -1113,17 +1169,21 @@ bool VideoMaterialPrivate::ensureTextures()
     for (int p = 0; p < nb_planes; ++p) {
         GLuint &tex = textures[p];
         if (tex) { // can be 0 if resized to a larger size
-            qDebug("deleting texture for plane %d (id=%u)", p, tex);
-            DYGL(glDeleteTextures(1, &tex));
+            qDebug("try to delete texture for plane %d (id=%u). can delete: %d", p, tex, owns_texture[tex]);
+            if (owns_texture[tex])
+                DYGL(glDeleteTextures(1, &tex));
+            owns_texture.remove(tex);
             tex = 0;
         }
         if (!tex) {
             qDebug("creating texture for plane %d", p);
-            GLuint* handle = (GLuint*)frame.createInteropHandle(&tex, GLTextureSurface, p);
+            GLuint* handle = (GLuint*)frame.createInteropHandle(&tex, GLTextureSurface, p); // take the ownership
             if (handle) {
                 tex = *handle;
+                owns_texture[tex] = true;
             } else {
                 DYGL(glGenTextures(1, &tex));
+                owns_texture[tex] = true;
                 initTexture(tex, internal_format[p], data_format[p], data_type[p], texture_size[p].width(), texture_size[p].height());
             }
             qDebug("texture for plane %d is created (id=%u)", p, tex);
@@ -1143,5 +1203,4 @@ void VideoMaterialPrivate::setupQuality()
     DYGL(glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 #endif
 }
-
 } //namespace QtAV

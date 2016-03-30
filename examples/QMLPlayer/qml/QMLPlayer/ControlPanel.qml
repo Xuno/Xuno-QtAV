@@ -19,7 +19,7 @@ Rectangle {
     property string mediaSource
     property int duration: 0
     property real volume: 1
-    property alias mute: volBtn.checked
+    property bool mute: false
     property bool hiding: false
     property int previewHeight: preview.height
     signal seek(int ms)
@@ -402,9 +402,26 @@ Rectangle {
             height: Utils.scaled(30)
             icon: Utils.resurl("theme/default/volume.svg")
             iconChecked: Utils.resurl("theme/default/mute.svg")
+            onClicked: {
+                if (!isTouchScreen) {
+                    root.mute = checked
+                    return
+                }
+                volBar.visible = !volBar.visible
+                checked = root.mute
+            }
+            onPressAndHold: { //for qt5.6 mobile
+                if (!isTouchScreen)
+                    return
+                root.mute = !root.mute
+                checked = root.mute
+            }
             onHoveredChanged: {
                 volBar.anchors.bottom = parent.top
-                volBar.anchors.bottomMargin = -(y + 2)//height/2)
+                if (isTouchScreen)
+                    volBar.anchors.bottomMargin = 0 //ensure grip does not cover volBtn
+                else
+                    volBar.anchors.bottomMargin = -(y + 2)//height/2)
                 volBar.x = parent.volBarPos - volBar.width/2
             }
         }

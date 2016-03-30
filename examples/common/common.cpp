@@ -94,7 +94,7 @@ QOptions get_common_options()
             ("height", 450, QLatin1String("height of player"))
             ("fullscreen", QLatin1String("fullscreen"))
             ("decoder", QLatin1String("FFmpeg"), QLatin1String("use a given decoder"))
-            ("decoders,-vd", QLatin1String("cuda;vaapi;vda;dxva;cedarv;ffmpeg"), QLatin1String("decoder name list in priority order seperated by ';'"))
+            ("decoders,-vd", QLatin1String("cuda;vaapi;vda;dxva;cedarv;ffmpeg"), QLatin1String("decoder name list in priority order separated by ';'"))
             ("file,f", QString(), QLatin1String("file or url to play"))
             ("language", QLatin1String("system"), QLatin1String("language on UI. can be 'system', 'none' and locale name e.g. zh_CN"))
             ("sf",0,QLatin1String("can be NN start frame for sequence of images"))
@@ -104,6 +104,7 @@ QOptions get_common_options()
             ("loop",QLatin1String("set loop for sequence of images"))
             ("scale",0.0,QLatin1String("set scale for sequence of images"))
             ("ep","",QLatin1String("extract path"))
+            ("language", QString(), QLatin1String("language on UI. can be 'system' and locale name e.g. zh_CN"))
             ("log", QString(), QLatin1String("log level. can be 'off', 'fatal', 'critical', 'warning', 'debug', 'all'"))
             ("logfile"
 #if defined(Q_OS_IOS)
@@ -122,7 +123,7 @@ void do_common_options_before_qapp(const QOptions& options)
 {
 #ifdef Q_OS_LINUX
     QSettings cfg(Config::defaultConfigFile(), QSettings::IniFormat);
-    const bool set_egl = cfg.value("egl").toBool();
+    const bool set_egl = cfg.value("opengl/egl").toBool();
     //https://bugreports.qt.io/browse/QTBUG-49529
     // it's too late if qApp is created. but why ANGLE is not?
     if (options.value(QString::fromLatin1("egl")).toBool() || set_egl) { //FIXME: Config is constructed too early because it requires qApp
@@ -177,9 +178,9 @@ void do_common_options(const QOptions &options, const QString& appName)
 
 void load_qm(const QStringList &names, const QString& lang)
 {
-    if (lang.isEmpty() || lang.toLower() == QLatin1String("none"))
-        return;
-    QString l(lang);
+    QString l(Config::instance().language());
+    if (!lang.isEmpty())
+        l = lang;
     if (l.toLower() == QLatin1String("system"))
         l = QLocale::system().name();
     QStringList qms(names);

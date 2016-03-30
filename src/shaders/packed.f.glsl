@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
@@ -25,6 +25,7 @@ uniform mat4 u_colorMatrix;
 uniform float u_opacity;
 uniform mat4 u_c;
 
+/***User header code***%userHeader%***/
 //added by xuno start
 #define USED_FILTERS
 #define USED_GAMMA
@@ -37,9 +38,10 @@ uniform float u_gammaRGB;
 #endif //USED_GAMMA
 //added by xuno end
 
-/***User Sampler code here***%1***/
+
+/***User sampling function here***%userSample%***/
 #ifndef USER_SAMPLER
-vec4 sample2d(sampler2D tex, vec2 pos)
+vec4 sample2d(sampler2D tex, vec2 pos, int plane)
 {
 #if defined(USED_FILTERS)
     vec3 sum = vec3(0.0);
@@ -67,11 +69,12 @@ void postprocess()
 }
 
 void main() {
-    vec4 c = sample2d(u_Texture0, v_TexCoords0);
+    vec4 c = sample2d(u_Texture0, v_TexCoords0, 0);
     c = u_c * c;
 #ifndef HAS_ALPHA
     c.a = 1.0;
 #endif //HAS_ALPHA
     gl_FragColor = clamp(u_colorMatrix * c, 0.0, 1.0) * u_opacity;
+    /***User post processing here***%userPostProcess%***/
     postprocess();
 }

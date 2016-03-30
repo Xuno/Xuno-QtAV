@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV Player Demo:  this file is part of QtAV examples
-    Copyright (C) 2012-2014 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -25,8 +25,10 @@
 #include <QtCore/QMetaProperty>
 #include <QtCore/QMetaEnum>
 
+QT_BEGIN_NAMESPACE
 class QAction;
 class QWidget;
+QT_END_NAMESPACE
 class PropertyEditor : public QObject
 {
     Q_OBJECT
@@ -75,6 +77,7 @@ private slots:
 private:
     QList<QMetaProperty> mMetaProperties;
     QVariantHash mProperties;
+    QVariantHash mPropertyDetails;
 };
 
 #endif // PROPERTYEDITOR_H

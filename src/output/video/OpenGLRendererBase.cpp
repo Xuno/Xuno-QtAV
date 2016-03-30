@@ -1,8 +1,8 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014-2016 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
-*   This file is part of QtAV
+*   This file is part of QtAV (from 2014)
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -24,7 +24,7 @@
 #include "QtAV/OpenGLVideo.h"
 #include "QtAV/FilterContext.h"
 #include <QResizeEvent>
-#include "utils/OpenGLHelper.h"
+#include "opengl/OpenGLHelper.h"
 #include "utils/Logger.h"
 
 namespace QtAV {
@@ -89,6 +89,11 @@ bool OpenGLRendererBase::getPixels(uchar *&pixels, int &w, int &h, int &bpp)
         return true;
     }
     return false;
+}
+
+OpenGLVideo* OpenGLRendererBase::opengl() const
+{
+    return const_cast<OpenGLVideo*>(&d_func().glv);
 }
 
 bool OpenGLRendererBase::receiveFrame(const VideoFrame& frame)
@@ -171,7 +176,6 @@ void OpenGLRendererBase::onResizeGL(int w, int h)
     if (!QOpenGLContext::currentContext())
         return;
     DPTR_D(OpenGLRendererBase);
-    glViewport(0, 0, w, h);
     d.glv.setProjectionMatrixToRect(QRectF(0, 0, w, h));
     d.setupAspectRatio();
 }

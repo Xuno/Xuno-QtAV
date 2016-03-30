@@ -1,8 +1,8 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014-2016 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
-*   This file is part of QtAV
+*   This file is part of QtAV (from 2014)
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -33,11 +33,14 @@
 #include <QtOpenGL/QGLContext>
 #define QOpenGLContext QGLContext
 #endif
+QT_BEGIN_NAMESPACE
 class QColor;
+QT_END_NAMESPACE
 
 namespace QtAV {
 
 class VideoFrame;
+class VideoShader;
 class OpenGLVideoPrivate;
 /*!
  * \brief The OpenGLVideo class
@@ -59,6 +62,8 @@ public:
      * 0: current context in OpenGL is done. shaders will be released.
      * QOpenGLContext is QObject in Qt5, and gl resources here will be released automatically if context is destroyed.
      * But you have to call setOpenGLContext(0) for Qt4 explicitly in the old context.
+     * Viewport is also set here using context surface/paintDevice size and devicePixelRatio.
+     * devicePixelRatio may be wrong for multi-screen with 5.0<qt<5.5, so you should call setProjectionMatrixToRect later in this case
      */
     void setOpenGLContext(QOpenGLContext *ctx);
     QOpenGLContext* openGLContext();
@@ -73,8 +78,11 @@ public:
      * \param transform: additinal transformation.
      */
     void render(const QRectF& target = QRectF(), const QRectF& roi = QRectF(), const QMatrix4x4& transform = QMatrix4x4());
+    /*!
+     * \brief setProjectionMatrixToRect
+     * the rect will be viewport
+     */
     void setProjectionMatrixToRect(const QRectF& v);
-    void setProjectionMatrix(const QMatrix4x4 &matrix);
 
     void setBrightness(qreal value);
     void setContrast(qreal value);
@@ -83,7 +91,7 @@ public:
     void setGammaRGB(qreal value);
     void setFilterSharp(qreal value);
 
-    //void setCustomSampleFunc(const QString& glsl);
+    void setUserShader(VideoShader* shader);
 
 protected:
     DPTR_DECLARE(OpenGLVideo)

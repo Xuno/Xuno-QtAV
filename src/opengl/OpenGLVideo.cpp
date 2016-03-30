@@ -1,8 +1,8 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014-2016 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
-*   This file is part of QtAV
+*   This file is part of QtAV (from 2014)
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -22,6 +22,8 @@
 #include "QtAV/OpenGLVideo.h"
 #include <QtGui/QColor>
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+#include <QtGui/QGuiApplication>
+#include <QtGui/QScreen>
 #include <QtGui/QSurface>
 #define QT_VAO (QT_VERSION >= QT_VERSION_CHECK(5, 1, 0))
 #if QT_VAO
@@ -31,7 +33,7 @@
 #include "QtAV/SurfaceInterop.h"
 #include "QtAV/VideoShader.h"
 #include "ShaderManager.h"
-#include "utils/OpenGLHelper.h"
+#include "opengl/OpenGLHelper.h"
 #include "utils/Logger.h"
 
 namespace QtAV {
@@ -44,11 +46,13 @@ public:
         : ctx(0)
         , manager(0)
         , material(new VideoMaterial())
+        , material_type(0)
         , update_geo(true)
         , try_vbo(true)
         , try_vao(true)
         , tex_target(0)
         , valiad_tex_width(1.0)
+        , user_shader(NULL)
     {
         static bool disable_vbo = qgetenv("QTAV_NO_VBO").toInt() > 0;
         try_vbo = !disable_vbo;
@@ -100,6 +104,7 @@ public:
     QOpenGLContext *ctx;
     ShaderManager *manager;
     VideoMaterial *material;
+    qint64 material_type;
     bool update_geo;
     bool try_vbo; // check environment var and opengl support
     QOpenGLBuffer vbo; //VertexBuffer
@@ -115,6 +120,7 @@ public:
     TexturedGeometry geometry;
     QRectF rect;
     QMatrix4x4 matrix;
+    VideoShader *user_shader;
 };
 
 void OpenGLVideoPrivate::bindAttributes(VideoShader* shader, const QRectF &t, const QRectF &r)
@@ -237,7 +243,6 @@ bool OpenGLVideo::isSupported(VideoFormat::PixelFormat pixfmt)
     return pixfmt != VideoFormat::Format_RGB48BE;
 }
 
-// TODO: set surface/device size here (viewport?)
 void OpenGLVideo::setOpenGLContext(QOpenGLContext *ctx)
 {
     DPTR_D(OpenGLVideo);
@@ -253,7 +258,12 @@ void OpenGLVideo::setOpenGLContext(QOpenGLContext *ctx)
     d.material = new VideoMaterial();
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     d.manager = ctx->findChild<ShaderManager*>(QStringLiteral("__qtav_shader_manager"));
-    QSizeF surfaceSize = QOpenGLContext::currentContext()->surface()->size();
+    QSizeF surfaceSize = ctx->surface()->size();
+#if QT_VERSION >= QT_VERSION_CHECK(5, 5, 0)
+    surfaceSize *= ctx->screen()->devicePixelRatio();
+#else
+    surfaceSize *= qApp->devicePixelRatio(); //TODO: window()->devicePixelRatio() is the window screen's
+#endif
 #else
     QSizeF surfaceSize = QSizeF(ctx->device()->width(), ctx->device()->height());
 #endif
@@ -261,11 +271,13 @@ void OpenGLVideo::setOpenGLContext(QOpenGLContext *ctx)
     if (d.manager)
         return;
     // TODO: what if ctx is delete?
-    d.manager = new ShaderManager(ctx);
-    d.manager->setObjectName(QStringLiteral("__qtav_shader_manager"));
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    d.manager = new ShaderManager(ctx);
     QObject::connect(ctx, SIGNAL(aboutToBeDestroyed()), this, SLOT(resetGL()), Qt::DirectConnection); //direct?
+#else
+    d.manager = new ShaderManager(this);
 #endif
+    d.manager->setObjectName(QStringLiteral("__qtav_shader_manager"));
     /// get gl info here because context is current(qt ensure it)
     //const QByteArray extensions(reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS)));
     bool hasGLSL = QOpenGLShaderProgram::hasOpenGLShaderPrograms();
@@ -278,7 +290,9 @@ void OpenGLVideo::setOpenGLContext(QOpenGLContext *ctx)
         qDebug("GL_RENDERER: %s", DYGL(glGetString(GL_RENDERER)));
         qDebug("GL_SHADING_LANGUAGE_VERSION: %s", DYGL(glGetString(GL_SHADING_LANGUAGE_VERSION)));
         /// check here with current context can ensure the right result. If the first check is in VideoShader/VideoMaterial/decoder or somewhere else, the context can be null
-        bool v = OpenGLHelper::isEGL();
+        bool v = OpenGLHelper::isOpenGLES();
+        qDebug("Is OpenGLES: %d", v);
+        v = OpenGLHelper::isEGL();
         qDebug("Is EGL: %d", v);
         const int glsl_ver = OpenGLHelper::GLSLVersion();
         qDebug("GLSL version: %d", glsl_ver);
@@ -288,6 +302,7 @@ void OpenGLVideo::setOpenGLContext(QOpenGLContext *ctx)
         qDebug("Has 16bit texture: %d", v);
         v = OpenGLHelper::hasRG();
         qDebug("Has RG texture: %d", v);
+        qDebug() << ctx->format();
     }
 }
 
@@ -310,11 +325,9 @@ void OpenGLVideo::setProjectionMatrixToRect(const QRectF &v)
     // Mirrored relative to the usual Qt coordinate system with origin in the top left corner.
     //mirrored = mat(0, 0) * mat(1, 1) - mat(0, 1) * mat(1, 0) > 0;
     d.update_geo = true; // even true for target_rect != d.rect
-}
-
-void OpenGLVideo::setProjectionMatrix(const QMatrix4x4 &matrix)
-{
-    d_func().matrix = matrix;
+    if (d.ctx && d.ctx == QOpenGLContext::currentContext()) {
+        DYGL(glViewport(d.rect.x(), d.rect.y(), d.rect.width(), d.rect.height()));
+    }
 }
 
 void OpenGLVideo::setBrightness(qreal value)
@@ -337,14 +350,9 @@ void OpenGLVideo::setSaturation(qreal value)
     d_func().material->setSaturation(value);
 }
 
-void OpenGLVideo::setGammaRGB(qreal value)
+void OpenGLVideo::setUserShader(VideoShader *shader)
 {
-    d_func().material->setGammaRGB(value);
-}
-
-void OpenGLVideo::setFilterSharp(qreal value)
-{
-    d_func().material->setFilterSharp(value);
+    d_func().user_shader = shader;
 }
 
 void OpenGLVideo::fill(const QColor &color)
@@ -357,9 +365,16 @@ void OpenGLVideo::render(const QRectF &target, const QRectF& roi, const QMatrix4
 {
     DPTR_D(OpenGLVideo);
     Q_ASSERT(d.manager);
-    VideoShader *shader = d.manager->prepareMaterial(d.material); //TODO: print shader type name if changed. prepareMaterial(,sample_code, pp_code)
+    DYGL(glViewport(d.rect.x(), d.rect.y(), d.rect.width(), d.rect.height())); // viewport was used in gpu filters is wrong, qt quick fbo item's is right(so must ensure setProjectionMatrixToRect was called correctly)
+    const qint64 mt = d.material->type();
+    if (d.material_type != mt) {
+        qDebug() << "material changed: " << VideoMaterial::typeName(d.material_type) << " => " << VideoMaterial::typeName(mt);
+        d.material_type = mt;
+    }
+    VideoShader *shader = d.user_shader;
+    if (!shader)
+        shader = d.manager->prepareMaterial(d.material, mt); //TODO: print shader type name if changed. prepareMaterial(,sample_code, pp_code)
     shader->update(d.material);
-    shader->program()->setUniformValue(shader->opacityLocation(), (GLfloat)1.0);
     shader->program()->setUniformValue(shader->matrixLocation(), transform*d.matrix);
     // uniform end. attribute begin
     d.bindAttributes(shader, target, roi);

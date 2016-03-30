@@ -59,7 +59,7 @@ RESOURCES += QtAV.qrc \
     RC_ICONS = QtAV.ico
     QMAKE_TARGET_COMPANY = "Shanghai University->S3 Graphics->Deepin | wbsecg1@gmail.com"
     QMAKE_TARGET_DESCRIPTION = "QtAV Multimedia framework. http://qtav.org"
-    QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2015 WangBin, wbsecg1@gmail.com"
+    QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2016 WangBin, wbsecg1@gmail.com"
     QMAKE_TARGET_PRODUCT = "QtAV"
 } else:win32 {
     RC_FILE = QtAV.rc
@@ -101,7 +101,7 @@ win32-msvc2010|win32-msvc2008: QMAKE_LFLAGS *= /DEBUG #workaround for CoInitiali
 #UINT64_C: C99 math features, need -D__STDC_CONSTANT_MACROS in CXXFLAGS
 DEFINES += __STDC_CONSTANT_MACROS
 android {
-  CONFIG += config_opensl
+  CONFIG *= config_opensl
   !no_gui_private:qtHaveModule(androidextras) { #qt5.2 has QAndroidJniObject
     QT *= androidextras gui-private #QPlatformNativeInterface get "QtActivity"
     SOURCES *= io/AndroidIO.cpp
@@ -162,6 +162,7 @@ config_ipp {
     #omp for static link. _t is multi-thread static link
 }
 mac|ios {
+  CONFIG *= config_openal
   SOURCES += output/audio/AudioOutputAudioToolbox.cpp
   LIBS += -framework AudioToolbox
 }
@@ -242,7 +243,7 @@ include(../depends/dllapi/src/libdllapi.pri)
         DEFINES += CUDA_LINK
         INCLUDEPATH += $$(CUDA_PATH)/include
         LIBS += -L$$(CUDA_PATH)/lib
-        isEqual(TARGET_ARCH, x86): LIBS += -L$$(CUDA_PATH)/lib/Win32
+        contains(TARGET_ARCH, x86): LIBS += -L$$(CUDA_PATH)/lib/Win32
         else: LIBS += -L$$(CUDA_PATH)/lib/x64
         LIBS += -lnvcuvid -lcuda
     }
@@ -279,25 +280,28 @@ config_libcedarv {
     LIBS += -lvecore -lcedarv
     OTHER_FILES += $$NEON_ASM
 }
-macx:!ios: CONFIG += config_vda
+mac {
+  HEADERS *= codec/video/SurfaceInteropCV.h
+  SOURCES *= codec/video/SurfaceInteropCV.cpp
+  ios {
+    OBJECTIVE_SOURCES *= codec/video/SurfaceInteropCVOpenGLES.mm
+  } else {
+    CONFIG += config_vda
+    SOURCES *= codec/video/SurfaceInteropIOSurface.cpp
+    #SOURCES *= codec/video/SurfaceInteropCVOpenGL.cpp
+    LIBS += -framework IOSurface
+  }
+  LIBS += -framework CoreVideo -framework CoreFoundation
+}
 config_vda {
     DEFINES *= QTAV_HAVE_VDA=1
     SOURCES += codec/video/VideoDecoderVDA.cpp
-    LIBS += -framework VideoDecodeAcceleration -framework CoreVideo -framework CoreFoundation \
-            -framework IOSurface
+    LIBS += -framework VideoDecodeAcceleration
 }
 config_videotoolbox {
   DEFINES *= QTAV_HAVE_VIDEOTOOLBOX=1
   SOURCES *= codec/video/VideoDecoderVideoToolbox.cpp
-  HEADERS *= codec/video/SurfaceInteropCV.h
-  SOURCES *= codec/video/SurfaceInteropCV.cpp
-  ios {
-# iOS use gles and IOSurface is private
-  } else {
-    SOURCES *= codec/video/SurfaceInteropIOSurface.cpp
-    LIBS += -framework IOSurface
-  }
-  LIBS += -framework CoreVideo -framework CoreFoundation -framework CoreMedia -framework VideoToolbox
+  LIBS += -framework CoreMedia -framework VideoToolbox
 }
 
 config_gl|config_opengl {
@@ -307,20 +311,30 @@ config_gl|config_opengl {
   }
   OTHER_FILES += shaders/planar.f.glsl shaders/rgb.f.glsl
   SDK_HEADERS *= \
+    QtAV/GLSLFilter.h \
     QtAV/OpenGLRendererBase.h \
+    QtAV/OpenGLTypes.h \
     QtAV/OpenGLVideo.h \
+    QtAV/ConvolutionShader.h \
+    QtAV/VideoShaderObject.h \
     QtAV/VideoShader.h
   SDK_PRIVATE_HEADERS = \
     QtAV/private/OpenGLRendererBase_p.h
   HEADERS *= \
-    utils/OpenGLHelper.h \
-    ShaderManager.h
+    opengl/gl_api.h \
+    opengl/OpenGLHelper.h \
+    opengl/ShaderManager.h
   SOURCES *= \
+    filter/GLSLFilter.cpp \
     output/video/OpenGLRendererBase.cpp \
-    OpenGLVideo.cpp \
-    VideoShader.cpp \
-    ShaderManager.cpp \
-    utils/OpenGLHelper.cpp
+    opengl/gl_api.cpp \
+    opengl/OpenGLTypes.cpp \
+    opengl/OpenGLVideo.cpp \
+    opengl/VideoShaderObject.cpp \
+    opengl/VideoShader.cpp \
+    opengl/ShaderManager.cpp \
+    opengl/ConvolutionShader.cpp \
+    opengl/OpenGLHelper.cpp
 }
 config_openglwindow {
   SDK_HEADERS *= QtAV/OpenGLWindowRenderer.h
@@ -328,7 +342,7 @@ config_openglwindow {
 }
 config_libass {
 #link against libass instead of dynamic load
-  !capi|android|ios|config_libass_link {
+  !capi|winrt|android|ios|config_libass_link {
     LIBS += -lass #-lfribidi -lfontconfig -lxml2 -lfreetype -lharfbuzz -lz
     DEFINES += CAPI_LINK_ASS
   }
@@ -362,7 +376,7 @@ winrt {
 glibc_compat: *linux*: LIBS += -lrt  # do not use clock_gettime in libc, GLIBC_2.17 is not available on old system
 static_ffmpeg {
 # libs needed by mac static ffmpeg. corefoundation: vda, avdevice
-  mac|ios: LIBS += -liconv -lbz2 -lz -framework CoreFoundation  -Wl,-framework,Security
+  mac|ios: LIBS += -liconv -lbz2 -llzma -lz -framework CoreFoundation  -Wl,-framework,Security
   win32: LIBS *= -lws2_32 -lstrmiids -lvfw32 -luuid
   !mac:*g++* {
     LIBS *= -lz
@@ -387,7 +401,6 @@ SOURCES += \
     AudioFrame.cpp \
     AudioResampler.cpp \
     AudioResamplerTemplate.cpp \
-    AudioResamplerTypes.cpp \
     codec/audio/AudioDecoder.cpp \
     codec/audio/AudioDecoderFFmpeg.cpp \
     codec/audio/AudioEncoder.cpp \
@@ -429,15 +442,13 @@ SOURCES += \
     output/OutputSet.cpp \
     Statistics.cpp \
     codec/video/VideoDecoder.cpp \
-    codec/video/VideoDecoderTypes.cpp \
     codec/video/VideoDecoderFFmpegBase.cpp \
     codec/video/VideoDecoderFFmpeg.cpp \
     codec/video/VideoDecoderFFmpegHW.cpp \
     codec/video/VideoEncoder.cpp \
     codec/video/VideoEncoderFFmpeg.cpp \
     VideoThread.cpp \
-    VideoFrameExtractor.cpp \
-    CommonTypes.cpp
+    VideoFrameExtractor.cpp
 
 SDK_HEADERS *= \
     QtAV/QtAV \
@@ -445,7 +456,6 @@ SDK_HEADERS *= \
     QtAV/dptr.h \
     QtAV/QtAV_Global.h \
     QtAV/AudioResampler.h \
-    QtAV/AudioResamplerTypes.h \
     QtAV/AudioDecoder.h \
     QtAV/AudioEncoder.h \
     QtAV/AudioFormat.h \
@@ -455,7 +465,6 @@ SDK_HEADERS *= \
     QtAV/AVEncoder.h \
     QtAV/AVDemuxer.h \
     QtAV/AVMuxer.h \
-    QtAV/CommonTypes.h \
     QtAV/Filter.h \
     QtAV/FilterContext.h \
     QtAV/LibAVFilter.h \
@@ -473,7 +482,6 @@ SDK_HEADERS *= \
     QtAV/AVOutput.h \
     QtAV/AVClock.h \
     QtAV/VideoDecoder.h \
-    QtAV/VideoDecoderTypes.h \
     QtAV/VideoEncoder.h \
     QtAV/VideoFormat.h \
     QtAV/VideoFrame.h \
@@ -532,8 +540,7 @@ HEADERS *= \
     utils/ring.h \
     utils/internal.h \
     output/OutputSet.h \
-    QtAV/ColorTransform.h
-
+    ColorTransform.h
 # from mkspecs/features/qt_module.prf
 # OS X and iOS frameworks
 mac_framework { # from common.pri
@@ -546,7 +553,7 @@ mac_framework { # from common.pri
         FRAMEWORK_HEADERS.path = Headers
 # 5.4(beta) workaround for wrong include path
 # TODO: why <QtCore/qglobal.h> can be found?
-        isEqual(QT_MAJOR_VERSION, 5):greaterThan(QT_MINOR_VERSION, 3)|greaterThan(QT_MAJOR_VERSION, 5): FRAMEWORK_HEADERS.path = Headers/$$MODULE_INCNAME
+        qtAtLeast(5,3): FRAMEWORK_HEADERS.path = Headers/$$MODULE_INCNAME
         FRAMEWORK_PRIVATE_HEADERS.version = Versions
         FRAMEWORK_PRIVATE_HEADERS.files = $$SDK_PRIVATE_HEADERS
         FRAMEWORK_PRIVATE_HEADERS.path = Headers/$$VERSION/$$MODULE_INCNAME/private

@@ -1,6 +1,6 @@
 TARGET = QMLPlayer
 VERSION = $$QTAV_VERSION
-QT += av svg qml quick
+QT += av svg qml quick sql
 android {
   QT += androidextras
 }
@@ -45,16 +45,18 @@ isEmpty(PROJECTROOT): PROJECTROOT = $$PWD/../..
 
 fonts.files = fonts
 fonts.path = fonts
-QMAKE_BUNDLE_DATA += fonts
+#QMAKE_BUNDLE_DATA += fonts
 mac: RC_FILE = $$PROJECTROOT/src/QtAV.icns
 QMAKE_INFO_PLIST = $$COMMON/Info.plist
-#ios: QMAKE_INFO_PLIST = ios/Info.plist
-
+ios: QMAKE_INFO_PLIST = ios/Info.plist
+videos.files = videos
+videos.path = /
+#QMAKE_BUNDLE_DATA += videos
 defineTest(genRC) {
     RC_ICONS = $$PROJECTROOT/src/QtAV.ico
     QMAKE_TARGET_COMPANY = "Shanghai University->S3 Graphics->Deepin | wbsecg1@gmail.com"
     QMAKE_TARGET_DESCRIPTION = "QtAV Multimedia playback framework. http://qtav.org"
-    QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2015 WangBin, wbsecg1@gmail.com"
+    QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2016 WangBin, wbsecg1@gmail.com"
     QMAKE_TARGET_PRODUCT = "QtAV $$1"
     export(RC_ICONS)
     export(QMAKE_TARGET_COMPANY)
@@ -123,13 +125,17 @@ winrt|wince {
     $$[QT_INSTALL_BINS]/avfilter-*.dll \
     $$[QT_INSTALL_BINS]/swresample-*.dll \
     $$[QT_INSTALL_BINS]/swscale-*.dll
+  exists($$[QT_INSTALL_BINS]/avresample-*.dll): depend_dll.files += $$[QT_INSTALL_BINS]/avresample-*.dll
   exists($$[QT_INSTALL_BINS]/ass.dll): depend_dll.files += $$[QT_INSTALL_BINS]/ass.dll
   #depend_dll.path = $$OUT_PWD
-  DEPLOYMENT = depend_dll fonts #vs2015update1 error about multiple qt5core.dll(in both build dir and qtbin dir), we can remove them in `Deployment Files`
+  DEPLOYMENT = depend_dll #fonts #vs2015update1 error about multiple qt5core.dll(in both build dir and qtbin dir), we can remove them in `Deployment Files`
 # WINRT_MANIFEST file: "=>\"
+  VCLibsSuffix =
   winphone {
+    VCLibsSuffix = .Phone
     WINRT_MANIFEST = winrt/WinPhone8.Package.appxmanifest
   } else:*-msvc2015 {
+    #isEqual(VCPROJ_ARCH, ARM): VCLibsSuffix = .Phone
     WINRT_MANIFEST = winrt/WinRT10.Package.appxmanifest
   } else {
     WINRT_MANIFEST = winrt/WinRT8.Package.appxmanifest

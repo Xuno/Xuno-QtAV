@@ -1,8 +1,8 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014-2016 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
-*   This file is part of QtAV
+*   This file is part of QtAV (from 2014)
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -22,23 +22,31 @@
 #ifndef QTAV_VIDEOSHADER_H
 #define QTAV_VIDEOSHADER_H
 
+#include <QtAV/OpenGLTypes.h>
 #include <QtAV/VideoFrame.h>
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
 #include <QtGui/QOpenGLShaderProgram>
+#include <QtGui/QOpenGLShader>
 #else
 #include <QtOpenGL/QGLShaderProgram>
+#include <QtOpenGL/QGLShader>
 #define QOpenGLShaderProgram QGLShaderProgram
+#define QOpenGLShader QGLShader
 #endif
 
+QT_BEGIN_NAMESPACE
 class QOpenGLShaderProgram;
+QT_END_NAMESPACE
 namespace QtAV {
-
 class VideoMaterial;
 class VideoShaderPrivate;
 /*!
  * \brief The VideoShader class
  * Represents a shader for rendering a video frame.
  * Low-level api. Used by OpenGLVideo and Scene Graph.
+ * You can also create your own shader. Usually only sampling function and rgb post processing are enough.
+ * Transforming color to rgb is done internally.
+ * TODO: vertex shader (fully controlled by user?). Mesh
  */
 class Q_AV_EXPORT VideoShader
 {
@@ -52,22 +60,25 @@ public:
      * \return
      */
     virtual char const *const *attributeNames() const;
+    /*!
+     * \brief vertexShader
+     * mvp uniform: u_Matrix
+     * Vertex shader in: a_Position, a_TexCoordsN (see attributeNames())
+     * Vertex shader out: v_TexCoordsN
+     */
     virtual const char *vertexShader() const;
     virtual const char *fragmentShader() const;
     /*!
      * \brief initialize
      * \param shaderProgram: 0 means create a shader program internally. if not linked, vertex/fragment shader will be added and linked
      */
-    // initialize(VideoMaterial*, QOpenGLShaderProgram*)
     virtual void initialize(QOpenGLShaderProgram* shaderProgram = 0);
+    int uniformLocation(const char* name) const;
     /*!
      * \brief textureLocationCount
      * number of texture locations is
      * 1: packed RGB
      * number of channels: yuv or plannar RGB
-     * TODO: always use plannar shader and 1 tex per channel?
-     * \param index
-     * \return texture location in shader
      */
     int textureLocationCount() const;
     int textureLocation(int index) const;
@@ -79,21 +90,85 @@ public:
     int filterkernelLocation() const;
     int pixeloffsetkernelLocation() const;
     int channelMapLocation() const;
+    int texelSizeLocation() const;
     VideoFormat videoFormat() const;
     // defalut is GL_TEXTURE_2D
     int textureTarget() const;
     QOpenGLShaderProgram* program();
+    /*!
+     * \brief update
+     * Upload textures, setup uniforms before rendering.
+     * If material type changed, build a new shader program.
+     */
     bool update(VideoMaterial* material);
-protected:
-    QByteArray shaderSourceFromFile(const QString& fileName) const;
-    virtual void compile(QOpenGLShaderProgram* shaderProgram);
 
-    VideoShader(VideoShaderPrivate &d);
-    DPTR_DECLARE(VideoShader)
+protected:
+    /// rebuild shader program before next rendering. call this if shader code is updated
+    void rebuildLater();
 private:
+    /*!
+     * \brief programReady
+     * Called when program is linked and all uniforms are resolved
+     */
+    virtual void programReady() {}
+
+    /// User configurable shader APIs BEGIN
+    /*!
+     * Keywords will be replaced in user shader code:
+     * %planes% => plane count
+     * Uniforms can be used: (N: 0 ~ planes-1)
+     * u_Matrix (vertex shader),
+     * u_TextureN, v_TexCoordsN, u_texelSize(array of vec2), u_opacity, u_c(channel map), u_colorMatrix, u_to8(vec2, computing 16bit value with 8bit components)
+     * Vertex shader in: a_Position, a_TexCoordsN (see attributeNames())
+     * Vertex shader out: v_TexCoordsN
+     */
+    /*!
+     * \brief userShaderHeader
+     * Must add additional uniform declarations here
+     */
+    virtual const char* userShaderHeader(QOpenGLShader::ShaderType) const {return 0;}
+    /*!
+     * \brief setUserUniformValues
+     * Call program()->setUniformValue(...) here
+     * You can upload a texture for blending in userPostProcess(),
+     * or LUT texture used by userSample() or userPostProcess() etc.
+     * \return false if use use setUserUniformValue(Uniform& u), true if call program()->setUniformValue() here
+     */
+    virtual bool setUserUniformValues() {return false;}
+    /*!
+     * \brief setUserUniformValue
+     * Update value of uniform u. Call Uniform.set(const T& value, int count); VideoShader will call Uniform.setGL() later if value is changed
+     */
+    virtual void setUserUniformValue(Uniform&) {}
+    /*!
+     * \brief userSample
+     * Fragment shader only. The custom sampling function to replace texture2D()/texture() (replace %1 in shader).
+     * \code
+     *     vec4 sample2d(sampler2D tex, vec2 pos, int plane) { .... }
+     * \endcode
+     * The 3rd parameter can be used to get texel size of a given plane u_texelSize[plane];
+     * Convolution of result rgb and kernel has the same effect as convolution of input yuv and kernel, ensured by
+     * Σ_i c_i* Σ_j k_j*x_j=Σ_i k_i* Σ_j c_j*x_j
+     * Because because the input yuv is from a real rgb color, so no clamp() is required for the transformed color.
+     */
+    virtual const char* userSample() const { return 0;}
+    /*!
+     * \brief userPostProcess
+     * Fragment shader only. Process rgb color
+     * TODO: parameter ShaderType?
+     */
+    virtual const char* userPostProcess() const {return 0;}
+    /// User configurable shader APIs END
+
+    QByteArray shaderSourceFromFile(const QString& fileName) const;
+    bool build(QOpenGLShaderProgram* shaderProgram);
     void setVideoFormat(const VideoFormat& format);
     void setTextureTarget(int type);
+    void setMaterialType(qint32 value);
     friend class VideoMaterial;
+protected:
+    VideoShader(VideoShaderPrivate &d);
+    DPTR_DECLARE(VideoShader)
 };
 
 class VideoMaterialPrivate;
@@ -111,8 +186,9 @@ public:
     void setCurrentFrame(const VideoFrame& frame);
     VideoFormat currentFormat() const;
     VideoShader* createShader() const;
-    virtual qint64 type() const;
-    static QString typeName(qint64 value);
+    void initializeShader(VideoShader* shader) const;
+    virtual qint32 type() const;
+    static QString typeName(qint32 value);
 
     bool bind(); // TODO: roi
     void unbind();
@@ -143,6 +219,18 @@ public:
     qreal validTextureWidth() const;
     QSize frameSize() const;
     /*!
+     * \brief texelSize
+     * The size of texture unit
+     * \return (1.0/textureWidth, 1.0/textureHeight)
+     */
+    QSizeF texelSize(int plane) const; //vec2?
+    QVector<QVector2D> texelSize() const;
+    /*!
+     * \brief textureSize
+     * It can be used with a uniform to emulate GLSL textureSize() which exists in new versions.
+     */
+    QSize textureSize(int plane) const;
+    /*!
      * \brief normalizedROI
      * \param roi logical roi of a video frame.
      * the same as mapToTexture(roi, 1)
@@ -172,56 +260,5 @@ protected:
     VideoMaterial(VideoMaterialPrivate &d);
     DPTR_DECLARE(VideoMaterial)
 };
-
-class Q_AV_EXPORT TexturedGeometry {
-public:
-    typedef struct {
-        float x, y;
-        float tx, ty;
-    } Point;
-    enum Triangle { Strip, Fan };
-    TexturedGeometry(int texCount = 1, int count = 4, Triangle t = Strip);
-    /*!
-     * \brief setTextureCount
-     * sometimes we needs more than 1 texture coordinates, for example we have to set rectangle texture
-     * coordinates for each plane.
-     */
-    void setTextureCount(int value);
-    int textureCount() const;
-    /*!
-     * \brief size
-     * totoal data size in bytes
-     */
-    int size() const;
-    /*!
-     * \brief textureSize
-     * data size of 1 texture. equals textureVertexCount()*stride()
-     */
-    int textureSize() const;
-    Triangle triangle() const { return tri;}
-    int mode() const;
-    int tupleSize() const { return 2;}
-    int stride() const { return sizeof(Point); }
-    /// vertex count per texture
-    int textureVertexCount() const { return points_per_tex;}
-    /// totoal vertex count
-    int vertexCount() const { return v.size(); }
-    void setPoint(int index, const QPointF& p, const QPointF& tp, int texIndex = 0);
-    void setGeometryPoint(int index, const QPointF& p, int texIndex = 0);
-    void setTexturePoint(int index, const QPointF& tp, int texIndex = 0);
-    void setRect(const QRectF& r, const QRectF& tr, int texIndex = 0);
-    void setGeometryRect(const QRectF& r, int texIndex = 0);
-    void setTextureRect(const QRectF& tr, int texIndex = 0);
-    void* data(int idx = 0, int texIndex = 0) { return (char*)v.data() + texIndex*textureSize() + idx*2*sizeof(float); } //convert to char* float*?
-    const void* data(int idx = 0, int texIndex = 0) const { return (char*)v.constData() + texIndex*textureSize() + idx*2*sizeof(float); }
-    const void* constData(int idx = 0, int texIndex = 0) const { return (char*)v.constData() + texIndex*textureSize() + idx*2*sizeof(float); }
-private:
-    Triangle tri;
-    int points_per_tex;
-    int nb_tex;
-    QVector<Point> v;
-};
-
 } //namespace QtAV
-
 #endif // QTAV_VIDEOSHADER_H

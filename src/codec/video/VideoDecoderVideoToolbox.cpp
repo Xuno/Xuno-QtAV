@@ -66,8 +66,10 @@ public:
         YUV420P = 'y420',
         YUYV = 'yuvs',
     };
+    // no ios macro check in Interop because moc is an idiot
     enum Interop {
         CVPixelBuffer = cv::InteropCVPixelBuffer,
+        CVOpenGLES = cv::InteropCVOpenGLES,
         IOSurface = cv::InteropIOSurface,
         Auto = cv::InteropAuto
     };
@@ -149,10 +151,13 @@ VideoDecoderVideoToolbox::VideoDecoderVideoToolbox()
     // dynamic properties about static property details. used by UI
     setProperty("detail_format", tr("Output pixel format from decoder. Performance NV12 > UYVY > BGRA > YUV420P > YUYV.\nOSX < 10.7 only supports UYVY, BGRA and YUV420p"));
     setProperty("detail_interop"
-                , tr("Interop with OpenGL.\n"
-                     "CVPixelBuffer: OSX+iOS\n"
-                     "IOSurface: OSX, no copy, fast\n"
-                     "Auto: choose the fastest"));
+                , tr("Interop with OpenGL") + QStringLiteral("\n") +
+                  tr("CVPixelBuffer: OSX+iOS") + QStringLiteral("\n") +
+                  tr("CVOpenGLES: iOS, no copy, fast") + QStringLiteral("\n") +
+                  tr("IOSurface: OSX, no copy, fast") + QStringLiteral("\n") +
+                  tr("Auto: choose the fastest"));
+    Q_UNUSED(QObject::tr("interop"));
+    Q_UNUSED(QObject::tr("format"));
 }
 
 VideoDecoderId VideoDecoderVideoToolbox::id() const
@@ -162,7 +167,7 @@ VideoDecoderId VideoDecoderVideoToolbox::id() const
 
 QString VideoDecoderVideoToolbox::description() const
 {
-    return QStringLiteral("Video Decode Acceleration");
+    return QStringLiteral("Apple VideoToolbox");
 }
 
 VideoFrame VideoDecoderVideoToolbox::frame()
@@ -179,7 +184,7 @@ VideoFrame VideoDecoderVideoToolbox::frame()
     }
     const VideoFormat::PixelFormat pixfmt = cv::format_from_cv(CVPixelBufferGetPixelFormatType(cv_buffer));
     if (pixfmt == VideoFormat::Format_Invalid) {
-        qWarning("unsupported cv pixel format: %#x", CVPixelBufferGetPixelFormatType(cv_buffer));
+        qWarning("unsupported cv pixel format: %#x", (quint32)CVPixelBufferGetPixelFormatType(cv_buffer));
         return VideoFrame();
     }
 

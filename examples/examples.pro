@@ -5,6 +5,7 @@ SUBDIRS = common
   SUBDIRS += audiopipeline
 !no-widgets {
   SUBDIRS += \
+    shader \
     sharedoutput \
     simpletranscode \
     simpleplayer \
@@ -26,7 +27,7 @@ SUBDIRS = common
 }
 
 greaterThan(QT_MAJOR_VERSION, 4) {
-  greaterThan(QT_MINOR_VERSION, 3) {
+  isEqual(QT_MAJOR_VERSION,5):greaterThan(QT_MINOR_VERSION,3)|greaterThan(QT_MAJOR_VERSION,5) {
     contains(QT_CONFIG, opengl):!winrt:!ios:!android: SUBDIRS += window
   }
   # qtHaveModule does not exist in Qt5.0
