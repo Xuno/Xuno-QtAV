@@ -60,7 +60,7 @@
 #include "playlist/PlayList.h"
 #include "../common/common.h"
 #include <QUrl>
-#include "filters/netstreamfilter.h"
+#include "filters/advancedfilter.h"
 
 
 /*
@@ -113,7 +113,7 @@ MainWindow::MainWindow(QWidget *parent) :
   , mCustomFPS(0.)
   , mPlayerScale(1.)
   , m_preview(0)
-  , mpNetStreamFilter(0)
+  , mpAdvancedFilter(0)
 {
     XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
     XUNOpresetUrl=XUNOserverUrl+QString::fromLatin1("/getpreset.php?");
@@ -166,7 +166,7 @@ void MainWindow::initPlayer()
     //mpSubtitle->installTo(mpPlayer); //filter on frame
     mpSubtitle->setPlayer(mpPlayer);
     //mpPlayer->setAudioOutput(AudioOutputFactory::create(AudioOutputId_OpenAL));
-    installNetStreamFilter();
+    installAdvancedFilter();
     EventFilter *ef = new EventFilter(mpPlayer);
     qApp->installEventFilter(ef);
     connect(ef, SIGNAL(helpRequested()), SLOT(help()));
@@ -2183,9 +2183,9 @@ void MainWindow::analyeUsedFPS()
         }
 }
 
-void MainWindow::installNetStreamFilter()
+void MainWindow::installAdvancedFilter()
 {
-    qDebug()<<"MainWindow::installNetStreamFilter";
+    qDebug()<<"MainWindow::installAdvancedFilter";
     if (Config::instance().advancedFilterEnabled()){
 
         mpvPlayerWindow = new QWidget(this);
@@ -2194,24 +2194,23 @@ void MainWindow::installNetStreamFilter()
         //mpvPlayerWindow->setWindowFlags(this->windowFlags() & ~Qt::WindowCloseButtonHint & ~Qt::WindowMinMaxButtonsHint & Qt::CustomizeWindowHint);
         mpvPlayerWindow->setMinimumHeight(125);//785
         mpvPlayerWindow->setMinimumHeight(55);
-        mpvPlayerWindow->setStyleSheet("background-color:red;");
+        mpvPlayerWindow->setStyleSheet("background-color:black;");
         //mpvPlayerWindow->move(0,0);
-        //mpvPlayerWindow
 
 
-        if (mpNetStreamFilter==0 && mpPlayer){
-            mpNetStreamFilter = new NetStreamFilter(this);
-            connect(mpNetStreamFilter, &NetStreamFilter::onSentFrame,this,&MainWindow::advacedFilterSentFrame);
-            mpNetStreamFilter->setEnabled(true);
-            mpNetStreamFilter->installTo(mpPlayer);
-            mpNetStreamFilter->setPlayer(mpPlayer);
+        if (mpAdvancedFilter==0 && mpPlayer){
+            mpAdvancedFilter = new AdvancedFilter(this);
+            connect(mpAdvancedFilter, &AdvancedFilter::onSentFrame,this,&MainWindow::advacedFilterSentFrame);
+            mpAdvancedFilter->setEnabled(true);
+            mpAdvancedFilter->installTo(mpPlayer);
+            mpAdvancedFilter->setPlayer(mpPlayer);
             if (!mpvpipe) {
                 mpvpipe=new runmpvpipe();
                 mpvpipe->setWidget(mpvPlayerWindow);
                 connect(mpvpipe,SIGNAL(ready()),this,SLOT(runMpvPlayerRunned()));
                 connect(mpvpipe,SIGNAL(finished(int)),this,SLOT(runMpvPlayerFinished(int)));
             }
-            mpNetStreamFilter->setMpvPipe(mpvpipe);
+            mpAdvancedFilter->setMpvPipe(mpvpipe);
         }
 
         if (mpRenderer){

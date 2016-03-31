@@ -1,26 +1,28 @@
-#include "netstreamfilter.h"
+#include "advancedfilter.h"
 #include <QTime>
 #include <QDebug>
 #include <QImage>
 #include <QObject>
 
 
-NetStreamFilter::NetStreamFilter(QObject *parent)
+AdvancedFilter::AdvancedFilter(QObject *parent)
     : VideoFilter(parent)
     ,firstFrame(false)
     ,m_parent(parent)
 {
-    qDebug()<<"NetStreamFilter constructor";
-    setObjectName("NetStreamFilter");
+    qDebug()<<"AdvancedFilter constructor";
+    setObjectName("AdvancedFilter");
 }
 
-NetStreamFilter::~NetStreamFilter()
+AdvancedFilter::~AdvancedFilter()
 {
-    qDebug()<<"NetStreamFilter destructor";
+    qDebug()<<"AdvancedFilter destructor";
+#ifdef NETSTREAMSERVER_H
     if (Nss) delete Nss;
+#endif
 }
 
-void NetStreamFilter::setMpvPipe(runmpvpipe *value)
+void AdvancedFilter::setMpvPipe(runmpvpipe *value)
 {
     mpvpipe=value;
     if (mpvpipe){
@@ -28,34 +30,34 @@ void NetStreamFilter::setMpvPipe(runmpvpipe *value)
     }
 }
 
-void NetStreamFilter::customEvent(QEvent *event)
+void AdvancedFilter::customEvent(QEvent *event)
 {
-    qDebug()<<"NetStreamFilter::customEvent"<<event->type();
+    qDebug()<<"AdvancedFilter::customEvent"<<event->type();
     QtAV::VideoFilter::customEvent(event);
 }
 
-bool NetStreamFilter::event(QEvent *e)
+bool AdvancedFilter::event(QEvent *e)
 {
-    qDebug()<<"NetStreamFilter::event"<<e->type();
+    qDebug()<<"AdvancedFilter::event"<<e->type();
     return QtAV::VideoFilter::event(e);
 }
 
-void NetStreamFilter::setPlayer(QtAV::AVPlayer *player)
+void AdvancedFilter::setPlayer(QtAV::AVPlayer *player)
 {
     m_player=player;
 }
 
-void NetStreamFilter::onStarted()
+void AdvancedFilter::onStarted()
 {
-    qDebug()<<"NetStreamFilter::onStarted()";
+    qDebug()<<"AdvancedFilter::onStarted()";
 }
 
-void NetStreamFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *frame)
+void AdvancedFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *frame)
 {
     //    QTime duration=statistics->duration;
-    //    qDebug()<<"NetStreamFilter::process - duration"<< duration;
-    //    qDebug()<<"NetStreamFilter::process - video WxH"<<statistics->video_only.width<<statistics->video_only.height;
-    //    qDebug()<<"NetStreamFilter::process - pts()"<< statistics->video_only.pts();
+    //    qDebug()<<"AdvancedFilter::process - duration"<< duration;
+    //    qDebug()<<"AdvancedFilter::process - video WxH"<<statistics->video_only.width<<statistics->video_only.height;
+    //    qDebug()<<"AdvancedFilter::process - pts()"<< statistics->video_only.pts();
     //    QElapsedTimer timer;
     //    timer.start();
     Q_UNUSED(statistics);
@@ -83,9 +85,9 @@ void NetStreamFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *fr
     }
 }
 
-void NetStreamFilter::onPostDraw()
+void AdvancedFilter::onPostDraw()
 {
-    qDebug()<<"NetStreamFilter::onPostDraw";
+    qDebug()<<"AdvancedFilter::onPostDraw";
 }
 
 

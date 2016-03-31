@@ -65,7 +65,7 @@ class OSDFilter;
 class AVFilterSubtitle;
 class Preview;
 class ImageSequenceConfigPage;
-class NetStreamFilter;
+class AdvancedFilter;
 
 
 class MainWindow : public QWidget
@@ -206,7 +206,7 @@ private:
     bool isFileImgageSequence();
     bool applyCustomFPS();
     void analyeUsedFPS();
-    void installNetStreamFilter();
+    void installAdvancedFilter();
 
 
 
@@ -280,7 +280,7 @@ private:
     QString aboutXunoQtAV_PlainText();
     QString aboutXunoQtAV_HTML();
 
-    NetStreamFilter *mpNetStreamFilter;
+    AdvancedFilter *mpAdvancedFilter;
     qint64 mpvPlayerPorcessId=0;
     runmpvpipe *mpvpipe=nullptr;
     QWidget *mpvPlayerWindow=nullptr;

@@ -1,5 +1,5 @@
-#ifndef NETSTREAMFILTER_H
-#define NETSTREAMFILTER_H
+#ifndef ADVANCEDFILTER_H
+#define ADVANCEDFILTER_H
 
 #include <QtAV/Filter.h>
 #include <QtAV/FilterContext.h>
@@ -7,16 +7,16 @@
 #include <QtAV/VideoFrame.h>
 #include <QtAV/AVPlayer.h>
 #include <QtAV/VideoRenderer.h>
-#include "netstreamserver.h"
+//#include "netstreamserver.h"
 #include "runmpvpipe.h"
 
 
-class NetStreamFilter : public QtAV::VideoFilter
+class AdvancedFilter : public QtAV::VideoFilter
 {
     Q_OBJECT
 public:
-    NetStreamFilter(QObject *parent);
-    ~NetStreamFilter();
+    AdvancedFilter(QObject *parent);
+    ~AdvancedFilter();
     bool isSupported(QtAV::VideoFilterContext::Type ct) const {
         return ct == QtAV::VideoFilterContext::QtPainter || ct == QtAV::VideoFilterContext::X11;
     }
@@ -45,11 +45,13 @@ protected:
 
 
 private:
+#ifdef NETSTREAMSERVER_H
     NetStreamServer *Nss=0;
+#endif
     runmpvpipe *mpvpipe=0;
     QByteArray buffer;
 
 
 };
 
-#endif // NETSTREAMFILTER_H
+#endif // ADVANCEDFILTER_H
