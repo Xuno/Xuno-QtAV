@@ -118,6 +118,7 @@ public:
         , effective_tex_width_ratio(1.0)
         , gammaRGB(1.0)
         , target(GL_TEXTURE_2D)
+        , dirty_color_mat(true)
         , try_pbo(true)
     {
         v_texel_size.reserve(4);
@@ -181,10 +182,11 @@ public:
     QVector<GLenum> data_type;
 
     QVector<GLfloat> texture_coords;
+    bool dirty_color_mat;
     ColorTransform colorTransform;
-    QMatrix4x4 matrix;
     qreal gammaRGB;
     qreal filterSharp;
+
     bool try_pbo;
     QVector<QOpenGLBuffer> pbo;
     QVector2D vec_to8; //TODO: vec3 to support both RG and LA (.rga, vec_to8)
