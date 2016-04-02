@@ -860,6 +860,7 @@ bool MainWindow::setRenderer(QtAV::VideoRenderer *renderer)
         mpVideoEQ->setEngines(QVector<VideoEQConfigPage::Engine>() << VideoEQConfigPage::SWScale << VideoEQConfigPage::GLSL);
         mpVideoEQ->setEngine(VideoEQConfigPage::GLSL);
         mpPlayer->renderer()->forcePreferredPixelFormat(true);
+        installShaderXuno();
     } else if (vid == VideoRendererId_XV) {
         mpVideoEQ->setEngines(QVector<VideoEQConfigPage::Engine>() << VideoEQConfigPage::XV);
         mpVideoEQ->setEngine(VideoEQConfigPage::XV);
@@ -1240,9 +1241,9 @@ void MainWindow::resizeEvent(QResizeEvent *e)
     QWidget::resizeEvent(e);
     if (mpvPlayerWindow1 && Config::instance().advancedFilterEnabled()) {
         mpvPlayerWindow1->resize(e->size());
-//        if (mpRenderer){
-//            mpRenderer->widget()->move(0,0);
-//        }
+        //        if (mpRenderer){
+        //            mpRenderer->widget()->move(0,0);
+        //        }
     }
     /*
     if (mpTitle)
@@ -2052,9 +2053,9 @@ void MainWindow::reSizeByMovie()
     }
     if (t.isValid() && (!t.isNull())) {
         resize(t);
-//        if (Config::instance().advancedFilterEnabled()){
-//           //mpRenderer->widget()->move(st.video_only.width-1,st.video_only.height-1);
-//        }
+        //        if (Config::instance().advancedFilterEnabled()){
+        //           //mpRenderer->widget()->move(st.video_only.width-1,st.video_only.height-1);
+        //        }
     }
 }
 
@@ -2231,6 +2232,18 @@ void MainWindow::installAdvancedFilter()
 
     }
 
+}
+
+void MainWindow::installShaderXuno()
+{
+    if (mpRenderer && mpRenderer->opengl()){
+        if (shaderXuno==nullptr) shaderXuno=new ShaderFilterXuno();
+        if (shaderXuno!=nullptr) {
+            shaderXuno->setGammaValue(.3f);
+            shaderXuno->setSharpValue(0.9f);
+            mpRenderer->opengl()->setUserShader(shaderXuno);
+        }
+    }
 }
 
 void MainWindow::runMpvPlayer()

@@ -17,20 +17,6 @@ INCLUDEPATH += $$PWD
 mac: RC_FILE = $$PROJECTROOT/src/QtAV.icns
 genRC($$TARGET)
 
-SOURCES +=  \
-    XunoBrowser.cpp \
-    config/ImageSequenceConfigPage.cpp \
-    config/configwebmemu.cpp \
-    config/WebConfigPage.cpp \
-    config/ImageSequenceExtractControl.cpp
-
-HEADERS += \
-    XunoBrowser.h \
-    config/ImageSequenceConfigPage.h \
-    config/configwebmemu.h \
-    config/WebConfigPage.h \
-    config/ImageSequenceExtractControl.h
-
 include(src.pri)
 
 unix:!android:!mac {

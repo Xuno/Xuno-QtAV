@@ -25,7 +25,8 @@ SOURCES += main.cpp \
     $$PWD/filters/netstreamserver.cpp \
     $$PWD/filters/netstreamthread.cpp \
     $$PWD/filters/runmpvpipe.cpp \
-    $$PWD/filters/advancedfilter.cpp
+    $$PWD/filters/advancedfilter.cpp \
+    $$PWD/filters/ShaderFilterXuno.cpp
 
 HEADERS += \
     MainWindow.h \
@@ -54,4 +55,19 @@ HEADERS += \
     $$PWD/filters/netstreamserver.h \
     $$PWD/filters/netstreamthread.h \
     $$PWD/filters/runmpvpipe.h \
-    $$PWD/filters/advancedfilter.h
+    $$PWD/filters/advancedfilter.h \
+    $$PWD/filters/ShaderFilterXuno.h
+
+SOURCES +=  \
+    XunoBrowser.cpp \
+    config/ImageSequenceConfigPage.cpp \
+    config/configwebmemu.cpp \
+    config/WebConfigPage.cpp \
+    config/ImageSequenceExtractControl.cpp
+
+HEADERS += \
+    XunoBrowser.h \
+    config/ImageSequenceConfigPage.h \
+    config/configwebmemu.h \
+    config/WebConfigPage.h \
+    config/ImageSequenceExtractControl.h
