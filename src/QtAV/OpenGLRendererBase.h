@@ -69,8 +69,6 @@ private:
     bool onSetContrast(qreal c) Q_DECL_OVERRIDE;
     bool onSetHue(qreal h) Q_DECL_OVERRIDE;
     bool onSetSaturation(qreal s) Q_DECL_OVERRIDE;
-    bool onSetGammaRGB(qreal gammaRGB) Q_DECL_OVERRIDE;
-    bool onSetFilterSharp(qreal filterSharp) Q_DECL_OVERRIDE;
     bool isRenderRAWImage=true;
     uchar *m_RAWImagePixels=nullptr;
     int m_RAWImageWidth=0;

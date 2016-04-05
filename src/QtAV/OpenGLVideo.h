@@ -88,9 +88,6 @@ public:
     void setContrast(qreal value);
     void setHue(qreal value);
     void setSaturation(qreal value);
-    void setGammaRGB(qreal value);
-    void setFilterSharp(qreal value);
-
     void setUserShader(VideoShader* shader);
 
 protected:

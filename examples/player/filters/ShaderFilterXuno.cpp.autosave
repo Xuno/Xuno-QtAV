@@ -9,7 +9,7 @@ ShaderFilterXuno::ShaderFilterXuno()
     qDebug()<<"constructor ShaderFilterXuno::ShaderFilterXuno";
     setProperty("u_pixeloffsetkernel", QVariant::fromValue(QVector<float>(18) << 0.4f ));
     setProperty("u_filterkernel", QVariant::fromValue(QVector<float>(9) << 0.5f ));
-    setProperty("u_gammaRGB", QVariant::fromValue(4.2f));
+    setProperty("u_gammaRGB", QVariant::fromValue(2.2f));
 }
 
 void ShaderFilterXuno::setSharpValue(float v)

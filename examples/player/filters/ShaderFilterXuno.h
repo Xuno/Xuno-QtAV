@@ -10,8 +10,8 @@ using namespace QtAV;
 class ShaderFilterXuno : public QtAV::VideoShaderObject
 {
     Q_OBJECT
-    Q_PROPERTY(QVariant Xu_pixeloffsetkernel READ getXu_pixeloffsetkernel WRITE setXu_pixeloffsetkernel NOTIFY Xu_pixeloffsetkernelChanged)
-    Q_PROPERTY(QVariant Xu_filterkernel READ getXu_filterkernel WRITE setXu_filterkernel NOTIFY Xu_filterkernelChanged)
+    //Q_PROPERTY(QVariant u_pixeloffsetkernel READ getu_pixeloffsetkernel WRITE setu_pixeloffsetkernel NOTIFY u_pixeloffsetkernelChanged)
+    //Q_PROPERTY(QVariant u_filterkernel READ getu_filterkernel WRITE setu_filterkernel NOTIFY u_filterkernelChanged)
     Q_PROPERTY(QVariant u_gammaRGB READ getU_gammaRGB WRITE setU_gammaRGB NOTIFY u_gammaRGBChanged)
 public:
     ShaderFilterXuno();
@@ -20,25 +20,32 @@ public:
     QVariant getU_gammaRGB() const;
     void setU_gammaRGB(const QVariant &value);
 
-    QVariant getXu_filterkernel() const;
-    void setXu_filterkernel(const QVariant &value);
+//    QVariant getu_filterkernel() const;
+//    void setu_filterkernel(const QVariant &value);
 
-    QVariant getXu_pixeloffsetkernel() const;
-    void setXu_pixeloffsetkernel(const QVariant &value);
+//    QVariant getu_pixeloffsetkernel() const;
+//    void setu_pixeloffsetkernel(const QVariant &value);
 
 signals:
-    void Xu_pixeloffsetkernelChanged(QVariant);
-    void Xu_filterkernelChanged(QVariant);
+    void u_pixeloffsetkernelChanged(QVariant);
+    void u_filterkernelChanged(QVariant);
     void u_gammaRGBChanged(QVariant);
 
 private:
     const char* userShaderHeader(QOpenGLShader::ShaderType type) const;
     const char* userPostProcess() const;
     const char* userSample() const;
+    void setUserUniformValue(Uniform &u);
+    bool setUserUniformValues();
 
-    QVariant u_gammaRGB;
-    QVariant Xu_filterkernel;
-    QVariant Xu_pixeloffsetkernel;
+    GLfloat u_gammaRGB;
+    QVector <GLfloat> u_filterkernel;
+    QVector <QVector2D> u_pixeloffsetkernel;
+    QVector2D pixeloffset() const;
+    void setGammaRGB(qreal value);
+    void setFilterSharp(qreal value);
+
+    qreal filterSharp;
 
 };
 

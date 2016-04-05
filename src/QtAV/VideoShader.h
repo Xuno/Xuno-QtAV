@@ -85,10 +85,6 @@ public:
     int matrixLocation() const;
     int colorMatrixLocation() const;
     int opacityLocation() const;
-    int gammaRGBLocation() const;
-    int pixeloffsetLocation() const;
-    int filterkernelLocation() const;
-    int pixeloffsetkernelLocation() const;
     int channelMapLocation() const;
     int texelSizeLocation() const;
     VideoFormat videoFormat() const;
@@ -202,8 +198,6 @@ public:
     int bitsPerComponent() const; //0 if the value of components are different
     QVector2D vectorTo8bit() const;
     int planeCount() const;
-    qreal gammaRGB() const;
-    qreal filterSharp() const;
     /*!
      * \brief validTextureWidth
      * Value is (0, 1]. Normalized valid width of a plane.
@@ -237,7 +231,6 @@ public:
      * the same as mapToTexture(roi, 1)
      */
     QRectF normalizedROI(const QRectF& roi) const;
-    QVector2D pixeloffset() const;
     /*!
      * \brief mapToFrame
      * map a point p or a rect r to video texture in a given plane and scaled to valid width.
@@ -252,8 +245,6 @@ public:
     void setContrast(qreal value);
     void setHue(qreal value);
     void setSaturation(qreal value);
-    void setGammaRGB(qreal value);
-    void setFilterSharp(qreal value);
 protected:
     // TODO: roi
     // whether to update texture is set internal

@@ -200,11 +200,6 @@ public:
     bool setSaturation(qreal saturation);
     QColor backgroundColor() const;
     void setBackgroundColor(const QColor& c);
-    qreal gammaRGB() const;
-    bool setGammaRGB(qreal gammaRGB);
-    qreal filterSharp() const;
-    bool setFilterSharp(qreal filterSharp);
-
 
     /*!
      * \brief opengl
@@ -239,8 +234,6 @@ private: // property change. used as signals in subclasses. implemented by moc
     virtual void hueChanged(qreal) {}
     virtual void saturationChanged(qreal) {}
     virtual void backgroundColorChanged() {}
-    virtual void gammaRGBChanged(qreal) {}
-    virtual void filterSharpChanged(qreal) {}
 
 private: // mainly used by VideoOutput class
     /*!
@@ -267,8 +260,6 @@ private: // mainly used by VideoOutput class
     virtual bool onSetContrast(qreal contrast);
     virtual bool onSetHue(qreal hue);
     virtual bool onSetSaturation(qreal saturation);
-    virtual bool onSetGammaRGB(qreal gammaRGB);
-    virtual bool onSetFilterSharp(qreal filterSharp);
 private:
     template<class C>
     static VideoRenderer* create() {

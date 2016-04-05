@@ -203,8 +203,8 @@ void MainWindow::initPlayer()
     connect(mpVideoEQ, SIGNAL(contrastChanged(int)), this, SLOT(onContrastChanged(int)));
     connect(mpVideoEQ, SIGNAL(hueChanegd(int)), this, SLOT(onHueChanged(int)));
     connect(mpVideoEQ, SIGNAL(saturationChanged(int)), this, SLOT(onSaturationChanged(int)));
-    connect(mpVideoEQ, SIGNAL(gammaRGBChanged(int)),  this, SLOT(onGammaRGBChanged(int)));
-    connect(mpVideoEQ, SIGNAL(filterSharpChanged(int)),  this, SLOT(onFilterSharpChanged(int)));
+    //connect(mpVideoEQ, SIGNAL(gammaRGBChanged(int)),  this, SLOT(onGammaRGBChanged(int)));
+    //connect(mpVideoEQ, SIGNAL(filterSharpChanged(int)),  this, SLOT(onFilterSharpChanged(int)));
 
 
     connect(mpCaptureBtn, SIGNAL(clicked()), mpPlayer->videoCapture(), SLOT(capture()));
@@ -1771,8 +1771,8 @@ void MainWindow::onVideoEQEngineChanged()
     onContrastChanged(mpVideoEQ->contrast()*100.0);
     onHueChanged(mpVideoEQ->hue()*100.0);
     onSaturationChanged(mpVideoEQ->saturation()*100.0);
-    onGammaRGBChanged(mpVideoEQ->gammaRGB()*100.0);
-    onFilterSharpChanged(mpVideoEQ->filterSharp()*100.0);
+    //onGammaRGBChanged(mpVideoEQ->gammaRGB()*100.0);
+    //onFilterSharpChanged(mpVideoEQ->filterSharp()*100.0);
 }
 
 void MainWindow::onBrightnessChanged(int b)
@@ -1839,14 +1839,14 @@ void MainWindow::onGammaRGBChanged(int g)
 {
     Q_UNUSED(g);
     VideoRenderer *vo = mpPlayer->renderer();
-    vo->setGammaRGB(mpVideoEQ->gammaRGB());
+    //vo->setGammaRGB(mpVideoEQ->gammaRGB());
 }
 
 void MainWindow::onFilterSharpChanged(int fs)
 {
     Q_UNUSED(fs);
     VideoRenderer *vo = mpPlayer->renderer();
-    vo->setFilterSharp(mpVideoEQ->filterSharp());
+    //vo->setFilterSharp(mpVideoEQ->filterSharp());
 }
 
 void MainWindow::onCaptureConfigChanged()
@@ -2239,7 +2239,7 @@ void MainWindow::installShaderXuno()
     if (mpRenderer && mpRenderer->opengl()){
         if (shaderXuno==nullptr) shaderXuno=new ShaderFilterXuno();
         if (shaderXuno!=nullptr) {
-            shaderXuno->setGammaValue(.3f);
+            shaderXuno->setGammaValue(2.3f);
             shaderXuno->setSharpValue(0.9f);
             mpRenderer->opengl()->setUserShader(shaderXuno);
         }
