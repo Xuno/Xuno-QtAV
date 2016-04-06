@@ -32,7 +32,7 @@
 
 #define YUVA_DONE 0
 #define glsl(x) #x "\n"
-//#define QTAV_DEBUG_GLSL
+#define QTAV_DEBUG_GLSL
 
 namespace QtAV {
 extern QVector<Uniform> ParseUniforms(const QByteArray& text, GLuint programId = 0);
@@ -251,6 +251,8 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
         qDebug("user uniform locations in fragment shader:");
         d.user_uniforms[FragmentShader] = ParseUniforms(QByteArray(userShaderHeader(QOpenGLShader::Fragment)), shaderProgram->programId());
     }
+    qDebug()<<"u_filterkernel location"<<shaderProgram->uniformLocation("u_filterkernel");
+    qDebug()<<"u_gammaRGB location"<<shaderProgram->uniformLocation("u_gammaRGB");
     d.rebuild_program = false;
     d.update_builtin_uniforms = true;
     programReady(); // program and uniforms are ready

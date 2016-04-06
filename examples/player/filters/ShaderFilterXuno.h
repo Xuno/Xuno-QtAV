@@ -12,7 +12,7 @@ class ShaderFilterXuno : public QtAV::VideoShaderObject
     Q_OBJECT
     //Q_PROPERTY(QVariant u_pixeloffsetkernel READ getu_pixeloffsetkernel WRITE setu_pixeloffsetkernel NOTIFY u_pixeloffsetkernelChanged)
     //Q_PROPERTY(QVariant u_filterkernel READ getu_filterkernel WRITE setu_filterkernel NOTIFY u_filterkernelChanged)
-    Q_PROPERTY(QVariant u_gammaRGB READ getU_gammaRGB WRITE setU_gammaRGB NOTIFY u_gammaRGBChanged)
+     Q_PROPERTY(QVariant u_gammaRGB READ getU_gammaRGB WRITE setU_gammaRGB NOTIFY u_gammaRGBChanged)
 public:
     ShaderFilterXuno();
     void setSharpValue(float v);

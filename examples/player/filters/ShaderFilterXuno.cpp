@@ -9,7 +9,7 @@ ShaderFilterXuno::ShaderFilterXuno()
     qDebug()<<"constructor ShaderFilterXuno::ShaderFilterXuno";
     setProperty("u_pixeloffsetkernel", QVariant::fromValue(QVector<float>(18) << 0.4f ));
     setProperty("u_filterkernel", QVariant::fromValue(QVector<float>(9) << 0.5f ));
-    setProperty("u_gammaRGB", QVariant::fromValue(4.2f));
+    setProperty("u_gammaRGB", QVariant::fromValue(2.2f));
 }
 
 void ShaderFilterXuno::setSharpValue(float v)
@@ -31,8 +31,8 @@ const char *ShaderFilterXuno::userShaderHeader(QOpenGLShader::ShaderType type) c
 
     return GLSL(\n
                 \nuniform float u_filterkernel[9];
-                \nuniform vec2 u_pixeloffsetkernel[9];
                 \nuniform float u_gammaRGB;
+                \nuniform vec2 u_pixeloffsetkernel[9];
                 \n#define USED_GAMMA
                 );
 }
@@ -98,11 +98,11 @@ bool ShaderFilterXuno::setUserUniformValues()
         QVector2D(   pix.x()   ,  pix.y()  )
      };
 
-    qDebug()<<"ShaderFilterXuno::setUserUniformValues() u_gammaRGB"<<u_gammaRGB;
+    //qDebug()<<"ShaderFilterXuno::setUserUniformValues() u_gammaRGB"<<u_gammaRGB;
     program()->setUniformValue("u_gammaRGB", u_gammaRGB);
-/*    program()->setUniformValue("u_pixeloffsetkernel", pixeloffsetkernel); //pixeloffsetkernel
-    program()->setUniformValue("u_filterkernel", kernel);                 //filterkernel
-    program()->setUniformValue("u_pix", u_pix); */                          //pixeloffset
+    program()->setUniformValueArray("u_pixeloffsetkernel", pixeloffsetkernel,9); //pixeloffsetkernel
+    program()->setUniformValueArray("u_filterkernel", kernel, 9);                //filterkernel
+/*    program()->setUniformValue("u_pix", u_pix); */                          //pixeloffset
 
 
     return true;
