@@ -203,8 +203,8 @@ void MainWindow::initPlayer()
     connect(mpVideoEQ, SIGNAL(contrastChanged(int)), this, SLOT(onContrastChanged(int)));
     connect(mpVideoEQ, SIGNAL(hueChanegd(int)), this, SLOT(onHueChanged(int)));
     connect(mpVideoEQ, SIGNAL(saturationChanged(int)), this, SLOT(onSaturationChanged(int)));
-    //connect(mpVideoEQ, SIGNAL(gammaRGBChanged(int)),  this, SLOT(onGammaRGBChanged(int)));
-    //connect(mpVideoEQ, SIGNAL(filterSharpChanged(int)),  this, SLOT(onFilterSharpChanged(int)));
+    connect(mpVideoEQ, SIGNAL(gammaRGBChanged(int)),  this, SLOT(onGammaRGBChanged(int)));
+    connect(mpVideoEQ, SIGNAL(filterSharpChanged(int)),  this, SLOT(onFilterSharpChanged(int)));
 
 
     connect(mpCaptureBtn, SIGNAL(clicked()), mpPlayer->videoCapture(), SLOT(capture()));
@@ -1838,15 +1838,13 @@ void MainWindow::onSaturationChanged(int s)
 void MainWindow::onGammaRGBChanged(int g)
 {
     Q_UNUSED(g);
-    VideoRenderer *vo = mpPlayer->renderer();
-    //vo->setGammaRGB(mpVideoEQ->gammaRGB());
+    if (shaderXuno) shaderXuno->setGammaValue(mpVideoEQ->gammaRGB());
 }
 
 void MainWindow::onFilterSharpChanged(int fs)
 {
     Q_UNUSED(fs);
-    VideoRenderer *vo = mpPlayer->renderer();
-    //vo->setFilterSharp(mpVideoEQ->filterSharp());
+    if (shaderXuno) shaderXuno->setSharpValue(mpVideoEQ->filterSharp());
 }
 
 void MainWindow::onCaptureConfigChanged()

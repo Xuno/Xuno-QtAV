@@ -21,12 +21,12 @@ void ShaderFilterXuno::setSharpValue(float v)
 
 void ShaderFilterXuno::setGammaValue(float v)
 {
-    //qDebug("VideoShader.cpp VideoMaterial::setGammaRGB: %f",value);
+    qDebug("ShaderFilterXuno::setGammaValue: %f",v);
     //0-2
     const qreal min=0.,max=2.,w=(max-min)/2.,of=w+min;
     qreal g = ((qreal)v)*w+of;
     g=(g>0)?g:0.000001; // prevent values less than 0
-    //qDebug("VideoShader.cpp VideoMaterial::setGammaRGB (corr): %f",g);
+    qDebug("ShaderFilterXuno::setGammaValue (corr): %f",g);
     u_gammaRGB=g;
 }
 
