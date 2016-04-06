@@ -61,8 +61,6 @@ public:
       , contrast(0)
       , hue(0)
       , saturation(0)
-      , gammaRGB(1)
-      , filterSharp(1)
       , bg_color(0, 0, 0)
     {
         //conv.setInFormat(PIX_FMT_YUV420P);
@@ -122,7 +120,7 @@ public:
     VideoFormat::PixelFormat preferred_format;
     bool force_preferred;
 
-    qreal brightness, contrast, hue, saturation, gammaRGB, filterSharp;
+    qreal brightness, contrast, hue, saturation;
     QColor bg_color;
 };
 

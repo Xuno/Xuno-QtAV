@@ -31,8 +31,6 @@
 #include "utils/Logger.h"
 
 #define YUVA_DONE 0
-#define GLSL_BICUBIC 0  // if used in GLSL own function for BICUBIC Interpolation
-#define glsl(x) #x "\n"
 //#define QTAV_DEBUG_GLSL
 
 namespace QtAV {
@@ -168,16 +166,13 @@ const char* VideoShader::fragmentShader() const
                         "#define texture texture2DRect\n"
                         );
     }
-#if (GLSL_BICUBIC)
-        frag.prepend("#define USED_BiCubic\n");
-#endif
     if (textureTarget() == GL_TEXTURE_RECTANGLE)
         frag.prepend("#define MULTI_COORD\n");
     frag.prepend(OpenGLHelper::compatibleShaderHeader(QOpenGLShader::Fragment));
 
     QByteArray header("*/");
     if (userShaderHeader(QOpenGLShader::Fragment))
-        header.append(userShaderHeader(QOpenGLShader::Fragment));
+        header += QByteArray(userShaderHeader(QOpenGLShader::Fragment));
     header += "\n";
     header += "uniform vec2 u_texelSize[" + QByteArray::number(nb_planes) + "];\n";
     header += "/*";
@@ -185,14 +180,14 @@ const char* VideoShader::fragmentShader() const
 
     if (userSample()) {
         QByteArray sample_code("*/\n#define USER_SAMPLER\n");
-        sample_code.append(userSample());
+        sample_code += QByteArray(userSample());
         sample_code += "/*";
         frag.replace("%userSample%", sample_code);
     }
 
     if (userPostProcess()) {
         QByteArray pp_code("*/");
-        pp_code.append(userPostProcess());
+        pp_code += QByteArray(userPostProcess()); //why the content is wrong sometimes if no ctor?
         pp_code += "/*";
         frag.replace("%userPostProcess%", pp_code);
     }
@@ -223,10 +218,6 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
     d.u_colorMatrix = shaderProgram->uniformLocation("u_colorMatrix");
     d.u_to8 = shaderProgram->uniformLocation("u_to8");
     d.u_opacity = shaderProgram->uniformLocation("u_opacity");
-    d.u_gammaRGB = shaderProgram->uniformLocation("u_gammaRGB");
-    d.u_pix = shaderProgram->uniformLocation("u_pix");
-    d.u_filterkernel = shaderProgram->uniformLocation("u_filterkernel");
-    d.u_pixeloffsetkernel = shaderProgram->uniformLocation("u_pixeloffsetkernel");
     d.u_c = shaderProgram->uniformLocation("u_c");
     d.u_texelSize = shaderProgram->uniformLocation("u_texelSize");
     d.u_Texture.resize(textureLocationCount());
@@ -239,9 +230,6 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
     //qDebug("glGetUniformLocation(\"u_MVP_matrix\") = %d", d.u_MVP_matrix);
     qDebug("glGetUniformLocation(\"u_colorMatrix\") = %d", d.u_colorMatrix);
     qDebug("glGetUniformLocation(\"u_opacity\") = %d", d.u_opacity);
-    qDebug("glGetUniformLocation(\"u_gammaRGB\") = %d", d.u_gammaRGB);
-    qDebug("glGetUniformLocation(\"u_pix\") = %d", d.u_pix);
-    qDebug("glGetUniformLocation(\"u_filterkernel\") = %d", d.u_filterkernel);
     qDebug("u_Matrix: %d", d.u_Matrix);
     qDebug("u_colorMatrix: %d", d.u_colorMatrix);
     qDebug("u_opacity: %d", d.u_opacity);
@@ -298,25 +286,6 @@ int VideoShader::opacityLocation() const
     return d_func().u_opacity;
 }
 
-int VideoShader::gammaRGBLocation() const
-{
-    return d_func().u_gammaRGB;
-}
-
-int VideoShader::pixeloffsetLocation() const
-{
-    return d_func().u_pix;
-}
-
-int VideoShader::pixeloffsetkernelLocation() const
-{
-    return d_func().u_pixeloffsetkernel;
-}
-
-int VideoShader::filterkernelLocation() const
-{
-    return d_func().u_filterkernel;
-}
 int VideoShader::channelMapLocation() const
 {
     return d_func().u_c;
@@ -386,28 +355,6 @@ bool VideoShader::update(VideoMaterial *material)
     if (!material->bind())
         return false;
 
-    GLfloat fs=(GLfloat)material->filterSharp();
-    GLfloat fsa=(GLfloat)-((fs-(qreal)1.0)/(qreal)4.0);
-
-    GLfloat kernel[9] =  {
-                 0.,fsa ,0.,
-               fsa, fs ,fsa,
-                 0.,fsa ,0.
-     };
-
-    QVector2D pix=material->pixeloffset();
-    QVector2D pixeloffsetkernel[9] =  {
-        QVector2D(  -pix.x()   , -pix.y()  ),
-        QVector2D(   0.0	   , -pix.y()  ),
-        QVector2D(   pix.x()   , -pix.y()  ),
-        QVector2D(  -pix.x()   ,  0.0      ),
-        QVector2D(   0.0	   ,  0.0      ),
-        QVector2D(   pix.x()   ,  0.0      ),
-        QVector2D(  -pix.x()   ,  pix.y()  ),
-        QVector2D(   0.0	   ,  pix.y()  ),
-        QVector2D(   pix.x()   ,  pix.y()  )
-     };
-
     //material->unbind();
     const VideoFormat fmt(material->currentFormat()); //FIXME: maybe changed in setCurrentFrame(
     //format is out of date because we may use the same shader for different formats
@@ -432,7 +379,8 @@ bool VideoShader::update(VideoMaterial *material)
             }
         }
     }
-    if (material->isColorMatrixDirty())
+    // shader type changed, or eq mat changed
+    if (d.update_builtin_uniforms || material->isColorMatrixDirty())
         program()->setUniformValue(colorMatrixLocation(), material->colorMatrix());
     // opacity should be here if changed by user
     if (!d.update_builtin_uniforms)
@@ -459,10 +407,6 @@ bool VideoShader::update(VideoMaterial *material)
     if (texelSizeLocation() >= 0)
         program()->setUniformValueArray(texelSizeLocation(), material->texelSize().constData(), nb_planes);
     // uniform end. attribute begins
-    program()->setUniformValue(gammaRGBLocation(), (GLfloat)material->gammaRGB());
-    program()->setUniformValue(pixeloffsetLocation(), material->pixeloffset());
-    program()->setUniformValueArray(filterkernelLocation(),kernel,9,1);
-    program()->setUniformValueArray(pixeloffsetkernelLocation(),pixeloffsetkernel,9);
     return true;
 }
 
@@ -783,16 +727,6 @@ int VideoMaterial::bitsPerComponent() const
     return d_func().bpc;
 }
 
-qreal VideoMaterial::gammaRGB() const
-{
-    return d_func().gammaRGB;
-}
-
-qreal VideoMaterial::filterSharp() const
-{
-    return d_func().filterSharp;
-}
-
 QVector2D VideoMaterial::vectorTo8bit() const
 {
     return d_func().vec_to8;
@@ -825,27 +759,6 @@ void VideoMaterial::setSaturation(qreal value)
 {
     d_func().colorTransform.setSaturation(value);
     d_func().dirty_color_mat = true;
-}
-
-void VideoMaterial::setGammaRGB(qreal value)
-{
-    //qDebug("VideoShader.cpp VideoMaterial::setGammaRGB: %f",value);
-    //0-2
-    const qreal min=0.,max=2.,w=(max-min)/2.,of=w+min;
-    qreal g = ((qreal)value)*w+of;
-    g=(g>0)?g:0.000001; // prevent values less than 0
-    //qDebug("VideoShader.cpp VideoMaterial::setGammaRGB (corr): %f",g);
-    d_func().gammaRGB=g;
-}
-
-void VideoMaterial::setFilterSharp(qreal value)
-{
-    //qDebug("VideoShader.cpp VideoMaterial::setFilterSgarp: %f",value);
-    //1-10  W=MAX-MIN,   fs=(value/100.0)*w/2+w+min
-    const qreal min=1.,max=10.,w=(max-min)/2.,of=w+min;
-    qreal fs=((qreal)value)*w+of;
-    //qDebug("VideoShader.cpp VideoMaterial::setFilterSgarp: (corr) %f",fs);
-    d_func().filterSharp=fs;
 }
 
 qreal VideoMaterial::validTextureWidth() const
@@ -970,14 +883,6 @@ QRectF VideoMaterial::mapToTexture(int plane, const QRectF &roi, int normalize) 
     x *= d.effective_tex_width_ratio;
     w *= d.effective_tex_width_ratio;
     return QRectF(x*pw, y*ph, w*pw, h*ph);
-}
-
-QVector2D VideoMaterial::pixeloffset () const
-{
-    DPTR_D(const VideoMaterial);
-    float w=1.f/d.width;
-    float h=1.f/d.height;
-    return QVector2D(w,h);
 }
 
 bool VideoMaterialPrivate::initPBO(int plane, int size)

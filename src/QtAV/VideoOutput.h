@@ -40,8 +40,6 @@ class Q_AV_EXPORT VideoOutput : public QObject, public VideoRenderer
     Q_PROPERTY(qreal contrast READ contrast WRITE setContrast NOTIFY contrastChanged)
     Q_PROPERTY(qreal hue READ hue WRITE setHue NOTIFY hueChanged)
     Q_PROPERTY(qreal saturation READ saturation WRITE setSaturation NOTIFY saturationChanged)
-    Q_PROPERTY(qreal gammaRGB READ gammaRGB WRITE setGammaRGB NOTIFY gammaRGBChanged)
-    Q_PROPERTY(qreal filterSharp READ filterSharp WRITE setFilterSharp NOTIFY filterSharpChanged)
     Q_PROPERTY(QColor backgroundColor READ backgroundColor WRITE setBackgroundColor NOTIFY backgroundColorChanged)
     Q_PROPERTY(QRectF regionOfInterest READ regionOfInterest WRITE setRegionOfInterest NOTIFY regionOfInterestChanged)
     Q_PROPERTY(qreal sourceAspectRatio READ sourceAspectRatio NOTIFY sourceAspectRatioChanged)
@@ -83,8 +81,6 @@ Q_SIGNALS:
     void contrastChanged(qreal) Q_DECL_OVERRIDE;
     void hueChanged(qreal) Q_DECL_OVERRIDE;
     void saturationChanged(qreal) Q_DECL_OVERRIDE;
-    void gammaRGBChanged(qreal value) Q_DECL_OVERRIDE;
-    void filterSharpChanged(qreal value) Q_DECL_OVERRIDE;
     void backgroundColorChanged() Q_DECL_OVERRIDE;
     void orientationChanged() Q_DECL_OVERRIDE;
     void videoRectChanged() Q_DECL_OVERRIDE;
@@ -112,8 +108,6 @@ private:
     virtual bool onSetContrast(qreal contrast) Q_DECL_OVERRIDE;
     virtual bool onSetHue(qreal hue) Q_DECL_OVERRIDE;
     virtual bool onSetSaturation(qreal saturation) Q_DECL_OVERRIDE;
-    virtual bool onSetGammaRGB(qreal gammaRGB) Q_DECL_OVERRIDE;
-    virtual bool onSetFilterSharp(qreal filterSharp) Q_DECL_OVERRIDE;
     // from AVOutput
     virtual void setStatistics(Statistics* statistics) Q_DECL_OVERRIDE; //called by friend AVPlayer
     virtual bool onInstallFilter(Filter *filter, int index) Q_DECL_OVERRIDE;

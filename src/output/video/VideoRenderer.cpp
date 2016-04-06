@@ -615,50 +615,6 @@ bool VideoRenderer::setSaturation(qreal saturation)
     return true;
 }
 
-qreal VideoRenderer::gammaRGB() const
-{
-    return d_func().gammaRGB;
-}
-
-bool VideoRenderer::setGammaRGB(qreal gammaRGB)
-{
-    DPTR_D(VideoRenderer);
-    if (d.gammaRGB == gammaRGB)
-        return false;
-    // may emit signal in onSetXXX. ensure get the new value in slot
-    //qDebug("VideoRenderer::setGammaRGB: %f",gammaRGB);
-    qreal old = d.gammaRGB;
-    d.gammaRGB = gammaRGB;
-    if (!onSetGammaRGB(gammaRGB)) {
-        d.gammaRGB = old;
-        return false;
-    }
-    updateUi();
-    return true;
-}
-
-qreal VideoRenderer::filterSharp() const
-{
-    return d_func().filterSharp;
-}
-
-bool VideoRenderer::setFilterSharp(qreal filterSharp)
-{
-    DPTR_D(VideoRenderer);
-    if (d.filterSharp == filterSharp)
-        return false;
-    // may emit signal in onSetXXX. ensure get the new value in slot
-    //qDebug("VideoRenderer::setFilterSharp: %f",filterSharp);
-    qreal old = d.filterSharp;
-    d.filterSharp = filterSharp;
-    if (!onSetFilterSharp(filterSharp)) {
-        d.filterSharp = old;
-        return false;
-    }
-    updateUi();
-    return true;
-}
-
 void VideoRenderer::updateFiltersAfterDrawFrame()
 {
     DPTR_D(VideoRenderer);
@@ -705,18 +661,6 @@ bool VideoRenderer::onSetHue(qreal h)
 bool VideoRenderer::onSetSaturation(qreal s)
 {
     Q_UNUSED(s);
-    return false;
-}
-
-bool VideoRenderer::onSetGammaRGB(qreal g)
-{
-    Q_UNUSED(g);
-    return false;
-}
-
-bool VideoRenderer::onSetFilterSharp(qreal fs)
-{
-    Q_UNUSED(fs);
     return false;
 }
 

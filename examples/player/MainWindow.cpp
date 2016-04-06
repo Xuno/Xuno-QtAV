@@ -860,6 +860,7 @@ bool MainWindow::setRenderer(QtAV::VideoRenderer *renderer)
         mpVideoEQ->setEngines(QVector<VideoEQConfigPage::Engine>() << VideoEQConfigPage::SWScale << VideoEQConfigPage::GLSL);
         mpVideoEQ->setEngine(VideoEQConfigPage::GLSL);
         mpPlayer->renderer()->forcePreferredPixelFormat(true);
+        installShaderXuno();
     } else if (vid == VideoRendererId_XV) {
         mpVideoEQ->setEngines(QVector<VideoEQConfigPage::Engine>() << VideoEQConfigPage::XV);
         mpVideoEQ->setEngine(VideoEQConfigPage::XV);
@@ -1240,9 +1241,9 @@ void MainWindow::resizeEvent(QResizeEvent *e)
     QWidget::resizeEvent(e);
     if (mpvPlayerWindow1 && Config::instance().advancedFilterEnabled()) {
         mpvPlayerWindow1->resize(e->size());
-//        if (mpRenderer){
-//            mpRenderer->widget()->move(0,0);
-//        }
+        //        if (mpRenderer){
+        //            mpRenderer->widget()->move(0,0);
+        //        }
     }
     /*
     if (mpTitle)
@@ -1770,8 +1771,8 @@ void MainWindow::onVideoEQEngineChanged()
     onContrastChanged(mpVideoEQ->contrast()*100.0);
     onHueChanged(mpVideoEQ->hue()*100.0);
     onSaturationChanged(mpVideoEQ->saturation()*100.0);
-    onGammaRGBChanged(mpVideoEQ->gammaRGB()*100.0);
-    onFilterSharpChanged(mpVideoEQ->filterSharp()*100.0);
+    //onGammaRGBChanged(mpVideoEQ->gammaRGB()*100.0);
+    //onFilterSharpChanged(mpVideoEQ->filterSharp()*100.0);
 }
 
 void MainWindow::onBrightnessChanged(int b)
@@ -1837,15 +1838,13 @@ void MainWindow::onSaturationChanged(int s)
 void MainWindow::onGammaRGBChanged(int g)
 {
     Q_UNUSED(g);
-    VideoRenderer *vo = mpPlayer->renderer();
-    vo->setGammaRGB(mpVideoEQ->gammaRGB());
+    if (shaderXuno) shaderXuno->setGammaValue(mpVideoEQ->gammaRGB());
 }
 
 void MainWindow::onFilterSharpChanged(int fs)
 {
     Q_UNUSED(fs);
-    VideoRenderer *vo = mpPlayer->renderer();
-    vo->setFilterSharp(mpVideoEQ->filterSharp());
+    if (shaderXuno) shaderXuno->setSharpValue(mpVideoEQ->filterSharp());
 }
 
 void MainWindow::onCaptureConfigChanged()
@@ -2052,9 +2051,9 @@ void MainWindow::reSizeByMovie()
     }
     if (t.isValid() && (!t.isNull())) {
         resize(t);
-//        if (Config::instance().advancedFilterEnabled()){
-//           //mpRenderer->widget()->move(st.video_only.width-1,st.video_only.height-1);
-//        }
+        //        if (Config::instance().advancedFilterEnabled()){
+        //           //mpRenderer->widget()->move(st.video_only.width-1,st.video_only.height-1);
+        //        }
     }
 }
 
@@ -2231,6 +2230,18 @@ void MainWindow::installAdvancedFilter()
 
     }
 
+}
+
+void MainWindow::installShaderXuno()
+{
+    if (mpRenderer && mpRenderer->opengl()){
+        if (shaderXuno==nullptr) shaderXuno=new ShaderFilterXuno();
+        if (shaderXuno!=nullptr) {
+            shaderXuno->setGammaValue(0.f);
+            shaderXuno->setSharpValue(0.f);
+            mpRenderer->opengl()->setUserShader(shaderXuno);
+        }
+    }
 }
 
 void MainWindow::runMpvPlayer()

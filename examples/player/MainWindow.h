@@ -28,6 +28,7 @@
 #include "config/ImageSequenceConfigPage.h"
 #include "config/ImageSequenceExtractControl.h"
 #include "filters/runmpvpipe.h"
+#include "filters/ShaderFilterXuno.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -66,6 +67,7 @@ class AVFilterSubtitle;
 class Preview;
 class ImageSequenceConfigPage;
 class AdvancedFilter;
+class ShaderFilterXuno;
 
 
 class MainWindow : public QWidget
@@ -207,6 +209,7 @@ private:
     bool applyCustomFPS();
     void analyeUsedFPS();
     void installAdvancedFilter();
+    void installShaderXuno();
 
 
 
@@ -285,6 +288,7 @@ private:
     runmpvpipe *mpvpipe=nullptr;
     QWidget *mpvPlayerWindow=nullptr;
     QWidget *mpvPlayerWindow1=nullptr;
+    ShaderFilterXuno *shaderXuno=nullptr;
 
 };
 

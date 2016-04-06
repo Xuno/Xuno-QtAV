@@ -350,16 +350,6 @@ void OpenGLVideo::setSaturation(qreal value)
     d_func().material->setSaturation(value);
 }
 
-void OpenGLVideo::setGammaRGB(qreal value)
-{
-    d_func().material->setGammaRGB(value);
-}
-
-void OpenGLVideo::setFilterSharp(qreal value)
-{
-    d_func().material->setFilterSharp(value);
-}
-
 void OpenGLVideo::setUserShader(VideoShader *shader)
 {
     d_func().user_shader = shader;

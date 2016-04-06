@@ -64,7 +64,6 @@ public:
         , u_colorMatrix(-1)
         , u_to8(-1)
         , u_opacity(-1)
-        , u_gammaRGB(-1)
         , u_c(-1)
         , material_type(0)
         , texture_target(GL_TEXTURE_2D)
@@ -88,10 +87,6 @@ public:
     int u_colorMatrix;
     int u_to8;
     int u_opacity;
-    int u_gammaRGB;
-    int u_pix;
-    int u_filterkernel;
-    int u_pixeloffsetkernel;
     int u_c;
     int u_texelSize;
     qint32 material_type;
@@ -116,7 +111,6 @@ public:
         , video_format(VideoFormat::Format_Invalid)
         , plane1_linesize(0)
         , effective_tex_width_ratio(1.0)
-        , gammaRGB(1.0)
         , target(GL_TEXTURE_2D)
         , dirty_color_mat(true)
         , try_pbo(true)
@@ -184,8 +178,6 @@ public:
     QVector<GLfloat> texture_coords;
     bool dirty_color_mat;
     ColorTransform colorTransform;
-    qreal gammaRGB;
-    qreal filterSharp;
 
     bool try_pbo;
     QVector<QOpenGLBuffer> pbo;
