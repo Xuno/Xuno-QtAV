@@ -101,7 +101,7 @@ bool ShaderFilterXuno::setUserUniformValues()
     //qDebug()<<"ShaderFilterXuno::setUserUniformValues() u_gammaRGB"<<u_gammaRGB;
     program()->setUniformValue("u_gammaRGB", u_gammaRGB);
     program()->setUniformValueArray("u_pixeloffsetkernel", pixeloffsetkernel,9); //pixeloffsetkernel
-    program()->setUniformValueArray("u_filterkernel", kernel, 9);                //filterkernel
+    program()->setUniformValueArray("u_filterkernel", kernel, 9,1);                //filterkernel
 /*    program()->setUniformValue("u_pix", u_pix); */                          //pixeloffset
 
 
