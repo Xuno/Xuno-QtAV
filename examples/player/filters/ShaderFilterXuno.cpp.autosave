@@ -95,6 +95,9 @@ void ShaderFilterXuno::setUserUniformValue(Uniform &u)
 
         u.set(filterkernel);
     }else if(u.name==QByteArray("u_pixeloffsetkernel")){
+        QDataStream ds;
+        pixeloffsetkernel>>ds;
+        
         //u.set((QVector)pixeloffsetkernel.data());
     }
 }
