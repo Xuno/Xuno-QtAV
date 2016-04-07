@@ -11,7 +11,7 @@ greaterThan(QT_MAJOR_VERSION, 4) {
       }
   }
 } else {
-config_gl: QT += opengl
+  config_gl: QT += opengl
 }
 CONFIG *= qtav-buildlib
 staticlib: DEFINES += BUILD_QTAV_STATIC
@@ -92,6 +92,22 @@ win32-msvc2010|win32-msvc2008: QMAKE_LFLAGS *= /DEBUG #workaround for CoInitiali
     QMAKE_LFLAGS *= /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libcmtd.lib #for msbuild vs2013
     INCLUDEPATH *= compat/msvc
 }
+capi {
+contains(QT_CONFIG, egl)|contains(QT_CONFIG, dynamicgl)|contains(QT_CONFIG, opengles2) {
+  CONFIG *= enable_egl
+  !ios {
+    winrt: DEFINES += CAPI_LINK_EGL #required by capi_egl.*
+    DEFINES += QTAV_HAVE_EGL_CAPI=1
+    HEADERS *= capi/egl_api.h
+    SOURCES *= capi/egl_api.cpp
+  }
+}
+}
+enable_egl:greaterThan(QT_MAJOR_VERSION,4):qtHaveModule(x11extras): QT *= x11extras
+
+config_gl|config_opengl {
+  contains(QT_CONFIG, opengl):!contains(QT_CONFIG, opengles2): CONFIG *= enable_desktopgl
+}
 #UINT64_C: C99 math features, need -D__STDC_CONSTANT_MACROS in CXXFLAGS
 DEFINES += __STDC_CONSTANT_MACROS
 android {
@@ -166,7 +182,8 @@ win32: {
   DEFINES *= QTAV_HAVE_XAUDIO2=1
   !config_xaudio2 { #winsdk has no xaudio2.h, use June 2010 DXSDK
 ## TODO: build xaudio2 code as a seperate static lib so wen can safely add contrib/dxsdk to INCLUDEPATH for that lib build
-    win32-icc|win32-g++|win32-msvc2010|win32-msvc2008|win32-msvc2005: \
+##cross_compile: build on linux or macOS
+    cross_compile|win32-icc|win32-g++|win32-msvc2010|win32-msvc2008|win32-msvc2005: \
         INCLUDEPATH *= $$PROJECTROOT/contrib/dxsdk
   }
   winrt {
@@ -245,19 +262,34 @@ include(../depends/dllapi/src/libdllapi.pri)
     HEADERS += cuda/cuda_api.h
 }
 config_d3d11va {
-  CONFIG *= d3dva
+  CONFIG *= d3dva c++11
   DEFINES *= QTAV_HAVE_D3D11VA=1
   SOURCES += codec/video/VideoDecoderD3D11.cpp
+  HEADERS += directx/SurfaceInteropD3D11.h
+  SOURCES += directx/SurfaceInteropD3D11.cpp
+  HEADERS += directx/D3D11VP.h
+  SOURCES += directx/D3D11VP.cpp
+  enable_egl {
+    SOURCES += directx/SurfaceInteropD3D11EGL.cpp
+  }
+  enable_desktopgl {
+  }
   winrt: LIBS *= -ld3d11
+}
+win32:!winrt {
+  HEADERS += directx/SurfaceInteropD3D9.h
+  SOURCES += directx/SurfaceInteropD3D9.cpp
+  enable_egl {
+    SOURCES += directx/SurfaceInteropD3D9EGL.cpp
+  }
+  enable_desktopgl {
+    SOURCES += directx/SurfaceInteropD3D9GL.cpp
+  }
 }
 config_dxva {
   CONFIG *= d3dva
-    DEFINES *= QTAV_HAVE_DXVA=1
-    SOURCES += codec/video/VideoDecoderDXVA.cpp
-  contains(QT_CONFIG, opengl) {
-    HEADERS += codec/video/SurfaceInteropDXVA.h
-    SOURCES += codec/video/SurfaceInteropDXVA.cpp
-  }
+  DEFINES *= QTAV_HAVE_DXVA=1
+  SOURCES += codec/video/VideoDecoderDXVA.cpp
   LIBS += -lole32
 }
 d3dva {
@@ -355,14 +387,6 @@ config_libass {
   HEADERS *= capi/ass_api.h
   SOURCES *= capi/ass_api.cpp
   SOURCES *= subtitle/SubtitleProcessorLibASS.cpp
-}
-capi {
-contains(QT_CONFIG, egl)|contains(QT_CONFIG, dynamicgl)|contains(QT_CONFIG, opengles2):!ios {
-  greaterThan(QT_MAJOR_VERSION, 4):qtHaveModule(x11extras): QT *= x11extras
-  DEFINES += QTAV_HAVE_EGL_CAPI=1
-  HEADERS *= capi/egl_api.h
-  SOURCES *= capi/egl_api.cpp
-}
 }
 # mac is -FQTDIR we need -LQTDIR
 LIBS *= -L$$[QT_INSTALL_LIBS] -lavcodec -lavformat -lswscale -lavutil
