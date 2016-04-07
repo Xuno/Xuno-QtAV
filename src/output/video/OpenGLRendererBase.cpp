@@ -64,7 +64,7 @@ OpenGLRendererBase::~OpenGLRendererBase()
     d_func().glv.setOpenGLContext(0);
     if (m_RAWImagePixels){
         delete []m_RAWImagePixels;
-        m_RAWImagePixels = nullptr;
+        m_RAWImagePixels = Q_NULLPTR;
     }
 }
 

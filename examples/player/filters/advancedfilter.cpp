@@ -85,9 +85,5 @@ void AdvancedFilter::process(QtAV::Statistics *statistics, QtAV::VideoFrame *fra
     }
 }
 
-void AdvancedFilter::onPostDraw()
-{
-    qDebug()<<"AdvancedFilter::onPostDraw";
-}
 
 

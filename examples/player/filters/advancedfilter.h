@@ -39,7 +39,6 @@ protected:
     QObject *m_parent;
     QtAV::AVPlayer *m_player=0;
 
-    void onPostDraw();
     bool firstFrame;
     qint64 frames=0;
 

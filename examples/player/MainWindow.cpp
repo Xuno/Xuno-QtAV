@@ -167,6 +167,8 @@ void MainWindow::initPlayer()
     mpSubtitle->setPlayer(mpPlayer);
     //mpPlayer->setAudioOutput(AudioOutputFactory::create(AudioOutputId_OpenAL));
     installAdvancedFilter();
+    installSaveGL();
+
     EventFilter *ef = new EventFilter(mpPlayer);
     qApp->installEventFilter(ef);
     connect(ef, SIGNAL(helpRequested()), SLOT(help()));
@@ -205,9 +207,8 @@ void MainWindow::initPlayer()
     connect(mpVideoEQ, SIGNAL(saturationChanged(int)), this, SLOT(onSaturationChanged(int)));
     connect(mpVideoEQ, SIGNAL(gammaRGBChanged(int)),  this, SLOT(onGammaRGBChanged(int)));
     connect(mpVideoEQ, SIGNAL(filterSharpChanged(int)),  this, SLOT(onFilterSharpChanged(int)));
-
-
     connect(mpCaptureBtn, SIGNAL(clicked()), mpPlayer->videoCapture(), SLOT(capture()));
+    connect(mpCaptureGLBtn, &QToolButton::clicked, this, &MainWindow::captureGL);
 
     emit ready(); //emit this signal after connection. otherwise the slots may not be called for the first time
 }
@@ -322,6 +323,9 @@ void MainWindow::setupUi()
     mpCaptureBtn = new QToolButton();
     mpCaptureBtn->setToolTip(tr("Capture"));
     mpCaptureBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/capture.svg")));
+    mpCaptureGLBtn = new QToolButton();
+    mpCaptureGLBtn->setToolTip(tr("Capture GL"));
+    mpCaptureGLBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/capture.svg")));
     mpVolumeBtn = new QToolButton();
     mpVolumeBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/sound.svg")));
 
@@ -664,6 +668,7 @@ void MainWindow::setupUi()
     controlLayout->addWidget(mpVolumeSlider);
     controlLayout->addWidget(mpVolumeBtn);
     controlLayout->addWidget(mpCaptureBtn);
+    controlLayout->addWidget(mpCaptureGLBtn);
     controlLayout->addWidget(mpPlayPauseBtn);
     controlLayout->addWidget(mpStopBtn);
     controlLayout->addWidget(mpBackwardBtn);
@@ -1864,6 +1869,14 @@ void MainWindow::onCaptureConfigChanged()
                              .arg(tr("Format"))
                              .arg(Config::instance().captureFormat()));
 
+    mpCaptureGLBtn->setToolTip(QString::fromLatin1("%1\n%2: %3\n%4: %5")
+                             .arg(tr("Capture video frame from OpenGL"))
+                             .arg(tr("Save to"))
+                             .arg(mpPlayer->videoCapture()->captureDir())
+                             .arg(tr("Format"))
+                             .arg(Config::instance().captureFormat()));
+
+
 }
 
 void MainWindow::onAVFilterVideoConfigChanged()
@@ -2244,6 +2257,17 @@ void MainWindow::installShaderXuno()
     }
 }
 
+void MainWindow::installSaveGL()
+{
+
+    if (mSaveGLXuno==Q_NULLPTR && mpPlayer){
+        mSaveGLXuno=new SaveGLXuno(this);
+        mSaveGLXuno->setPlayer(mpPlayer);
+    }else if (mpRenderer && mpRenderer->opengl()){
+        if (mSaveGLXuno==Q_NULLPTR) mSaveGLXuno=new SaveGLXuno(this);
+    }
+}
+
 void MainWindow::runMpvPlayer()
 {
     Statistics st=mpPlayer->statistics();
@@ -2304,6 +2328,13 @@ void MainWindow::advacedFilterSentFrame()
             //mpPlayerLayout->replaceWidget(r,mpvPlayerWindow);
             //r->deleteLater();
         }
+    }
+}
+
+void MainWindow::captureGL()
+{
+    if (mSaveGLXuno!=Q_NULLPTR) {
+        mSaveGLXuno->saveimg();
     }
 }
 
