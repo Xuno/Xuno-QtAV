@@ -2024,6 +2024,7 @@ void MainWindow::syncVolumeUi(qreal value)
 
 void MainWindow::workaroundRendererSize()
 {
+    return;
     if (!mpRenderer)
         return;
     QSize s = rect().size();
@@ -2058,12 +2059,20 @@ void MainWindow::reSizeByMovie()
     if (isFullScreen()) return;
     QSize t=mpRenderer->rendererSize();
     Statistics st=mpPlayer->statistics();
+
     if (st.video_only.width>0 && st.video_only.width>0 && mPlayerScale>0 ){ //(t.width()+t.height())==0
         t.setWidth(st.video_only.width*mPlayerScale);
         t.setHeight(st.video_only.height*mPlayerScale);
     }
     if (t.isValid() && (!t.isNull())) {
-        resize(t);
+        if (mpvPlayerWindow) {
+            qDebug()<<"MainWindow::reSizeByMovie"<<t;
+            mpRenderer->widget()->resize(t);
+            //mpvPlayerWindow->resize(t);
+        }else{
+            resize(t);
+        }
+        //resize(t);
         //        if (Config::instance().advancedFilterEnabled()){
         //           //mpRenderer->widget()->move(st.video_only.width-1,st.video_only.height-1);
         //        }
@@ -2197,6 +2206,7 @@ void MainWindow::analyeUsedFPS()
 
 void MainWindow::installAdvancedFilter()
 {
+    return;
     qDebug()<<"MainWindow::installAdvancedFilter";
     if (Config::instance().advancedFilterEnabled()){
 
@@ -2266,6 +2276,39 @@ void MainWindow::installSaveGL()
     }else if (mpRenderer && mpRenderer->opengl()){
         if (mSaveGLXuno==Q_NULLPTR) mSaveGLXuno=new SaveGLXuno(this);
     }
+
+
+    if (Config::instance().advancedFilterEnabled()){
+
+        mpvPlayerWindow = new QWidget(this);
+        mpvPlayerWindow->setWindowTitle(tr("XunoPlayer MPV view"));
+        //mpvPlayerWindow->setWindowFlags(Qt::Dialog);
+        //mpvPlayerWindow->setWindowFlags(this->windowFlags() & ~Qt::WindowCloseButtonHint & ~Qt::WindowMinMaxButtonsHint & Qt::CustomizeWindowHint);
+        mpvPlayerWindow->setMinimumHeight(125);//785
+        mpvPlayerWindow->setMinimumHeight(11);
+        mpvPlayerWindow->setStyleSheet("background-color:black;");
+        //mpvPlayerWindow->move(0,0);
+
+        if (mpRenderer){
+            QWidget *r = mpRenderer->widget();
+            //release old renderer and add new
+            if (r && mpvPlayerWindow && mpPlayerLayout) {
+                //mpvPlayerWindow->resize(r->size());
+                mpPlayerLayout->replaceWidget(r,mpvPlayerWindow);
+                r->setParent(mpvPlayerWindow);
+                r->move(0,0);
+                //r->move(-r->size().width()-1,r->size().height()-1);
+            }
+        }
+        mpvPlayerWindow->show();
+
+        //mpPlayerLayout->addWidget(mpvPlayerWindow);
+        // mpvPlayerWindow->raise();
+
+    }
+
+
+
 }
 
 void MainWindow::runMpvPlayer()
