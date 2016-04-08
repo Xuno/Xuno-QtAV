@@ -20,6 +20,7 @@
 #include "MainWindow.h"
 #include "EventFilter.h"
 #include <QtAV>
+#include <QtAV/GLSLFilter.h>
 #include <QtAVWidgets>
 #include <QtCore/QtDebug>
 #include <QtCore/QLocale>
@@ -182,6 +183,9 @@ void MainWindow::initPlayer()
     connect(&Config::instance(), SIGNAL(avfilterAudioChanged()), SLOT(onAVFilterAudioConfigChanged()));
     connect(&Config::instance(), SIGNAL(bufferValueChanged()), SLOT(onBufferValueChanged()));
     connect(&Config::instance(), SIGNAL(abortOnTimeoutChanged()), SLOT(onAbortOnTimeoutChanged()));
+
+    installGLSLFilter();
+
     connect(mpStopBtn, SIGNAL(clicked()), this, SLOT(stopUnload()));
     connect(mpForwardBtn, SIGNAL(clicked()), mpPlayer, SLOT(seekForward()));
     connect(mpBackwardBtn, SIGNAL(clicked()), mpPlayer, SLOT(seekBackward()));
@@ -2241,6 +2245,23 @@ void MainWindow::installShaderXuno()
             shaderXuno->setSharpValue(0.f);
             mpRenderer->opengl()->setUserShader(shaderXuno);
         }
+    }
+}
+
+void MainWindow::installGLSLFilter()
+{
+    if (mpGLSLFilter) {
+        mpGLSLFilter->uninstall();
+        delete mpGLSLFilter;
+        mpGLSLFilter = Q_NULLPTR;
+    }
+
+    if (mpGLSLFilter == Q_NULLPTR && mpPlayer){
+        mpGLSLFilter = new QtAV::GLSLFilter(this);
+        mpGLSLFilter->setEnabled(true);
+        mpPlayer->installFilter(mpGLSLFilter);
+        mpGLSLFilter->setOutputSize(320,240);
+
     }
 }
 
