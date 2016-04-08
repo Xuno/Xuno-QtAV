@@ -2024,9 +2024,12 @@ void MainWindow::syncVolumeUi(qreal value)
 
 void MainWindow::workaroundRendererSize()
 {
-    return;
     if (!mpRenderer)
         return;
+
+    if (mpvPlayerWindow)
+        return;
+
     QSize s = rect().size();
     //resize(QSize(s.width()-1, s.height()-1));
     //resize(s); //window resize to fullscreen size will create another fullScreenChange event
@@ -2068,6 +2071,7 @@ void MainWindow::reSizeByMovie()
         if (mpvPlayerWindow) {
             qDebug()<<"MainWindow::reSizeByMovie"<<t;
             mpRenderer->widget()->resize(t);
+            mpRenderer->widget()->move(0,0);
             //mpvPlayerWindow->resize(t);
         }else{
             resize(t);
