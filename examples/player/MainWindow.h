@@ -46,6 +46,7 @@ class LibAVFilterAudio;
 class LibAVFilterVideo;
 class SubtitleFilter;
 class VideoPreviewWidget;
+class GLSLFilter;
 }
 QT_BEGIN_NAMESPACE
 class QMenu;
@@ -214,6 +215,7 @@ private:
     void installAdvancedFilter();
     void installShaderXuno();
     void installSaveGL();
+    void installGLSLFilter(QSize size);
 
 
 
@@ -294,6 +296,8 @@ private:
     QWidget *mpvPlayerWindow1=Q_NULLPTR;
     ShaderFilterXuno *shaderXuno=Q_NULLPTR;
     SaveGLXuno *mSaveGLXuno=Q_NULLPTR;
+
+    QtAV::GLSLFilter *mpGLSLFilter=Q_NULLPTR;
 
 };
 

@@ -20,6 +20,7 @@
 #include "MainWindow.h"
 #include "EventFilter.h"
 #include <QtAV>
+#include <QtAV/GLSLFilter.h>
 #include <QtAVWidgets>
 #include <QtCore/QtDebug>
 #include <QtCore/QLocale>
@@ -2068,15 +2069,8 @@ void MainWindow::reSizeByMovie()
         t.setHeight(st.video_only.height*mPlayerScale);
     }
     if (t.isValid() && (!t.isNull())) {
-        if (mpvPlayerWindow) {
-            qDebug()<<"MainWindow::reSizeByMovie"<<t;
-            mpRenderer->widget()->resize(t);
-            mpRenderer->widget()->move(0,0);
-            //mpvPlayerWindow->resize(t);
-        }else{
-            resize(t);
-        }
-        //resize(t);
+        resize(t);
+        installGLSLFilter(t);
         //        if (Config::instance().advancedFilterEnabled()){
         //           //mpRenderer->widget()->move(st.video_only.width-1,st.video_only.height-1);
         //        }
@@ -2310,9 +2304,26 @@ void MainWindow::installSaveGL()
         // mpvPlayerWindow->raise();
 
     }
+}
 
+void MainWindow::installGLSLFilter(QSize size)
+{
+    if (!size.isValid()) return;
+    qDebug()<<"installGLSLFilter"<<size;
+    if (mpGLSLFilter) {
+        mpGLSLFilter->uninstall();
+        delete mpGLSLFilter;
+        mpGLSLFilter = Q_NULLPTR;
+    }
 
+    if (mpGLSLFilter == Q_NULLPTR && mpRenderer && mpRenderer->opengl() ){
+        mpGLSLFilter = new QtAV::GLSLFilter(this);
+        mpGLSLFilter->setEnabled(true);
+        bool state=mpRenderer->installFilter(mpGLSLFilter);
+        qDebug()<<"installGLSLFilter state"<<state;
+        mpGLSLFilter->setOutputSize(size);
 
+    }
 }
 
 void MainWindow::runMpvPlayer()
