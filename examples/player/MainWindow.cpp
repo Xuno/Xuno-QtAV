@@ -183,9 +183,6 @@ void MainWindow::initPlayer()
     connect(&Config::instance(), SIGNAL(avfilterAudioChanged()), SLOT(onAVFilterAudioConfigChanged()));
     connect(&Config::instance(), SIGNAL(bufferValueChanged()), SLOT(onBufferValueChanged()));
     connect(&Config::instance(), SIGNAL(abortOnTimeoutChanged()), SLOT(onAbortOnTimeoutChanged()));
-
-    installGLSLFilter();
-
     connect(mpStopBtn, SIGNAL(clicked()), this, SLOT(stopUnload()));
     connect(mpForwardBtn, SIGNAL(clicked()), mpPlayer, SLOT(seekForward()));
     connect(mpBackwardBtn, SIGNAL(clicked()), mpPlayer, SLOT(seekBackward()));
@@ -2055,6 +2052,7 @@ void MainWindow::reSizeByMovie()
     }
     if (t.isValid() && (!t.isNull())) {
         resize(t);
+        installGLSLFilter(t);
         //        if (Config::instance().advancedFilterEnabled()){
         //           //mpRenderer->widget()->move(st.video_only.width-1,st.video_only.height-1);
         //        }
@@ -2248,19 +2246,22 @@ void MainWindow::installShaderXuno()
     }
 }
 
-void MainWindow::installGLSLFilter()
+void MainWindow::installGLSLFilter(QSize size)
 {
+    if (!size.isValid()) return;
+    qDebug()<<"installGLSLFilter"<<size;
     if (mpGLSLFilter) {
         mpGLSLFilter->uninstall();
         delete mpGLSLFilter;
         mpGLSLFilter = Q_NULLPTR;
     }
 
-    if (mpGLSLFilter == Q_NULLPTR && mpPlayer){
+    if (mpGLSLFilter == Q_NULLPTR && mpRenderer && mpRenderer->opengl() ){
         mpGLSLFilter = new QtAV::GLSLFilter(this);
         mpGLSLFilter->setEnabled(true);
-        mpPlayer->installFilter(mpGLSLFilter);
-        mpGLSLFilter->setOutputSize(320,240);
+        bool state=mpRenderer->installFilter(mpGLSLFilter);
+        qDebug()<<"installGLSLFilter state"<<state;
+        mpGLSLFilter->setOutputSize(size);
 
     }
 }

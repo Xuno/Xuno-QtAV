@@ -211,7 +211,7 @@ private:
     void analyeUsedFPS();
     void installAdvancedFilter();
     void installShaderXuno();
-    void installGLSLFilter();
+    void installGLSLFilter(QSize size);
 
 
 
