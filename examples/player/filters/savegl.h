@@ -30,8 +30,8 @@ private:
     uchar *pixels=Q_NULLPTR;
     GLuint max_fbo=0;
     int imageW,imageH,imageColors,imageDepth;
-    int wOutputMedia,hOutputMedia,imageChannelsOutputMedia=4,imageDepthOutputMedia=16;
-    GLenum formatOutputMedia, typeOutputMedia;
+    int OutputMediaWidth,OutputMediaHeight,imageOutputMediaChannels=4,imageOutputMediaDepth=16;
+    GLenum OutputMediaFormat, OutputMediaType;
     bool imageFloatFormat;
     qreal imageScale=1.;
     bool readyInputMedia=false;
@@ -41,6 +41,11 @@ private:
 
     QtAV::AVPlayer *m_player=Q_NULLPTR;
 
+    void getTextureParametersFBO(const GLint fbo, int *width, int *height, GLint *format=Q_NULLPTR);
+    bool getTextureParameters(const GLuint id, int *width, int *height, int *format);
+    GLuint findLastFBO();
+    QString convertInternalFormatToString(GLenum format);
+    QString gl_error(GLenum err);
 };
 
 #endif // SAVEGL_H

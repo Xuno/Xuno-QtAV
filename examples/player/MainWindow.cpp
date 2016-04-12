@@ -2069,8 +2069,18 @@ void MainWindow::reSizeByMovie()
         t.setHeight(st.video_only.height*mPlayerScale);
     }
     if (t.isValid() && (!t.isNull())) {
-        resize(t);
-        installGLSLFilter(t);
+
+        if (mpvPlayerWindow) {
+            qDebug()<<"MainWindow::reSizeByMovie"<<t;
+
+//            mpRenderer->widget()->resize(t);
+//            mpRenderer->widget()->move(0,0);
+            mpvPlayerWindow->resize(t);
+        }else{
+            //resize(t);
+            installGLSLFilter(t);
+        }
+
         //        if (Config::instance().advancedFilterEnabled()){
         //           //mpRenderer->widget()->move(st.video_only.width-1,st.video_only.height-1);
         //        }
@@ -2204,7 +2214,7 @@ void MainWindow::analyeUsedFPS()
 
 void MainWindow::installAdvancedFilter()
 {
-    return;
+    //return;
     qDebug()<<"MainWindow::installAdvancedFilter";
     if (Config::instance().advancedFilterEnabled()){
 
