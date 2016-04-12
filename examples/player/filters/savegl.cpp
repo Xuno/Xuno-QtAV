@@ -31,7 +31,12 @@ void SaveGLXuno::defineFileName()
     dir = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
 #endif
     if (dir.isEmpty())
-        dir = qApp->applicationDirPath() + QStringLiteral("/capture");
+        dir = qApp->applicationDirPath();
+    dir+=QStringLiteral("/XunoPlayerCapture");
+
+    QDir mdir=QDir(dir);
+    if (!mdir.exists()) mdir.mkpath(dir);
+
     fmt = QStringLiteral("tif");
     QString filemovie="movie";
     qint64 moviepos=0;
@@ -61,7 +66,7 @@ bool SaveGLXuno::getTextureParameters(const GLuint id, int *width, int *height, 
     f->glBindTexture(GL_TEXTURE_2D, 0);
     qDebug()<<"end SaveGLXuno::getTextureParameters"<<*width<<*height;
     QString formatName = convertInternalFormatToString(*format);
-    QString("InternalFormat FBO %1x%2, %3").arg(*width).arg(*height).arg(formatName);
+    qDebug()<<QString("InternalFormat FBO %1x%2, %3").arg(*width).arg(*height).arg(formatName);
 
     return (*width>0 && *height>0);
 }
@@ -224,7 +229,8 @@ void SaveGLXuno::saveFromGLContext()
             Config::instance().captureFormat();
             //QMatrix matrix = QMatrix().scale(1,-1);
             //qi.transformed(matrix).save(lastfilename);
-            qi.save(lastfilename);
+            bool result=qi.save(lastfilename);
+            qDebug()<<"Saved saveFromRender"<<lastfilename<<OutputMediaWidth<<"x"<<OutputMediaHeight<<result;
         }
     }
 }

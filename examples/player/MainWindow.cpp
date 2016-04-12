@@ -2072,9 +2072,8 @@ void MainWindow::reSizeByMovie()
 
         if (mpvPlayerWindow) {
             qDebug()<<"MainWindow::reSizeByMovie"<<t;
-
-//            mpRenderer->widget()->resize(t);
-//            mpRenderer->widget()->move(0,0);
+            mpRenderer->widget()->resize(t);
+            mpRenderer->widget()->move(0,0);
             mpvPlayerWindow->resize(t);
         }else{
             //resize(t);
