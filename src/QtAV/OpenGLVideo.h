@@ -90,6 +90,13 @@ public:
     void setSaturation(qreal value);
     void setUserShader(VideoShader* shader);
 
+Q_SIGNALS:
+    /*!
+     * \brief afterRendering
+     * Emitted when video frame is rendered.
+     * With DirectConnection, it can be used to draw GL on top of video, or to do screen scraping of the current frame buffer.
+     */
+    void afterRendering();
 protected:
     DPTR_DECLARE(OpenGLVideo)
 
