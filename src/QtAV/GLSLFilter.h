@@ -55,9 +55,14 @@ public:
     void setOutputSize(int width, int height);
 Q_SIGNALS:
     void outputSizeChanged(const QSize& size);
+
+protected slots:
+    virtual void afterRendering();
+
 protected:
     GLSLFilter(GLSLFilterPrivate& d, QObject *parent = 0);
     void process(Statistics* statistics, VideoFrame* frame = 0) Q_DECL_OVERRIDE;
+
 };
 } //namespace QtAV
 #endif // QTAV_GLSLFILTER_H

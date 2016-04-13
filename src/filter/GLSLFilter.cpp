@@ -47,11 +47,21 @@ public:
 
 GLSLFilter::GLSLFilter(QObject *parent)
     : VideoFilter(*new GLSLFilterPrivate(), parent)
-{}
+{
+    if (opengl()){
+        connect(opengl(), &OpenGLVideo::afterRendering,this, &GLSLFilter::afterRendering, Qt::DirectConnection);
+    }
+
+}
 
 GLSLFilter::GLSLFilter(GLSLFilterPrivate &d, QObject *parent)
     : VideoFilter(d, parent)
-{}
+{
+    if (opengl()){
+        connect(opengl(), &OpenGLVideo::afterRendering,this, &GLSLFilter::afterRendering, Qt::DirectConnection);
+    }
+
+}
 
 OpenGLVideo* GLSLFilter::opengl() const
 {
@@ -69,6 +79,7 @@ void GLSLFilter::setOutputSize(const QSize &value)
     if (d.size == value)
         return;
     d.size = value;
+
     Q_EMIT outputSizeChanged(value);
 }
 
@@ -76,6 +87,8 @@ void GLSLFilter::setOutputSize(int width, int height)
 {
     setOutputSize(QSize(width, height));
 }
+
+
 
 void GLSLFilter::process(Statistics *statistics, VideoFrame *frame)
 {
@@ -135,5 +148,10 @@ void GLSLFilter::process(Statistics *statistics, VideoFrame *frame)
     GLTextureInterop *interop = new GLTextureInterop(d.fbo->texture());
     f.setMetaData(QStringLiteral("surface_interop"), QVariant::fromValue(VideoSurfaceInteropPtr((interop))));
     *frame = f;
+}
+
+void GLSLFilter::afterRendering()
+{
+    qDebug()<<"GLSLFilter::afterRendering";
 }
 } //namespace QtAV
