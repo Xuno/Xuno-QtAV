@@ -27,7 +27,8 @@ SOURCES += main.cpp \
     $$PWD/filters/runmpvpipe.cpp \
     $$PWD/filters/advancedfilter.cpp \
     $$PWD/filters/ShaderFilterXuno.cpp \
-    $$PWD/filters/savegl.cpp
+    $$PWD/filters/savegl.cpp \
+    $$PWD/filters/XunoGlslFilter.cpp
 
 HEADERS += \
     MainWindow.h \
@@ -58,7 +59,8 @@ HEADERS += \
     $$PWD/filters/runmpvpipe.h \
     $$PWD/filters/advancedfilter.h \
     $$PWD/filters/ShaderFilterXuno.h \
-    $$PWD/filters/savegl.h
+    $$PWD/filters/savegl.h \
+    $$PWD/filters/XunoGlslFilter.h
 
 SOURCES +=  \
     XunoBrowser.cpp \

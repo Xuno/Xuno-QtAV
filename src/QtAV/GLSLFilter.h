@@ -25,6 +25,8 @@
 #include <QtAV/QtAV_Global.h>
 #include <QtAV/Filter.h>
 
+#include <QOpenGLFramebufferObject>
+
 namespace QtAV {
 class OpenGLVideo;
 class GLSLFilterPrivate;
@@ -44,6 +46,8 @@ public:
      * Currently you can only use it to set custom shader OpenGLVideo.setUserShader()
      */
     OpenGLVideo* opengl() const;
+    QOpenGLFramebufferObject* fbo() const;
+
     // TODO: set FBO format
     /*!
      * \brief outputSize
@@ -55,9 +59,6 @@ public:
     void setOutputSize(int width, int height);
 Q_SIGNALS:
     void outputSizeChanged(const QSize& size);
-
-protected slots:
-    virtual void afterRendering();
 
 protected:
     GLSLFilter(GLSLFilterPrivate& d, QObject *parent = 0);

@@ -48,24 +48,21 @@ public:
 GLSLFilter::GLSLFilter(QObject *parent)
     : VideoFilter(*new GLSLFilterPrivate(), parent)
 {
-    if (opengl()){
-        connect(opengl(), &OpenGLVideo::afterRendering,this, &GLSLFilter::afterRendering, Qt::DirectConnection);
-    }
-
 }
 
 GLSLFilter::GLSLFilter(GLSLFilterPrivate &d, QObject *parent)
     : VideoFilter(d, parent)
 {
-    if (opengl()){
-        connect(opengl(), &OpenGLVideo::afterRendering,this, &GLSLFilter::afterRendering, Qt::DirectConnection);
-    }
-
 }
 
 OpenGLVideo* GLSLFilter::opengl() const
 {
     return const_cast<OpenGLVideo*>(&d_func().glv);
+}
+
+QOpenGLFramebufferObject* GLSLFilter::fbo() const
+{
+    return const_cast<QOpenGLFramebufferObject*>(d_func().fbo);
 }
 
 QSize GLSLFilter::outputSize() const
@@ -148,10 +145,5 @@ void GLSLFilter::process(Statistics *statistics, VideoFrame *frame)
     GLTextureInterop *interop = new GLTextureInterop(d.fbo->texture());
     f.setMetaData(QStringLiteral("surface_interop"), QVariant::fromValue(VideoSurfaceInteropPtr((interop))));
     *frame = f;
-}
-
-void GLSLFilter::afterRendering()
-{
-    qDebug()<<"GLSLFilter::afterRendering";
 }
 } //namespace QtAV

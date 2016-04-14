@@ -2265,8 +2265,8 @@ void MainWindow::installAdvancedFilter()
 void MainWindow::installShaderXuno()
 {
     if (mpRenderer && mpRenderer->opengl()){
-        if (shaderXuno==nullptr) shaderXuno=new ShaderFilterXuno();
-        if (shaderXuno!=nullptr) {
+        if (shaderXuno==Q_NULLPTR) shaderXuno=new ShaderFilterXuno();
+        if (shaderXuno!=Q_NULLPTR) {
             shaderXuno->setGammaValue(0.f);
             shaderXuno->setSharpValue(0.f);
             mpRenderer->opengl()->setUserShader(shaderXuno);
@@ -2326,10 +2326,10 @@ void MainWindow::installGLSLFilter(QSize size)
     }
 
     if (mpGLSLFilter == Q_NULLPTR && mpRenderer && mpRenderer->opengl() ){
-        mpGLSLFilter = new QtAV::GLSLFilter(this);
+        mpGLSLFilter = new XunoGLSLFilter(this);
         mpGLSLFilter->setEnabled(true);
         bool state=mpRenderer->installFilter(mpGLSLFilter);
-        qDebug()<<"installGLSLFilter state"<<state;
+        qDebug()<<"installXunoGLSLFilter state"<<state;
         mpGLSLFilter->setOutputSize(size);
 
     }

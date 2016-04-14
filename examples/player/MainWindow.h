@@ -30,6 +30,7 @@
 #include "filters/runmpvpipe.h"
 #include "filters/ShaderFilterXuno.h"
 #include "filters/savegl.h"
+#include "filters/XunoGlslFilter.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -297,7 +298,7 @@ private:
     ShaderFilterXuno *shaderXuno=Q_NULLPTR;
     SaveGLXuno *mSaveGLXuno=Q_NULLPTR;
 
-    QtAV::GLSLFilter *mpGLSLFilter=Q_NULLPTR;
+    XunoGLSLFilter *mpGLSLFilter=Q_NULLPTR;
 
 };
 
