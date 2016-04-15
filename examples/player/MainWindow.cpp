@@ -168,7 +168,7 @@ void MainWindow::initPlayer()
     mpSubtitle->setPlayer(mpPlayer);
     //mpPlayer->setAudioOutput(AudioOutputFactory::create(AudioOutputId_OpenAL));
     installAdvancedFilter();
-    installSaveGL();
+    //installSaveGL();
 
     EventFilter *ef = new EventFilter(mpPlayer);
     qApp->installEventFilter(ef);
@@ -2269,7 +2269,7 @@ void MainWindow::installShaderXuno()
         if (shaderXuno!=Q_NULLPTR) {
             shaderXuno->setGammaValue(0.f);
             shaderXuno->setSharpValue(0.f);
-            mpRenderer->opengl()->setUserShader(shaderXuno);
+            //mpRenderer->opengl()->setUserShader(shaderXuno);
         }
     }
 }
@@ -2328,6 +2328,8 @@ void MainWindow::installGLSLFilter(QSize size)
     if (mpGLSLFilter == Q_NULLPTR && mpRenderer && mpRenderer->opengl() ){
         mpGLSLFilter = new XunoGLSLFilter(this);
         mpGLSLFilter->setEnabled(true);
+        mpGLSLFilter->setPlayer(mpPlayer);
+        if (shaderXuno) mpGLSLFilter->setShader(shaderXuno);
         bool state=mpRenderer->installFilter(mpGLSLFilter);
         qDebug()<<"installXunoGLSLFilter state"<<state;
         mpGLSLFilter->setOutputSize(size);
@@ -2400,8 +2402,11 @@ void MainWindow::advacedFilterSentFrame()
 
 void MainWindow::captureGL()
 {
-    if (mSaveGLXuno!=Q_NULLPTR) {
-        mSaveGLXuno->saveimg();
+//    if (mSaveGLXuno!=Q_NULLPTR) {
+//        mSaveGLXuno->saveimg();
+//    }
+    if (mpGLSLFilter!=Q_NULLPTR){
+        mpGLSLFilter->setNeedSave(true);
     }
 }
 
