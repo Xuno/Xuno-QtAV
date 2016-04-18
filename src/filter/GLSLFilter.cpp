@@ -61,11 +61,7 @@ OpenGLVideo* GLSLFilter::opengl() const
 
 QOpenGLFramebufferObject* GLSLFilter::fbo() const
 {
-<<<<<<< HEAD
-    return const_cast<QOpenGLFramebufferObject*>(d_func().fbo);
-=======
     return d_func().fbo;
->>>>>>> refs/remotes/wang-bin/master
 }
 
 QSize GLSLFilter::outputSize() const
