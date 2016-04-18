@@ -35,18 +35,11 @@ OTHER_FILES += \
 	templates/final.h templates/final.cpp
 #OTHER_FILES += config.test/mktest.sh
 EssentialDepends = avutil avcodec avformat swscale
-<<<<<<< HEAD
-
-OptionalDepends = swresample avresample
-!no-avfilter: OptionalDepends *= avfilter
-!winrt:!android:!no-avdevice: OptionalDepends *= avdevice
-
-=======
 winrt: CONFIG *= no-avdevice no-openal no-portaudio no-dsound no-gdiplus
 OptionalDepends = swresample avresample
 !no-avfilter: OptionalDepends *= avfilter
 !no-avdevice: OptionalDepends *= avdevice
->>>>>>> upstream/master
+
 # QtOpenGL module. In Qt5 we can disable it and still have opengl support
 contains(QT_CONFIG, opengl):!no-gl:!no-widgets {
   greaterThan(QT_MAJOR_VERSION, 4):qtHaveModule(opengl):!config_gl {

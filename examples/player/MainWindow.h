@@ -29,6 +29,8 @@
 #include "config/ImageSequenceExtractControl.h"
 #include "filters/runmpvpipe.h"
 #include "filters/ShaderFilterXuno.h"
+#include "filters/savegl.h"
+#include "filters/XunoGlslFilter.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -45,6 +47,7 @@ class LibAVFilterAudio;
 class LibAVFilterVideo;
 class SubtitleFilter;
 class VideoPreviewWidget;
+class GLSLFilter;
 }
 QT_BEGIN_NAMESPACE
 class QMenu;
@@ -188,6 +191,8 @@ private slots:
     void runMpvPlayerFinished(int c);
     void advacedFilterSentFrame();
 
+    void captureGL();
+
 protected:
     virtual void closeEvent(QCloseEvent *e);
     virtual void resizeEvent(QResizeEvent *);
@@ -210,6 +215,8 @@ private:
     void analyeUsedFPS();
     void installAdvancedFilter();
     void installShaderXuno();
+    void installSaveGL();
+    void installGLSLFilter();
 
 
 
@@ -236,7 +243,7 @@ private:
     QToolButton *mpPlayPauseBtn;
     QToolButton *mpStopBtn, *mpForwardBtn, *mpBackwardBtn;
     QToolButton *mpOpenBtn;
-    QToolButton *mpInfoBtn, *mpMenuBtn, *mpSetupBtn, *mpCaptureBtn;
+    QToolButton *mpInfoBtn, *mpMenuBtn, *mpSetupBtn, *mpCaptureBtn, *mpCaptureGLBtn;
     QMenu *mpMenu;
     QAction *mpVOAction, *mpARAction; //remove mpVOAction if vo.id() is supported
     QAction *mpRepeatEnableAction;
@@ -285,10 +292,13 @@ private:
 
     AdvancedFilter *mpAdvancedFilter;
     qint64 mpvPlayerPorcessId=0;
-    runmpvpipe *mpvpipe=nullptr;
-    QWidget *mpvPlayerWindow=nullptr;
-    QWidget *mpvPlayerWindow1=nullptr;
-    ShaderFilterXuno *shaderXuno=nullptr;
+    runmpvpipe *mpvpipe=Q_NULLPTR;
+    QWidget *mpvPlayerWindow=Q_NULLPTR;
+    QWidget *mpvPlayerWindow1=Q_NULLPTR;
+    ShaderFilterXuno *shaderXuno=Q_NULLPTR;
+    SaveGLXuno *mSaveGLXuno=Q_NULLPTR;
+
+    XunoGLSLFilter *mpGLSLFilter=Q_NULLPTR;
 
 };
 

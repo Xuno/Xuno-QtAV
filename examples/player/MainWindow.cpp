@@ -20,6 +20,7 @@
 #include "MainWindow.h"
 #include "EventFilter.h"
 #include <QtAV>
+#include <QtAV/GLSLFilter.h>
 #include <QtAVWidgets>
 #include <QtCore/QtDebug>
 #include <QtCore/QLocale>
@@ -167,6 +168,9 @@ void MainWindow::initPlayer()
     mpSubtitle->setPlayer(mpPlayer);
     //mpPlayer->setAudioOutput(AudioOutputFactory::create(AudioOutputId_OpenAL));
     installAdvancedFilter();
+    installGLSLFilter();
+    //installSaveGL();
+
     EventFilter *ef = new EventFilter(mpPlayer);
     qApp->installEventFilter(ef);
     connect(ef, SIGNAL(helpRequested()), SLOT(help()));
@@ -205,9 +209,8 @@ void MainWindow::initPlayer()
     connect(mpVideoEQ, SIGNAL(saturationChanged(int)), this, SLOT(onSaturationChanged(int)));
     connect(mpVideoEQ, SIGNAL(gammaRGBChanged(int)),  this, SLOT(onGammaRGBChanged(int)));
     connect(mpVideoEQ, SIGNAL(filterSharpChanged(int)),  this, SLOT(onFilterSharpChanged(int)));
-
-
     connect(mpCaptureBtn, SIGNAL(clicked()), mpPlayer->videoCapture(), SLOT(capture()));
+    connect(mpCaptureGLBtn, &QToolButton::clicked, this, &MainWindow::captureGL);
 
     emit ready(); //emit this signal after connection. otherwise the slots may not be called for the first time
 }
@@ -322,6 +325,9 @@ void MainWindow::setupUi()
     mpCaptureBtn = new QToolButton();
     mpCaptureBtn->setToolTip(tr("Capture"));
     mpCaptureBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/capture.svg")));
+    mpCaptureGLBtn = new QToolButton();
+    mpCaptureGLBtn->setToolTip(tr("Capture GL"));
+    mpCaptureGLBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/capture.svg")));
     mpVolumeBtn = new QToolButton();
     mpVolumeBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/sound.svg")));
 
@@ -664,6 +670,7 @@ void MainWindow::setupUi()
     controlLayout->addWidget(mpVolumeSlider);
     controlLayout->addWidget(mpVolumeBtn);
     controlLayout->addWidget(mpCaptureBtn);
+    controlLayout->addWidget(mpCaptureGLBtn);
     controlLayout->addWidget(mpPlayPauseBtn);
     controlLayout->addWidget(mpStopBtn);
     controlLayout->addWidget(mpBackwardBtn);
@@ -1786,8 +1793,14 @@ void MainWindow::onBrightnessChanged(int b)
     //        mpPlayer->setBrightness(b);
     //    }
     Q_UNUSED(b);
-    VideoRenderer *vo = mpPlayer->renderer();
-    vo->setBrightness(mpVideoEQ->brightness());
+
+    if (mpGLSLFilter) {
+        mpGLSLFilter->setBrightness(mpVideoEQ->brightness());
+    }else{
+        VideoRenderer *vo = mpPlayer->renderer();
+        vo->setBrightness(mpVideoEQ->brightness());
+    }
+
 }
 
 void MainWindow::onContrastChanged(int c)
@@ -1801,8 +1814,12 @@ void MainWindow::onContrastChanged(int c)
     //        mpPlayer->setContrast(c);
     //    }
     Q_UNUSED(c);
-    VideoRenderer *vo = mpPlayer->renderer();
-    vo->setContrast(mpVideoEQ->contrast());
+    if (mpGLSLFilter) {
+        mpGLSLFilter->setContrast(mpVideoEQ->contrast());
+    }else{
+        VideoRenderer *vo = mpPlayer->renderer();
+        vo->setContrast(mpVideoEQ->contrast());
+    }
 }
 
 void MainWindow::onHueChanged(int h)
@@ -1816,8 +1833,12 @@ void MainWindow::onHueChanged(int h)
     //        mpPlayer->setHue(h);
     //    }
     Q_UNUSED(h);
-    VideoRenderer *vo = mpPlayer->renderer();
-    vo->setHue(mpVideoEQ->hue());
+    if (mpGLSLFilter) {
+        mpGLSLFilter->setHue(mpVideoEQ->hue());
+    }else{
+        VideoRenderer *vo = mpPlayer->renderer();
+        vo->setHue(mpVideoEQ->hue());
+    }
 }
 
 void MainWindow::onSaturationChanged(int s)
@@ -1831,8 +1852,12 @@ void MainWindow::onSaturationChanged(int s)
     //        mpPlayer->setSaturation(s);
     //    }
     Q_UNUSED(s);
-    VideoRenderer *vo = mpPlayer->renderer();
-    vo->setSaturation(mpVideoEQ->saturation());
+    if (mpGLSLFilter) {
+        mpGLSLFilter->setSaturation(mpVideoEQ->saturation());
+    }else{
+        VideoRenderer *vo = mpPlayer->renderer();
+        vo->setSaturation(mpVideoEQ->saturation());
+    }
 }
 
 void MainWindow::onGammaRGBChanged(int g)
@@ -1863,6 +1888,16 @@ void MainWindow::onCaptureConfigChanged()
                              .arg(mpPlayer->videoCapture()->captureDir())
                              .arg(tr("Format"))
                              .arg(Config::instance().captureFormat()));
+
+    if (mpCaptureGLBtn){
+        mpCaptureGLBtn->setToolTip(QString::fromLatin1("%1\n%2: %3\n%4: %5")
+                                   .arg(tr("Capture video frame from OpenGL"))
+                                   .arg(tr("Save to"))
+                                   .arg(mpPlayer->videoCapture()->captureDir())
+                                   .arg(tr("Format"))
+                                   .arg(Config::instance().captureFormat()));
+    }
+
 
 }
 
@@ -2013,6 +2048,10 @@ void MainWindow::workaroundRendererSize()
 {
     if (!mpRenderer)
         return;
+
+    if (mpvPlayerWindow)
+        return;
+
     QSize s = rect().size();
     //resize(QSize(s.width()-1, s.height()-1));
     //resize(s); //window resize to fullscreen size will create another fullScreenChange event
@@ -2045,12 +2084,26 @@ void MainWindow::reSizeByMovie()
     if (isFullScreen()) return;
     QSize t=mpRenderer->rendererSize();
     Statistics st=mpPlayer->statistics();
+
     if (st.video_only.width>0 && st.video_only.width>0 && mPlayerScale>0 ){ //(t.width()+t.height())==0
         t.setWidth(st.video_only.width*mPlayerScale);
         t.setHeight(st.video_only.height*mPlayerScale);
     }
     if (t.isValid() && (!t.isNull())) {
-        resize(t);
+
+        if (mpvPlayerWindow) {
+            qDebug()<<"MainWindow::reSizeByMovie"<<t;
+            mpRenderer->widget()->resize(t);
+            mpRenderer->widget()->move(0,0);
+            mpvPlayerWindow->resize(t);
+        }else{
+            //resize(t);
+            if (mpGLSLFilter) {
+                mpGLSLFilter->setOutputSize(t);
+            }
+            //installGLSLFilter(t);
+        }
+
         //        if (Config::instance().advancedFilterEnabled()){
         //           //mpRenderer->widget()->move(st.video_only.width-1,st.video_only.height-1);
         //        }
@@ -2184,6 +2237,7 @@ void MainWindow::analyeUsedFPS()
 
 void MainWindow::installAdvancedFilter()
 {
+    //return;
     qDebug()<<"MainWindow::installAdvancedFilter";
     if (Config::instance().advancedFilterEnabled()){
 
@@ -2235,12 +2289,66 @@ void MainWindow::installAdvancedFilter()
 void MainWindow::installShaderXuno()
 {
     if (mpRenderer && mpRenderer->opengl()){
-        if (shaderXuno==nullptr) shaderXuno=new ShaderFilterXuno();
-        if (shaderXuno!=nullptr) {
+        if (shaderXuno==Q_NULLPTR) shaderXuno=new ShaderFilterXuno();
+        if (shaderXuno!=Q_NULLPTR) {
             shaderXuno->setGammaValue(0.f);
             shaderXuno->setSharpValue(0.f);
-            mpRenderer->opengl()->setUserShader(shaderXuno);
+            //mpRenderer->opengl()->setUserShader(shaderXuno);
         }
+    }
+}
+
+void MainWindow::installSaveGL()
+{
+
+    if (mSaveGLXuno==Q_NULLPTR && mpPlayer){
+        mSaveGLXuno=new SaveGLXuno(this);
+        mSaveGLXuno->setPlayer(mpPlayer);
+    }else if (mpRenderer && mpRenderer->opengl()){
+        if (mSaveGLXuno==Q_NULLPTR) mSaveGLXuno=new SaveGLXuno(this);
+    }
+
+
+    if (Config::instance().advancedFilterEnabled()){
+
+        mpvPlayerWindow = new QWidget(this);
+        mpvPlayerWindow->setWindowTitle(tr("XunoPlayer MPV view"));
+        //mpvPlayerWindow->setWindowFlags(Qt::Dialog);
+        //mpvPlayerWindow->setWindowFlags(this->windowFlags() & ~Qt::WindowCloseButtonHint & ~Qt::WindowMinMaxButtonsHint & Qt::CustomizeWindowHint);
+        mpvPlayerWindow->setMinimumHeight(125);//785
+        mpvPlayerWindow->setMinimumHeight(11);
+        mpvPlayerWindow->setStyleSheet("background-color:black;");
+        //mpvPlayerWindow->move(0,0);
+
+        if (mpRenderer){
+            QWidget *r = mpRenderer->widget();
+            //release old renderer and add new
+            if (r && mpvPlayerWindow && mpPlayerLayout) {
+                //mpvPlayerWindow->resize(r->size());
+                mpPlayerLayout->replaceWidget(r,mpvPlayerWindow);
+                r->setParent(mpvPlayerWindow);
+                r->move(0,0);
+                //r->move(-r->size().width()-1,r->size().height()-1);
+            }
+        }
+        mpvPlayerWindow->show();
+
+        //mpPlayerLayout->addWidget(mpvPlayerWindow);
+        // mpvPlayerWindow->raise();
+
+    }
+}
+
+void MainWindow::installGLSLFilter()
+{
+    qDebug()<<"installGLSLFilter";
+    if (mpGLSLFilter == Q_NULLPTR && mpRenderer && mpRenderer->opengl() ){
+        mpGLSLFilter = new XunoGLSLFilter(this);
+        mpGLSLFilter->setEnabled(true);
+        mpGLSLFilter->setPlayer(mpPlayer);
+        if (shaderXuno) mpGLSLFilter->setShader(shaderXuno);
+        bool state=mpRenderer->installFilter(mpGLSLFilter);
+        qDebug()<<"installXunoGLSLFilter state"<<state;
     }
 }
 
@@ -2304,6 +2412,16 @@ void MainWindow::advacedFilterSentFrame()
             //mpPlayerLayout->replaceWidget(r,mpvPlayerWindow);
             //r->deleteLater();
         }
+    }
+}
+
+void MainWindow::captureGL()
+{
+    //    if (mSaveGLXuno!=Q_NULLPTR) {
+    //        mSaveGLXuno->saveimg();
+    //    }
+    if (mpGLSLFilter!=Q_NULLPTR){
+        mpGLSLFilter->setNeedSave(true);
     }
 }
 

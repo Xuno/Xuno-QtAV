@@ -70,7 +70,7 @@ private:
     bool onSetHue(qreal h) Q_DECL_OVERRIDE;
     bool onSetSaturation(qreal s) Q_DECL_OVERRIDE;
     bool isRenderRAWImage=true;
-    uchar *m_RAWImagePixels=nullptr;
+    uchar *m_RAWImagePixels=Q_NULLPTR;
     int m_RAWImageWidth=0;
     int m_RAWImageHeiht=0;
     int m_RAWImageBPP=4;
