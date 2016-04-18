@@ -84,6 +84,10 @@ sse2 {
   SSE2_SOURCES += utils/CopyFrame_SSE2.cpp
 }
 
+win32 {
+# cross build, old vc etc.
+  !config_dx: INCLUDEPATH += $$PROJECTROOT/contrib/dxsdk
+}
 *msvc* {
 #link FFmpeg and portaudio which are built by gcc need /SAFESEH:NO
 win32-msvc2010|win32-msvc2008: QMAKE_LFLAGS *= /DEBUG #workaround for CoInitializeEx() and other symbols not found at runtime
@@ -115,6 +119,7 @@ android {
   !no_gui_private:qtHaveModule(androidextras) { #qt5.2 has QAndroidJniObject
     QT *= androidextras gui-private #QPlatformNativeInterface get "QtActivity"
     SOURCES *= io/AndroidIO.cpp
+    SOURCES *= codec/video/VideoDecoderMediaCodec.cpp
   }
 }
 config_x11 {
@@ -180,12 +185,6 @@ win32: {
   HEADERS += output/audio/xaudio2_compat.h
   SOURCES += output/audio/AudioOutputXAudio2.cpp
   DEFINES *= QTAV_HAVE_XAUDIO2=1
-  !config_xaudio2 { #winsdk has no xaudio2.h, use June 2010 DXSDK
-## TODO: build xaudio2 code as a seperate static lib so wen can safely add contrib/dxsdk to INCLUDEPATH for that lib build
-##cross_compile: build on linux or macOS
-    cross_compile|win32-icc|win32-g++|win32-msvc2010|win32-msvc2008|win32-msvc2005: \
-        INCLUDEPATH *= $$PROJECTROOT/contrib/dxsdk
-  }
   winrt {
     LIBS += -lxaudio2 #only for xbox or >=win8
   } else {
@@ -273,6 +272,7 @@ config_d3d11va {
     SOURCES += directx/SurfaceInteropD3D11EGL.cpp
   }
   enable_desktopgl {
+    SOURCES += directx/SurfaceInteropD3D11GL.cpp
   }
   winrt: LIBS *= -ld3d11
 }

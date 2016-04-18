@@ -18,12 +18,13 @@
     License along with this library; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
+#include <initguid.h> //IID_ID3D11VideoContext
 #include "VideoDecoderD3D.h"
 #include "QtAV/private/factory.h"
 #include "QtAV/private/mkid.h"
 #define DX_LOG_COMPONENT "D3D11VA"
 #include "utils/DirectXHelper.h"
-#include <initguid.h> //IID_ID3D11VideoContext
+#include "directx/dxcompat.h"
 #include <d3d11.h> //include before <libavcodec/d3d11va.h> because d3d11va.h also includes d3d11.h but as a c header (for msvc)
 #include <wrl/client.h>
 extern "C" {
@@ -32,6 +33,12 @@ extern "C" {
 using namespace Microsoft::WRL; //ComPtr
 #include "directx/SurfaceInteropD3D11.h"
 #include "utils/Logger.h"
+
+// define __mingw_uuidof
+#ifdef __CRT_UUID_DECL
+__CRT_UUID_DECL(ID3D11VideoContext,0x61F21C45,0x3C0E,0x4a74,0x9C,0xEA,0x67,0x10,0x0D,0x9A,0xD5,0xE4)
+__CRT_UUID_DECL(ID3D11VideoDevice,0x10EC4D5B,0x975A,0x4689,0xB9,0xE4,0xD0,0xAA,0xC3,0x0F,0xE3,0x33)
+#endif //__CRT_UUID_DECL
 
 namespace QtAV {
 static QString sD3D11Description;
@@ -74,8 +81,9 @@ public:
     VideoFrame frame() Q_DECL_OVERRIDE;
 };
 
-VideoDecoderId VideoDecoderId_D3D11 = mkid::id32base36_5<'D','3','D','1','1'>::value;
+extern VideoDecoderId VideoDecoderId_D3D11;
 FACTORY_REGISTER(VideoDecoder, D3D11, "D3D11")
+
 
 VideoDecoderId VideoDecoderD3D11::id() const
 {
@@ -111,7 +119,7 @@ public:
         dll = LoadLibrary(TEXT("d3d11.dll"));
         available = !!dll;
 #endif
-        if (d3d11::InteropResource::isSupported())
+        if (d3d11::InteropResource::isSupported(d3d11::InteropEGL))
             copy_mode = VideoDecoderFFmpegHW::ZeroCopy;
     }
     ~VideoDecoderD3D11Private() {
@@ -168,12 +176,16 @@ VideoFrame VideoDecoderD3D11::frame()
     }
     D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC view_desc;
     surface->GetDesc(&view_desc);
-
+    D3D11_TEXTURE2D_DESC tex_desc;
+    texture->GetDesc(&tex_desc);
     if (copyMode() == VideoDecoderFFmpegHW::ZeroCopy && d.interop_res) {
         d3d11::SurfaceInterop *interop = new d3d11::SurfaceInterop(d.interop_res);
         interop->setSurface(texture, view_desc.Texture2D.ArraySlice, d.width, d.height);
-        VideoFrame f(d.width, d.height, VideoFormat::Format_RGB32);
-        f.setBytesPerLine(d.width * 4); //used by gl to compute texture size
+        VideoFormat fmt(d.interop_res->format(tex_desc.Format));
+        VideoFrame f(d.width, d.height, fmt);
+        for (int i = 0; i < fmt.planeCount(); ++i) {
+            f.setBytesPerLine(fmt.bytesPerLine(d.width, i), i); //used by gl to compute texture size
+        }
         f.setMetaData(QStringLiteral("surface_interop"), QVariant::fromValue(VideoSurfaceInteropPtr(interop)));
         f.setTimestamp(d.frame->pkt_pts/1000.0);
         f.setDisplayAspectRatio(d.getDAR(d.frame));
@@ -198,15 +210,14 @@ VideoFrame VideoDecoderD3D11::frame()
     Q_UNUSED(sm);
     int pitch[3] = { (int)mapped.RowPitch, 0, 0}; //compute chroma later
     uint8_t *src[] = { (uint8_t*)mapped.pData, 0, 0}; //compute chroma later
-    D3D11_TEXTURE2D_DESC tex_desc;
-    texture->GetDesc(&tex_desc);
     const VideoFormat format = pixelFormatFromFourcc(d.format_fcc); //tex_desc
     return copyToFrame(format, tex_desc.Height, src, pitch, false);
 }
 
 VideoDecoderD3D11::VideoDecoderD3D11()
     : VideoDecoderD3D(*new VideoDecoderD3D11Private())
-{}
+{
+}
 
 bool VideoDecoderD3D11Private::createDevice()
 {
@@ -246,6 +257,7 @@ bool VideoDecoderD3D11Private::createDevice()
             .arg(desc.Revision)
             ;
     qDebug() << sD3D11Description;
+    description = sD3D11Description;
     return true;
 }
 
@@ -352,7 +364,9 @@ void VideoDecoderD3D11Private::destroyDecoder()
 
 bool VideoDecoderD3D11Private::setupSurfaceInterop()
 {
+    qDebug("%s", __FUNCTION__);
     interop_res = d3d11::InteropResourcePtr(d3d11::InteropResource::create());
+    qDebug("interop res: %p", interop_res.data());
     if (interop_res)
         interop_res->setDevice(d3ddev);
     return true;

@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Multimedia framework based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -96,10 +96,11 @@ private:
 extern Q_AV_EXPORT VideoDecoderId VideoDecoderId_FFmpeg;
 extern Q_AV_EXPORT VideoDecoderId VideoDecoderId_CUDA;
 extern Q_AV_EXPORT VideoDecoderId VideoDecoderId_DXVA;
+extern Q_AV_EXPORT VideoDecoderId VideoDecoderId_D3D11;
 extern Q_AV_EXPORT VideoDecoderId VideoDecoderId_VAAPI;
 extern Q_AV_EXPORT VideoDecoderId VideoDecoderId_Cedarv;
-extern Q_AV_EXPORT VideoDecoderId VideoDecoderId_FFmpeg_VDPAU;
 extern Q_AV_EXPORT VideoDecoderId VideoDecoderId_VDA;
 extern Q_AV_EXPORT VideoDecoderId VideoDecoderId_VideoToolbox;
+extern Q_AV_EXPORT VideoDecoderId VideoDecoderId_MediaCodec;
 } //namespace QtAV
 #endif // QTAV_VIDEODECODER_H
