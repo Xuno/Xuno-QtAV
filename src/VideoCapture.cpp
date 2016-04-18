@@ -128,7 +128,8 @@ VideoCapture::VideoCapture(QObject *parent) :
     dir = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
 #endif
     if (dir.isEmpty())
-        dir = qApp->applicationDirPath() + QStringLiteral("/capture");
+        dir = qApp->applicationDirPath() ;
+    dir += QStringLiteral("/XunoPlayerCapture");
     fmt = QStringLiteral("PNG");
     qual = -1;
     // seems no direct connection is fine too
@@ -263,7 +264,7 @@ void VideoCapture::setCaptureDir(const QString &value)
 
 QString VideoCapture::captureDir() const
 {
-    return dir;
+    return dir+QStringLiteral("/XunoPlayerCapture");
 }
 
 /*

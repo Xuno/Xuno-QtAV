@@ -216,7 +216,7 @@ private:
     void installAdvancedFilter();
     void installShaderXuno();
     void installSaveGL();
-    void installGLSLFilter(QSize size);
+    void installGLSLFilter();
 
 
 
