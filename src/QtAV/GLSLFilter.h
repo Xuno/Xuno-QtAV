@@ -25,7 +25,13 @@
 #include <QtAV/QtAV_Global.h>
 #include <QtAV/Filter.h>
 
-#include <QOpenGLFramebufferObject>
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+#undef QOpenGLFramebufferObject
+#define QOpenGLFramebufferObject QGLFramebufferObject
+#endif
+QT_BEGIN_NAMESPACE
+class QOpenGLFramebufferObject;
+QT_END_NAMESPACE
 
 namespace QtAV {
 class OpenGLVideo;
@@ -47,8 +53,6 @@ public:
      */
     OpenGLVideo* opengl() const;
     QOpenGLFramebufferObject* fbo() const;
-
-    // TODO: set FBO format
     /*!
      * \brief outputSize
      * Output frame size. FBO uses the same size to render. An empty size means using the input frame size
