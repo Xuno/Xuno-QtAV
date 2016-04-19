@@ -422,7 +422,7 @@ void SaveGLXuno::saveFromRender()
         bool readypixels=m_player->renderer()->getPixels(pixels, w, h, bpp);
         if (readypixels && pixels && w>0 && h>0){
             if (1){
-                qint64 byteCount=w*h*bpp;
+                //qint64 byteCount=w*h*bpp;
                 //for rotate OpenGL image vertically ised QImage
                 QImage qi= QImage(pixels,w,h,QImage::Format_ARGB32).copy();
                 if (!qi.isNull() && !lastfilename.isEmpty()){

@@ -22,6 +22,18 @@ void XunoGLSLFilter::afterRendering()
 {
     //qDebug()<<"XunoGLSLFilter::afterRendering()";
     colorTransform();
+    if (fbo() && fbo()->isValid()){
+        QOpenGLFunctions *f=opengl()->openGLContext()->functions();
+        if (f && fbo()->textures().size()){
+            GLint target=GL_TEXTURE_2D;
+            f->glBindTexture(target,fbo()->texture());
+            f->glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            f->glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            f->glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            f->glBindTexture(target,0);
+        }
+    }
     if (fbo() && fbo()->isValid() && needSave) {
         QString name=defineFileName();
         if (name.isEmpty()) name=savePath.append(QString("SaveFBOafterRendering-%1.tif").arg(QDateTime().currentMSecsSinceEpoch()));
@@ -42,7 +54,6 @@ void XunoGLSLFilter::afterRendering()
 void XunoGLSLFilter::colorTransform(bool runOnce)
 {
     if (colorTransformChanged){
-        qDebug()<<"XunoGLSLFilter::colorTransform brightness"<<brightness<<opengl();
         opengl()->setBrightness(brightness);
         opengl()->setContrast(contrast);
         opengl()->setHue(hue);
