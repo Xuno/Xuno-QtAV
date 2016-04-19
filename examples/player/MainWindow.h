@@ -243,7 +243,7 @@ private:
     QToolButton *mpPlayPauseBtn;
     QToolButton *mpStopBtn, *mpForwardBtn, *mpBackwardBtn;
     QToolButton *mpOpenBtn;
-    QToolButton *mpInfoBtn, *mpMenuBtn, *mpSetupBtn, *mpCaptureBtn, *mpCaptureGLBtn;
+    QToolButton *mpInfoBtn, *mpMenuBtn, *mpSetupBtn, *mpCaptureBtn;
     QMenu *mpMenu;
     QAction *mpVOAction, *mpARAction; //remove mpVOAction if vo.id() is supported
     QAction *mpRepeatEnableAction;

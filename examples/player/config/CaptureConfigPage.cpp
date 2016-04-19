@@ -28,6 +28,7 @@
 #include <QFileDialog>
 #include <QtCore/QUrl>
 #include "../Slider.h"
+#include <QDebug>
 
 CaptureConfigPage::CaptureConfigPage(QWidget *parent) :
     ConfigPageBase(parent)
@@ -61,13 +62,26 @@ CaptureConfigPage::CaptureConfigPage(QWidget *parent) :
     mpQuality->setSingleStep(1);
     mpQuality->setTickInterval(10);
     mpQuality->setTickPosition(QSlider::TicksBelow);
+    mpCaptFrame = new QRadioButton();
+    mpCaptFrame->setObjectName(QStringLiteral("captFrame"));
+    mpCaptFrame->setText(tr("Decoded Frame"));
+    formLayout->addRow(tr("Type"), mpCaptFrame);
+    //formLayout->addWidget(mpCaptFrame);
+    mpCaptFiltered = new QRadioButton();
+    mpCaptFiltered->setObjectName(QStringLiteral("captFiltered"));
+    mpCaptFiltered->setChecked(true);
+    mpCaptFiltered->setText(tr("Post Filtered"));
+    formLayout->addWidget(mpCaptFiltered);
+
 
     connect(&Config::instance(), SIGNAL(captureDirChanged(QString)), mpDir, SLOT(setText(QString)));
     connect(&Config::instance(), SIGNAL(captureQualityChanged(int)), mpQuality, SLOT(setValue(int)));
     connect(&Config::instance(), SIGNAL(captureFormatChanged(QString)), SLOT(formatChanged(QString)));
+    connect(&Config::instance(), SIGNAL(captureTypeChanged(int)), SLOT(typeChanged(int)));
     connect(mpDir, SIGNAL(textChanged(QString)), SLOT(changeDirByUi(QString)));
     connect(mpFormat, SIGNAL(currentIndexChanged(QString)), SLOT(changeFormatByUi(QString)));
     connect(mpQuality, SIGNAL(valueChanged(int)), SLOT(changeQualityByUi(int)));
+    connect(mpCaptFrame, SIGNAL(toggled(bool)), SLOT(changeTypeByUi(bool)));
     applyToUi();
 }
 
@@ -80,7 +94,9 @@ void CaptureConfigPage::applyFromUi()
 {
     Config::instance().setCaptureDir(mpDir->text())
             .setCaptureFormat(mpFormat->currentText())
-            .setCaptureQuality(mpQuality->value());
+            .setCaptureQuality(mpQuality->value())
+            .setCaptureType(mpCaptFrame->isChecked() ? Config::CaptureType::DecodedFrame : Config::CaptureType::PostFiltered );
+            ;
 }
 
 void CaptureConfigPage::applyToUi()
@@ -88,6 +104,7 @@ void CaptureConfigPage::applyToUi()
     mpDir->setText(Config::instance().captureDir());
     formatChanged(Config::instance().captureFormat());
     mpQuality->setValue(Config::instance().captureQuality());
+    mpCaptFrame->setChecked(Config::instance().captureType() == Config::CaptureType::DecodedFrame);
 }
 
 void CaptureConfigPage::changeDirByUi(const QString& dir)
@@ -117,11 +134,28 @@ void CaptureConfigPage::changeQualityByUi(int q)
     }
 }
 
+void CaptureConfigPage::changeTypeByUi(bool state)
+{
+    Q_UNUSED(state);
+    int type=(mpCaptFrame->isChecked()) ? Config::CaptureType::DecodedFrame : Config::CaptureType::PostFiltered;
+    if (applyOnUiChange()) {
+        Config::instance().setCaptureType(type);
+    } else {
+        emit Config::instance().captureTypeChanged(type);
+    }
+}
+
 void CaptureConfigPage::formatChanged(const QString& fmt)
 {
     int idx = mpFormat->findText(fmt);
     if (idx >= 0)
         mpFormat->setCurrentIndex(idx);
+}
+
+void CaptureConfigPage::typeChanged(int type)
+{
+    qDebug()<<"CaptureConfigPage::typeChanged"<<type;
+        mpCaptFrame->setChecked(type==Config::DecodedFrame);
 }
 
 void CaptureConfigPage::selectSaveDir()

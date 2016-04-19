@@ -48,6 +48,7 @@ class COMMON_EXPORT Config : public QObject
     Q_PROPERTY(QString captureDir READ captureDir WRITE setCaptureDir NOTIFY captureDirChanged)
     Q_PROPERTY(QString captureFormat READ captureFormat WRITE setCaptureFormat NOTIFY captureFormatChanged)
     Q_PROPERTY(int captureQuality READ captureQuality WRITE setCaptureQuality NOTIFY captureQualityChanged)
+    Q_PROPERTY(int captureType READ captureType WRITE setCaptureType NOTIFY captureTypeChanged)
     Q_PROPERTY(QStringList subtitleEngines READ subtitleEngines WRITE setSubtitleEngines NOTIFY subtitleEnginesChanged)
     Q_PROPERTY(bool subtitleAutoLoad READ subtitleAutoLoad WRITE setSubtitleAutoLoad NOTIFY subtitleAutoLoadChanged)
     Q_PROPERTY(bool subtitleEnabled READ subtitleEnabled WRITE setSubtitleEnabled NOTIFY subtitleEnabledChanged)
@@ -89,6 +90,11 @@ public:
         Software
     };
 
+    enum CaptureType{
+        DecodedFrame,
+        PostFiltered
+    };
+
     static Config& instance();
     static void setName(const QString& name); // config file base name
     static QString getName();
@@ -128,6 +134,8 @@ public:
     // only works for non-yuv capture. value: -1~100, -1: default
     int captureQuality() const;
     Config& setCaptureQuality(int quality);
+    int captureType() const;
+    Config& setCaptureType(int type);
 
     QStringList subtitleEngines() const;
     Config& setSubtitleEngines(const QStringList& value);
@@ -264,6 +272,7 @@ public:
     Q_SIGNAL void captureDirChanged(const QString& dir);
     Q_SIGNAL void captureFormatChanged(const QString& fmt);
     Q_SIGNAL void captureQualityChanged(int quality);
+    Q_SIGNAL void captureTypeChanged(int type);
     Q_SIGNAL void avfilterVideoChanged();
     Q_SIGNAL void avfilterAudioChanged();
     Q_SIGNAL void subtitleEnabledChanged();

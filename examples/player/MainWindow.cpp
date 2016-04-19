@@ -181,6 +181,7 @@ void MainWindow::initPlayer()
     connect(&Config::instance(), SIGNAL(captureDirChanged(QString)), SLOT(onCaptureConfigChanged()));
     connect(&Config::instance(), SIGNAL(captureFormatChanged(QString)), SLOT(onCaptureConfigChanged()));
     connect(&Config::instance(), SIGNAL(captureQualityChanged(int)), SLOT(onCaptureConfigChanged()));
+    connect(&Config::instance(), SIGNAL(captureTypeChanged(int)), SLOT(onCaptureConfigChanged()));
     connect(&Config::instance(), SIGNAL(previewEnabledChanged()), SLOT(onPreviewEnabledChanged()));
     connect(&Config::instance(), SIGNAL(avfilterVideoChanged()), SLOT(onAVFilterVideoConfigChanged()));
     connect(&Config::instance(), SIGNAL(avfilterAudioChanged()), SLOT(onAVFilterAudioConfigChanged()));
@@ -209,8 +210,6 @@ void MainWindow::initPlayer()
     connect(mpVideoEQ, SIGNAL(saturationChanged(int)), this, SLOT(onSaturationChanged(int)));
     connect(mpVideoEQ, SIGNAL(gammaRGBChanged(int)),  this, SLOT(onGammaRGBChanged(int)));
     connect(mpVideoEQ, SIGNAL(filterSharpChanged(int)),  this, SLOT(onFilterSharpChanged(int)));
-    connect(mpCaptureBtn, SIGNAL(clicked()), mpPlayer->videoCapture(), SLOT(capture()));
-    connect(mpCaptureGLBtn, &QToolButton::clicked, this, &MainWindow::captureGL);
 
     emit ready(); //emit this signal after connection. otherwise the slots may not be called for the first time
 }
@@ -323,11 +322,11 @@ void MainWindow::setupUi()
     mpInfoBtn->setToolTip(QString::fromLatin1("Media information"));
     mpInfoBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/info.svg")));
     mpCaptureBtn = new QToolButton();
-    mpCaptureBtn->setToolTip(tr("Capture"));
     mpCaptureBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/capture.svg")));
-    mpCaptureGLBtn = new QToolButton();
-    mpCaptureGLBtn->setToolTip(tr("Capture GL"));
-    mpCaptureGLBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/capture.svg")));
+    if (Config::instance().captureType()==Config::CaptureType::DecodedFrame)
+        mpCaptureBtn->setToolTip(tr("Capture"));
+    else
+        mpCaptureBtn->setToolTip(tr("Capture Post Filtered"));
     mpVolumeBtn = new QToolButton();
     mpVolumeBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/sound.svg")));
 
@@ -670,7 +669,6 @@ void MainWindow::setupUi()
     controlLayout->addWidget(mpVolumeSlider);
     controlLayout->addWidget(mpVolumeBtn);
     controlLayout->addWidget(mpCaptureBtn);
-    controlLayout->addWidget(mpCaptureGLBtn);
     controlLayout->addWidget(mpPlayPauseBtn);
     controlLayout->addWidget(mpStopBtn);
     controlLayout->addWidget(mpBackwardBtn);
@@ -1874,6 +1872,7 @@ void MainWindow::onFilterSharpChanged(int fs)
 
 void MainWindow::onCaptureConfigChanged()
 {
+    qDebug()<<"onCaptureConfigChanged";
     mpPlayer->videoCapture()->setCaptureDir(Config::instance().captureDir());
     mpPlayer->videoCapture()->setQuality(Config::instance().captureQuality());
     if (Config::instance().captureFormat().toLower() == QLatin1String("original")) {
@@ -1882,23 +1881,26 @@ void MainWindow::onCaptureConfigChanged()
         mpPlayer->videoCapture()->setOriginalFormat(false);
         mpPlayer->videoCapture()->setSaveFormat(Config::instance().captureFormat());
     }
-    mpCaptureBtn->setToolTip(QString::fromLatin1("%1\n%2: %3\n%4: %5")
-                             .arg(tr("Capture video frame"))
-                             .arg(tr("Save to"))
-                             .arg(mpPlayer->videoCapture()->captureDir())
-                             .arg(tr("Format"))
-                             .arg(Config::instance().captureFormat()));
 
-    if (mpCaptureGLBtn){
-        mpCaptureGLBtn->setToolTip(QString::fromLatin1("%1\n%2: %3\n%4: %5")
-                                   .arg(tr("Capture video frame from OpenGL"))
-                                   .arg(tr("Save to"))
-                                   .arg(mpPlayer->videoCapture()->captureDir())
-                                   .arg(tr("Format"))
-                                   .arg(Config::instance().captureFormat()));
+    if (Config::instance().captureType()==Config::CaptureType::DecodedFrame){
+        mpCaptureBtn->setToolTip(QString::fromLatin1("%1\n%2: %3\n%4: %5")
+                                 .arg(tr("Capture video frame"))
+                                 .arg(tr("Save to"))
+                                 .arg(mpPlayer->videoCapture()->captureDir())
+                                 .arg(tr("Format"))
+                                 .arg(Config::instance().captureFormat()));
+        disconnect(mpCaptureBtn, 0, 0, 0);
+        connect(mpCaptureBtn, &QToolButton::clicked, mpPlayer->videoCapture(), &QtAV::VideoCapture::capture);
+    }else{
+        mpCaptureBtn->setToolTip(QString::fromLatin1("%1\n%2: %3\n%4: %5")
+                                 .arg(tr("Capture video frame with post filter"))
+                                 .arg(tr("Save to"))
+                                 .arg(mpPlayer->videoCapture()->captureDir())
+                                 .arg(tr("Format"))
+                                 .arg(Config::instance().captureFormat()));
+        disconnect(mpCaptureBtn, 0, 0, 0);
+        connect(mpCaptureBtn, &QToolButton::clicked, this, &MainWindow::captureGL);
     }
-
-
 }
 
 void MainWindow::onAVFilterVideoConfigChanged()

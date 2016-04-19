@@ -25,6 +25,7 @@
 #include <QLineEdit>
 #include <QComboBox>
 #include <QCheckBox>
+#include <QRadioButton>
 
 /*
  * TODO: ConfigPageBase: auto save(true for menu ui, false for dialog ui)
@@ -46,7 +47,9 @@ private slots:
     void changeDirByUi(const QString& dir);
     void changeFormatByUi(const QString& fmt);
     void changeQualityByUi(int q);
+    void changeTypeByUi(bool state);
     void formatChanged(const QString &fmt);
+    void typeChanged(int type);
     void selectSaveDir();
     void browseCaptureDir();
 
@@ -54,6 +57,7 @@ private:
     QLineEdit *mpDir;
     QComboBox *mpFormat;
     Slider *mpQuality;
+    QRadioButton *mpCaptFrame,*mpCaptFiltered;
 };
 
 #endif // CAPTURECONFIGPAGE_H

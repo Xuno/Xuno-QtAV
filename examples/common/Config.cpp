@@ -106,6 +106,7 @@ public:
         settings.setValue(QString::fromLatin1("dir"), capture_dir);
         settings.setValue(QString::fromLatin1("format"), capture_fmt);
         settings.setValue(QString::fromLatin1("quality"), capture_quality);
+        settings.setValue(QString::fromLatin1("type"), capture_type);
         settings.endGroup();
         settings.beginGroup(QString::fromLatin1("subtitle"));
         settings.setValue(QString::fromLatin1("enabled"), subtitle_enabled);
@@ -184,6 +185,7 @@ public:
     QString capture_dir;
     QString capture_fmt;
     int capture_quality;
+    int capture_type;
 
     bool avformat_on;
     bool direct;
@@ -342,13 +344,14 @@ void Config::reload()
     setCaptureDir(settings.value(QString::fromLatin1("dir"), QString()).toString());
     if (captureDir().isEmpty()) {
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-        setCaptureDir(QDesktopServices::storageLocation(QDesktopServices::PicturesLocation));
+        setCaptureDir(QDesktopServices::storageLocation(QDesktopServices::PicturesLocation)+QStringLiteral("/XunoPlayerCapture"));
 #else
-        setCaptureDir(QStandardPaths::writableLocation(QStandardPaths::PicturesLocation));
+        setCaptureDir(QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)+QStringLiteral("/XunoPlayerCapture"));
 #endif
     }
     setCaptureFormat(settings.value(QString::fromLatin1("format"), QString::fromLatin1("png")).toString());
     setCaptureQuality(settings.value(QString::fromLatin1("quality"), 100).toInt());
+    setCaptureType(settings.value(QString::fromLatin1("type"), CaptureType::PostFiltered).toInt());
     settings.endGroup();
     settings.beginGroup(QString::fromLatin1("subtitle"));
     setSubtitleAutoLoad(settings.value(QString::fromLatin1("autoLoad"), true).toBool());
@@ -504,6 +507,22 @@ Config& Config::setCaptureQuality(int quality)
     Q_EMIT captureQualityChanged(quality);
     Q_EMIT changed();
     return *this;
+}
+
+int Config::captureType() const
+{
+    return mpData->capture_type;
+}
+
+Config &Config::setCaptureType(int type)
+{
+    if (mpData->capture_type == type)
+        return *this;
+    mpData->capture_type = type;
+    Q_EMIT captureTypeChanged(type);
+    Q_EMIT changed();
+    return *this;
+
 }
 
 QStringList Config::subtitleEngines() const
