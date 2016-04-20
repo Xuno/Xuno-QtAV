@@ -2099,7 +2099,7 @@ void MainWindow::reSizeByMovie()
             mpRenderer->widget()->move(0,0);
             mpvPlayerWindow->resize(t);
         }else{
-            //resize(t);
+            resize(t);
             if (mpGLSLFilter) {
                 mpGLSLFilter->setOutputSize(t);
             }
