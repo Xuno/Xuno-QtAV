@@ -92,6 +92,13 @@ public:
 
 Q_SIGNALS:
     /*!
+     * \brief beforeRendering
+     * Emitted when video frame is before render.
+     * With DirectConnection, it can be used to draw GL on top of video, or to do screen scraping of the current frame buffer.
+     */
+    void beforeRendering();
+
+    /*!
      * \brief afterRendering
      * Emitted when video frame is rendered.
      * With DirectConnection, it can be used to draw GL on top of video, or to do screen scraping of the current frame buffer.

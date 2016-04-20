@@ -8,6 +8,7 @@ XunoGLSLFilter::XunoGLSLFilter(QObject *parent):
     qDebug()<<"constructor XunoGLSLFilter::XunoGLSLFilter";
     if (opengl()){
         qDebug()<<"connect XunoGLSLFilter::XunoGLSLFilter";
+        connect(opengl(), &QtAV::OpenGLVideo::beforeRendering, this, &XunoGLSLFilter::beforeRendering, Qt::DirectConnection);
         connect(opengl(), &QtAV::OpenGLVideo::afterRendering, this, &XunoGLSLFilter::afterRendering, Qt::DirectConnection);
     }
 }
@@ -18,9 +19,9 @@ void XunoGLSLFilter::setShader(QtAV::VideoShader *ush)
     opengl()->setUserShader(user_shader);
 }
 
-void XunoGLSLFilter::afterRendering()
+void XunoGLSLFilter::beforeRendering()
 {
-    //qDebug()<<"XunoGLSLFilter::afterRendering()";
+    //qDebug()<<"XunoGLSLFilter::beforeRendering";
     colorTransform();
     if (fbo() && fbo()->isValid()){
         QOpenGLFunctions *f=opengl()->openGLContext()->functions();
@@ -34,6 +35,12 @@ void XunoGLSLFilter::afterRendering()
             f->glBindTexture(target,0);
         }
     }
+ }
+
+
+void XunoGLSLFilter::afterRendering()
+{
+    //qDebug()<<"XunoGLSLFilter::afterRendering()";
     if (fbo() && fbo()->isValid() && needSave) {
         QString name=defineFileName();
         if (name.isEmpty()) name=savePath.append(QString("SaveFBOafterRendering-%1.tif").arg(QDateTime().currentMSecsSinceEpoch()));
@@ -128,5 +135,6 @@ QString XunoGLSLFilter::defineFileName()
     QString lastfilename=QString("%1/%2-%3.%4").arg(dir).arg(filemovie).arg(moviepos).arg(fmt);
     return lastfilename;
 }
+
 
 
