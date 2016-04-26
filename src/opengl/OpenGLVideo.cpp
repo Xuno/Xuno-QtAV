@@ -377,9 +377,6 @@ void OpenGLVideo::render(const QRectF &target, const QRectF& roi, const QMatrix4
         qDebug() << "material changed: " << VideoMaterial::typeName(d.material_type) << " => " << VideoMaterial::typeName(mt);
         d.material_type = mt;
     }
-
-    Q_EMIT beforeRendering();
-
     VideoShader *shader = d.user_shader;
     if (!shader)
         shader = d.manager->prepareMaterial(d.material, mt); //TODO: print shader type name if changed. prepareMaterial(,sample_code, pp_code)
