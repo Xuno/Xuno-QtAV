@@ -86,6 +86,12 @@ public:
     void set(const unsigned* v, int count = 0);
     void set(const int* v, int count = 0);
     /*!
+     * \brief set
+     * \param v the type T is limited to OpenGL basic types float, int, unsigned(ES3.0) and QVector<T>
+     * TODO: Qt types
+     */
+    void set(const QVariant& v);
+    /*!
      * \brief setGL
      * Call glUniformXXX to update uniform values that set by set(const T&, int) and mark dirty false. Currently only use OpenGL ES2 supported functions, i.e. uint, double types are not supported.
      * \return false if location is invalid, or if uniform type is not supported by QOpenGLFunctions
@@ -185,4 +191,13 @@ private:
     QVector<Point> v;
 };
 } //namespace QtAV
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+QT_BEGIN_NAMESPACE
+Q_DECLARE_METATYPE(QVector<double>)
+Q_DECLARE_METATYPE(QVector<float>)
+Q_DECLARE_METATYPE(QVector<int>)
+Q_DECLARE_METATYPE(QVector<unsigned>)
+QT_END_NAMESPACE
+#endif
 #endif

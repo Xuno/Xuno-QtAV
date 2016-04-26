@@ -27,6 +27,7 @@
 #include "QtAV/private/mkid.h"
 #include "QtAV/private/factory.h"
 #include <QtCore/QCoreApplication>
+#include <QtGui/QOpenGLFunctions>
 #include <QtGui/QOpenGLFramebufferObject>
 #include <QtQuick/QQuickWindow>
 // for dynamicgl. qglfunctions before qt5.3 does not have portable gl functions
@@ -51,7 +52,7 @@ public:
     }
     void render() Q_DECL_OVERRIDE {
         Q_ASSERT(m_item);
-        m_item->renderToFbo();
+        m_item->renderToFbo(framebufferObject());
     }
     void synchronize(QQuickFramebufferObject *item) Q_DECL_OVERRIDE {
         m_item = static_cast<QuickFBORenderer*>(item);
@@ -91,6 +92,9 @@ public:
     QOpenGLContext *glctx;
     QMatrix4x4 matrix;
     OpenGLVideo glv;
+
+    QOpenGLFramebufferObject *fbo;
+    QList<QuickVideoFilter*> filters;
 };
 
 QuickFBORenderer::QuickFBORenderer(QQuickItem *parent)
@@ -209,21 +213,60 @@ void QuickFBORenderer::fboSizeChanged(const QSize &size)
     d.setupAspectRatio();
 }
 
-void QuickFBORenderer::renderToFbo()
+void QuickFBORenderer::renderToFbo(QOpenGLFramebufferObject *fbo)
 {
+    d_func().fbo = fbo;
     handlePaintEvent();
+}
+
+QQmlListProperty<QuickVideoFilter> QuickFBORenderer::filters()
+{
+    return QQmlListProperty<QuickVideoFilter>(this, NULL, vf_append, vf_count, vf_at, vf_clear);
+}
+
+void QuickFBORenderer::vf_append(QQmlListProperty<QuickVideoFilter> *property, QuickVideoFilter *value)
+{
+    QuickFBORenderer* self = static_cast<QuickFBORenderer*>(property->object);
+    self->d_func().filters.append(value);
+    self->installFilter(value);
+}
+
+int QuickFBORenderer::vf_count(QQmlListProperty<QuickVideoFilter> *property)
+{
+    QuickFBORenderer* self = static_cast<QuickFBORenderer*>(property->object);
+    return self->d_func().filters.size();
+}
+
+QuickVideoFilter* QuickFBORenderer::vf_at(QQmlListProperty<QuickVideoFilter> *property, int index)
+{
+    QuickFBORenderer* self = static_cast<QuickFBORenderer*>(property->object);
+    return self->d_func().filters.at(index);
+}
+
+void QuickFBORenderer::vf_clear(QQmlListProperty<QuickVideoFilter> *property)
+{
+    QuickFBORenderer* self = static_cast<QuickFBORenderer*>(property->object);
+    foreach (QuickVideoFilter *f, self->d_func().filters) {
+        self->uninstallFilter(f);
+    }
+    self->d_func().filters.clear();
 }
 
 void QuickFBORenderer::drawBackground()
 {
     if (backgroundRegion().isEmpty())
         return;
-    d_func().glv.fill(backgroundColor());
+    DPTR_D(QuickFBORenderer);
+    d.fbo->bind();
+    DYGL(glViewport(0, 0, d.fbo->width(), d.fbo->height()));
+    d.glv.fill(backgroundColor());
 }
 
 void QuickFBORenderer::drawFrame()
 {
     DPTR_D(QuickFBORenderer);
+    d.fbo->bind();
+    DYGL(glViewport(0, 0, d.fbo->width(), d.fbo->height()));
     if (!d.video_frame.isValid()) {
         d.glv.fill(QColor(0, 0, 0, 0));
         return;
