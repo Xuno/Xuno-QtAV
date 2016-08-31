@@ -43,11 +43,15 @@
 
 #include <QtAV/Filter.h>
 #include <QtAV/FilterContext.h>
+#include <QtAV/GLSLFilter.h>
 #include <QtAV/LibAVFilter.h>
 
+#if (QT_VERSION >= QT_VERSION_CHECK(5,0,0) && !defined(QT_NO_OPENGL)) || defined(QT_OPENGL_LIB)
 #include <QtAV/VideoShader.h>
 #include <QtAV/OpenGLVideo.h>
 #include <QtAV/ConvolutionShader.h>
+#include <QtAV/VideoShaderObject.h>
+#endif
 
 #include <QtAV/VideoCapture.h>
 #include <QtAV/VideoEncoder.h>

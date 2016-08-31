@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV Player Demo:  this file is part of QtAV examples
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -48,6 +48,7 @@ class LibAVFilterVideo;
 class SubtitleFilter;
 class VideoPreviewWidget;
 class GLSLFilter;
+class DynamicShaderObject;
 }
 QT_BEGIN_NAMESPACE
 class QMenu;
@@ -129,6 +130,7 @@ private slots:
     void onStopPlay();
     void onPaused(bool p);
     void onSpeedChange(qreal speed);
+    void setFrameRate();
     void seek();
     void seek(qint64 msec);
     void seek(QTime time);
@@ -165,6 +167,8 @@ private slots:
     void onAVFilterAudioConfigChanged();
     void onBufferValueChanged();
     void onAbortOnTimeoutChanged();
+
+    void onUserShaderChanged();
 
     void donate();
     void setup();
@@ -300,6 +304,7 @@ private:
 
     XunoGLSLFilter *mpGLSLFilter=Q_NULLPTR;
 
+    QtAV::DynamicShaderObject *m_shader;
 };
 
 

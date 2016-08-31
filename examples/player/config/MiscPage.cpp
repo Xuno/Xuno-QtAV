@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV Player Demo:  this file is part of QtAV examples
-    Copyright (C) 2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -104,7 +104,6 @@ MiscPage::MiscPage()
     m_log = new QComboBox();
     m_log->addItems(QStringList() << QString::fromLatin1("off") << QString::fromLatin1("warning") << QString::fromLatin1("debug") << QString::fromLatin1("all"));
     gl->addWidget(m_log, r++, 1);
-
 
     //gl->addItem(new QSpacerItem(185, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r,0);
     //gl->addItem(new QSpacerItem(120, 0, QSizePolicy::Minimum, QSizePolicy::Minimum),r,1);

@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV (from 2015)
@@ -115,6 +115,12 @@ QString getLocalPath(const QString& fullPath)
 
 namespace Internal {
 namespace Path {
+
+QString toLocal(const QString &fullPath)
+{
+    return getLocalPath(fullPath);
+}
+
 QString appDataDir()
 {
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
@@ -152,6 +158,7 @@ QString fontsDir()
 
 QString options2StringHelper(void* obj, const char* unit)
 {
+    qDebug("obj: %p", obj);
     QString s;
     const AVOption* opt = NULL;
     while ((opt = av_opt_next(obj, opt))) {
@@ -217,15 +224,15 @@ void setOptionsToFFmpegObj(const QVariant& opt, void* obj)
             const QVariant::Type vt = i.value().type();
             if (vt == QVariant::Map)
                 continue;
-            const QByteArray key(i.key().toLower().toUtf8());
+            const QByteArray key(i.key().toUtf8());
             qDebug("%s=>%s", i.key().toUtf8().constData(), i.value().toByteArray().constData());
             if (vt == QVariant::Int || vt == QVariant::UInt || vt == QVariant::Bool) {
                 // QVariant.toByteArray(): "true" or "false", can not recognized by avcodec
-                av_opt_set_int(obj, key.constData(), i.value().toInt(), 0);
+                av_opt_set_int(obj, key.constData(), i.value().toInt(), AV_OPT_SEARCH_CHILDREN);
             } else if (vt == QVariant::LongLong || vt == QVariant::ULongLong) {
-                av_opt_set_int(obj, key.constData(), i.value().toLongLong(), 0);
+                av_opt_set_int(obj, key.constData(), i.value().toLongLong(), AV_OPT_SEARCH_CHILDREN);
             } else if (vt == QVariant::Double) {
-                av_opt_set_double(obj, key.constData(), i.value().toDouble(), 0);
+                av_opt_set_double(obj, key.constData(), i.value().toDouble(), AV_OPT_SEARCH_CHILDREN);
             }
         }
         return;
@@ -239,16 +246,16 @@ void setOptionsToFFmpegObj(const QVariant& opt, void* obj)
         const QVariant::Type vt = i.value().type();
         if (vt == QVariant::Hash)
             continue;
-        const QByteArray key(i.key().toLower().toUtf8());
+        const QByteArray key(i.key().toUtf8());
         qDebug("%s=>%s", i.key().toUtf8().constData(), i.value().toByteArray().constData());
         if (vt == QVariant::Int || vt == QVariant::UInt || vt == QVariant::Bool) {
-            av_opt_set_int(obj, key.constData(), i.value().toInt(), 0);
+            av_opt_set_int(obj, key.constData(), i.value().toInt(), AV_OPT_SEARCH_CHILDREN);
         } else if (vt == QVariant::LongLong || vt == QVariant::ULongLong) {
-            av_opt_set_int(obj, key.constData(), i.value().toLongLong(), 0);
+            av_opt_set_int(obj, key.constData(), i.value().toLongLong(), AV_OPT_SEARCH_CHILDREN);
         }
     }
 }
-
+//FIXME: why to lower case?
 void setOptionsToDict(const QVariant& opt, AVDictionary** dict)
 {
     if (!opt.isValid())
@@ -263,7 +270,7 @@ void setOptionsToDict(const QVariant& opt, AVDictionary** dict)
             const QVariant::Type vt = i.value().type();
             if (vt == QVariant::Map)
                 continue;
-            const QByteArray key(i.key().toLower().toUtf8());
+            const QByteArray key(i.key().toUtf8());
             switch (vt) {
             case QVariant::Bool: {
                 // QVariant.toByteArray(): "true" or "false", can not recognized by avcodec
@@ -272,7 +279,7 @@ void setOptionsToDict(const QVariant& opt, AVDictionary** dict)
                 break;
             default:
                 // key and value are in lower case
-                av_dict_set(dict, i.key().toLower().toUtf8().constData(), i.value().toByteArray().toLower().constData(), 0);
+                av_dict_set(dict, i.key().toUtf8().constData(), i.value().toByteArray().constData(), 0);
                 break;
             }
             qDebug("dict: %s=>%s", i.key().toUtf8().constData(), i.value().toByteArray().constData());
@@ -288,7 +295,7 @@ void setOptionsToDict(const QVariant& opt, AVDictionary** dict)
         const QVariant::Type vt = i.value().type();
         if (vt == QVariant::Hash)
             continue;
-        const QByteArray key(i.key().toLower().toUtf8());
+        const QByteArray key(i.key().toUtf8());
         switch (vt) {
         case QVariant::Bool: {
             // QVariant.toByteArray(): "true" or "false", can not recognized by avcodec
@@ -297,7 +304,7 @@ void setOptionsToDict(const QVariant& opt, AVDictionary** dict)
             break;
         default:
             // key and value are in lower case
-            av_dict_set(dict, i.key().toLower().toUtf8().constData(), i.value().toByteArray().toLower().constData(), 0);
+            av_dict_set(dict, i.key().toUtf8().constData(), i.value().toByteArray().constData(), 0);
             break;
         }
         qDebug("dict: %s=>%s", i.key().toUtf8().constData(), i.value().toByteArray().constData());

@@ -27,7 +27,7 @@ import QtQuick.Dialogs 1.2
 import QtQuick.Dialogs 1.1 /*
 */
 //import QtMultimedia 5.0
-import QtAV 1.6
+import QtAV 1.7
 import QtQuick.Window 2.1
 import "utils.js" as Utils
 
@@ -45,6 +45,21 @@ Rectangle {
         console.log("init>>>>>screen density logical: " + Screen.logicalPixelDensity + " pixel: " + Screen.pixelDensity);
     }
 
+    VideoFilter {
+        id: negate
+        type: VideoFilter.GLSLFilter
+        shader: Shader {
+            postProcess: "gl_FragColor.rgb = vec3(1.0-gl_FragColor.r, 1.0-gl_FragColor.g, 1.0-gl_FragColor.b);"
+        }
+    }
+    VideoFilter {
+        id: hflip
+        type: VideoFilter.GLSLFilter
+        shader: Shader {
+            sample: "vec4 sample2d(sampler2D tex, vec2 pos, int p) { return texture(tex, vec2(1.0-pos.x, pos.y));}"
+        }
+    }
+
     VideoOutput2 {
         id: videoOut
         opengl: true
@@ -52,6 +67,8 @@ Rectangle {
         anchors.fill: parent
         source: player
         orientation: 0
+        property real zoom: 1
+        //filters: [negate, hflip]
         SubtitleItem {
             id: subtitleItem
             fillMode: videoOut.fillMode
@@ -70,7 +87,7 @@ Rectangle {
             color: PlayerConfig.subtitleColor
             anchors.fill: parent
             anchors.bottomMargin: PlayerConfig.subtitleBottomMargin
-        }    
+        }
     }
 
     MediaPlayer {
@@ -88,6 +105,8 @@ Rectangle {
             }
         }
         onSourceChanged: {
+            videoOut.zoom = 1
+            videoOut.regionOfInterest = Qt.rect(0, 0, 0, 0)
             msg.info("url: " + source)
         }
 
@@ -215,6 +234,31 @@ Rectangle {
         MouseArea {
             anchors.fill: parent
             hoverEnabled: true
+            onWheel: {
+                var deg = wheel.angleDelta.y/8
+                var dp = wheel.pixelDelta
+                var p = Qt.point(mouseX, mouseY) //root.mapToItem(videoOut, Qt.point(mouseX, mouseY))
+                var fp = videoOut.mapPointToSource(p)
+                if (fp.x < 0)
+                    fp.x = 0;
+                if (fp.y < 0)
+                    fp.y = 0;
+                if (fp.x > videoOut.videoFrameSize.width)
+                    fp.x = videoOut.videoFrameSize.width
+                if (fp.y > videoOut.videoFrameSize.height)
+                    fp.y = videoOut.videoFrameSize.height
+                videoOut.zoom *= (1.0 + deg*3.14/180.0);
+                if (videoOut.zoom < 1.0)
+                    videoOut.zoom = 1.0
+                var x0 = fp.x - fp.x/videoOut.zoom;
+                var y0 = fp.y - fp.y/videoOut.zoom;
+                // in fact, it must insected with video frame rect. opengl save us
+                videoOut.regionOfInterest.x = x0
+                videoOut.regionOfInterest.y = y0
+                videoOut.regionOfInterest.width = videoOut.videoFrameSize.width/videoOut.zoom
+                videoOut.regionOfInterest.height = videoOut.videoFrameSize.height/videoOut.zoom
+            }
+
             onDoubleClicked: {
                 control.toggleVisible()
             }
@@ -412,10 +456,16 @@ Rectangle {
                     pageLoader.source = ""
             }
             onChannelChanged: player.channelLayout = channel
-            onSubtitleChanged: subtitle.file = file
             onExternalAudioChanged: player.externalAudio = file
             onAudioTrackChanged: player.audioTrack = track
             onSubtitleTrackChanged: player.internalSubtitleTrack = track
+            onBrightnessChanged: videoOut.brightness = target.brightness
+            onContrastChanged: videoOut.contrast = target.contrast
+            onHueChanged: videoOut.hue = target.hue
+            onSaturationChanged: {
+                console.log("saturation: " + target.saturation)
+                videoOut.saturation = target.saturation
+            }
         }
     }
     ConfigPanel {
@@ -583,7 +633,7 @@ Rectangle {
             if (PlayerConfig.zeroCopy) {
                 opt["copyMode"] = "ZeroCopy"
             } else {
-                opt["copyMode"] = "OptimizedCopy"
+                opt["copyMode"] = "OptimizedCopy" //FIXME: CUDA
             }
             player.videoCodecOptions = opt
         }

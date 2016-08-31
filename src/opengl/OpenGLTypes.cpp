@@ -22,6 +22,7 @@
 #include "opengl/OpenGLHelper.h"
 #include <QtCore/QRegExp>
 #include <QtCore/QStringList>
+#include <QtCore/QVariant>
 #include "utils/Logger.h"
 namespace QtAV {
 struct uniform_type_name {
@@ -295,104 +296,5 @@ QVector<Uniform> ParseUniforms(const QByteArray &text, GLuint programId = 0)
     }
     qDebug() << uniforms;
     return uniforms;
-}
-
-TexturedGeometry::TexturedGeometry(int texCount, int count, Triangle t)
-    : tri(t)
-    , points_per_tex(count)
-    , nb_tex(texCount)
-{
-    if (texCount < 1)
-        texCount = 1;
-    v.resize(nb_tex*points_per_tex);
-}
-
-void TexturedGeometry::setTextureCount(int value)
-{
-    if (value < 1)
-        value = 1;
-    if (value == nb_tex)
-        return;
-    nb_tex = value;
-    v.resize(nb_tex*points_per_tex);
-}
-
-int TexturedGeometry::textureCount() const
-{
-    return nb_tex;
-}
-
-int TexturedGeometry::size() const
-{
-    return nb_tex * textureSize();
-}
-
-int TexturedGeometry::textureSize() const
-{
-    return textureVertexCount() * stride();
-}
-
-int TexturedGeometry::mode() const
-{
-    if (tri == Strip)
-        return GL_TRIANGLE_STRIP;
-    return GL_TRIANGLE_FAN;
-}
-
-void TexturedGeometry::setPoint(int index, const QPointF &p, const QPointF &tp, int texIndex)
-{
-    setGeometryPoint(index, p, texIndex);
-    setTexturePoint(index, tp, texIndex);
-}
-
-void TexturedGeometry::setGeometryPoint(int index, const QPointF &p, int texIndex)
-{
-    v[texIndex*points_per_tex + index].x = p.x();
-    v[texIndex*points_per_tex + index].y = p.y();
-}
-
-void TexturedGeometry::setTexturePoint(int index, const QPointF &tp, int texIndex)
-{
-    v[texIndex*points_per_tex + index].tx = tp.x();
-    v[texIndex*points_per_tex + index].ty = tp.y();
-}
-
-void TexturedGeometry::setRect(const QRectF &r, const QRectF &tr, int texIndex)
-{
-    setPoint(0, r.topLeft(), tr.topLeft(), texIndex);
-    setPoint(1, r.bottomLeft(), tr.bottomLeft(), texIndex);
-    if (tri == Strip) {
-        setPoint(2, r.topRight(), tr.topRight(), texIndex);
-        setPoint(3, r.bottomRight(), tr.bottomRight(), texIndex);
-    } else {
-        setPoint(3, r.topRight(), tr.topRight(), texIndex);
-        setPoint(2, r.bottomRight(), tr.bottomRight(), texIndex);
-    }
-}
-
-void TexturedGeometry::setGeometryRect(const QRectF &r, int texIndex)
-{
-    setGeometryPoint(0, r.topLeft(), texIndex);
-    setGeometryPoint(1, r.bottomLeft(), texIndex);
-    if (tri == Strip) {
-        setGeometryPoint(2, r.topRight(), texIndex);
-        setGeometryPoint(3, r.bottomRight(), texIndex);
-    } else {
-        setGeometryPoint(3, r.topRight(), texIndex);
-        setGeometryPoint(2, r.bottomRight(), texIndex);
-    }
-}
-
-void TexturedGeometry::setTextureRect(const QRectF &tr, int texIndex)
-{
-    setTexturePoint(0, tr.topLeft(), texIndex);
-    setTexturePoint(1, tr.bottomLeft(), texIndex);
-    if (tri == Strip) {
-        setTexturePoint(2, tr.topRight(), texIndex);
-        setTexturePoint(3, tr.bottomRight(), texIndex);
-    } else {
-        setTexturePoint(3, tr.topRight(), texIndex);
-        setTexturePoint(2, tr.bottomRight(), texIndex);
-    }
 }
 } //namespace QtAV

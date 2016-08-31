@@ -18,7 +18,7 @@ staticlib: DEFINES += BUILD_QTAV_STATIC
 static: CONFIG *= static_ffmpeg
 INCLUDEPATH += $$[QT_INSTALL_HEADERS]
 icon.files = $$PWD/$${TARGET}.svg
-icon.path = /usr/share/icons/hicolor/64x64/apps
+icon.path = /usr/share/icons/hicolor/scalable/apps
 !contains(QMAKE_HOST.os, Windows):INSTALLS += icon
 
 #mac: simd.prf will load qt_build_config and the result is soname will prefixed with QT_INSTALL_LIBS and link flag will append soname after QMAKE_LFLAGS_SONAME
@@ -26,12 +26,16 @@ config_libcedarv: CONFIG *= neon config_simd #need by qt4 addSimdCompiler(). neo
 ## sse2 sse4_1 may be defined in Qt5 qmodule.pri but is not included. Qt4 defines sse and sse2
 sse4_1|config_sse4_1|contains(TARGET_ARCH_SUB, sse4.1): CONFIG *= sse4_1 config_simd
 sse2|config_sse2|contains(TARGET_ARCH_SUB, sse2): CONFIG *= sse2 config_simd
-
+CONFIG(debug, debug|release): DEFINES += DEBUG
 #release: DEFINES += QT_NO_DEBUG_OUTPUT
 #var with '_' can not pass to pri?
 PROJECTROOT = $$PWD/..
 !include(libQtAV.pri): error("could not find libQtAV.pri")
 preparePaths($$OUT_PWD/../out)
+exists($$PROJECTROOT/extra/qtLongName(include)): INCLUDEPATH += $$PROJECTROOT/extra/qtLongName(include)
+exists($$PROJECTROOT/extra/qtLongName(lib)): LIBS += -L$$PROJECTROOT/extra/qtLongName(lib)
+
+
 config_uchardet {
   DEFINES += LINK_UCHARDET
   LIBS *= -luchardet
@@ -360,12 +364,20 @@ config_gl|config_opengl {
   HEADERS *= \
     opengl/gl_api.h \
     opengl/OpenGLHelper.h \
+    opengl/Geometry.h \
+    opengl/GeometryRenderer.h \
+    opengl/SubImagesGeometry.h \
+    opengl/SubImagesRenderer.h \
     opengl/ShaderManager.h
   SOURCES *= \
     filter/GLSLFilter.cpp \
     output/video/OpenGLRendererBase.cpp \
     opengl/gl_api.cpp \
     opengl/OpenGLTypes.cpp \
+    opengl/Geometry.cpp \
+    opengl/GeometryRenderer.cpp \
+    opengl/SubImagesGeometry.cpp \
+    opengl/SubImagesRenderer.cpp \
     opengl/OpenGLVideo.cpp \
     opengl/VideoShaderObject.cpp \
     opengl/VideoShader.cpp \
@@ -404,8 +416,8 @@ winrt {
 # use old libva.so to link against
 glibc_compat: *linux*: LIBS += -lrt  # do not use clock_gettime in libc, GLIBC_2.17 is not available on old system
 static_ffmpeg {
-# libs needed by mac static ffmpeg. corefoundation: vda, avdevice
-  mac|ios: LIBS += -liconv -lbz2 -llzma -lz -framework CoreFoundation  -Wl,-framework,Security
+# libs needed by mac static ffmpeg. corefoundation: vda, avdevice. coca: vf_coreimage
+  mac|ios: LIBS += -liconv -lbz2 -llzma -lz -framework CoreFoundation -framework Security -framework Cocoa
   win32: LIBS *= -lws2_32 -lstrmiids -lvfw32 -luuid
   !mac:*g++* {
     LIBS *= -lz
@@ -415,6 +427,7 @@ static_ffmpeg {
 SOURCES += \
     AVCompat.cpp \
     QtAV_Global.cpp \
+    subtitle/SubImage.cpp \
     subtitle/CharsetDetector.cpp \
     subtitle/PlainText.cpp \
     subtitle/PlayerSubtitle.cpp \
@@ -441,6 +454,7 @@ SOURCES += \
     AVDemuxThread.cpp \
     ColorTransform.cpp \
     Frame.cpp \
+    FrameReader.cpp \
     filter/Filter.cpp \
     filter/FilterContext.cpp \
     filter/FilterManager.cpp \
@@ -499,6 +513,7 @@ SDK_HEADERS *= \
     QtAV/LibAVFilter.h \
     QtAV/EncodeFilter.h \
     QtAV/Frame.h \
+    QtAV/FrameReader.h \
     QtAV/QPainterRenderer.h \
     QtAV/Packet.h \
     QtAV/AVError.h \
@@ -517,6 +532,7 @@ SDK_HEADERS *= \
     QtAV/VideoFrameExtractor.h \
     QtAV/FactoryDefine.h \
     QtAV/Statistics.h \
+    QtAV/SubImage.h \
     QtAV/Subtitle.h \
     QtAV/SubtitleFilter.h \
     QtAV/SurfaceInterop.h \

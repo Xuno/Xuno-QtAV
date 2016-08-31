@@ -25,14 +25,11 @@
 #include <QtGui/QGuiApplication>
 #include <QtGui/QScreen>
 #include <QtGui/QSurface>
-#define QT_VAO (QT_VERSION >= QT_VERSION_CHECK(5, 1, 0))
-#if QT_VAO
-#include <QtGui/QOpenGLVertexArrayObject>
-#endif //QT_VAO
 #endif //5.0
 #include "QtAV/SurfaceInterop.h"
 #include "QtAV/VideoShader.h"
 #include "ShaderManager.h"
+#include "opengl/GeometryRenderer.h"
 #include "opengl/OpenGLHelper.h"
 #include "utils/Logger.h"
 
@@ -48,16 +45,10 @@ public:
         , material(new VideoMaterial())
         , material_type(0)
         , update_geo(true)
-        , try_vbo(true)
-        , try_vao(true)
         , tex_target(0)
         , valiad_tex_width(1.0)
         , user_shader(NULL)
     {
-        static bool disable_vbo = qgetenv("QTAV_NO_VBO").toInt() > 0;
-        try_vbo = !disable_vbo;
-        static bool disable_vao = qgetenv("QTAV_NO_VAO").toInt() > 0;
-        try_vao = !disable_vao;
     }
     ~OpenGLVideoPrivate() {
         if (material) {
@@ -68,10 +59,7 @@ public:
 
     void resetGL() {
         ctx = 0;
-        vbo.destroy();
-#if QT_VAO
-        vao.destroy();
-#endif
+        gr.updateGeometry(NULL);
         if (!manager)
             return;
         manager->setParent(0);
@@ -83,49 +71,28 @@ public:
         }
     }
     // update geometry(vertex array) set attributes or bind VAO/VBO.
-    void bindAttributes(VideoShader* shader, const QRectF& t, const QRectF& r);
-    void unbindAttributes(VideoShader* shader) {
-#if QT_VAO
-        if (try_vao && vao.isCreated()) {
-            vao.release();
-            return;
-        }
-#endif //QT_VAO
-        char const *const *attr = shader->attributeNames();
-        for (int i = 0; attr[i]; ++i) {
-            shader->program()->disableAttributeArray(i); //TODO: in setActiveShader
-        }
-        // release vbo. qpainter is affected if vbo is bound
-        if (try_vbo && vbo.isCreated()) {
-            vbo.release();
-        }
-    }
+    void updateGeometry(VideoShader* shader, const QRectF& t, const QRectF& r);
 public:
     QOpenGLContext *ctx;
     ShaderManager *manager;
     VideoMaterial *material;
     qint64 material_type;
+    bool has_a;
     bool update_geo;
-    bool try_vbo; // check environment var and opengl support
-    QOpenGLBuffer vbo; //VertexBuffer
-    bool try_vao;
-#if QT_VAO
-    QOpenGLVertexArrayObject vao;
-#endif //QT_VAO
     int tex_target;
     qreal valiad_tex_width;
     QSize video_size;
     QRectF target;
     QRectF roi; //including invalid padding width
     TexturedGeometry geometry;
+    GeometryRenderer gr;
     QRectF rect;
     QMatrix4x4 matrix;
     VideoShader *user_shader;
 };
 
-void OpenGLVideoPrivate::bindAttributes(VideoShader* shader, const QRectF &t, const QRectF &r)
+void OpenGLVideoPrivate::updateGeometry(VideoShader* shader, const QRectF &t, const QRectF &r)
 {
-    const bool tex_rect = shader->textureTarget() == GL_TEXTURE_RECTANGLE;
     // also check size change for normalizedROI computation if roi is not normalized
     const bool roi_changed = valiad_tex_width != material->validTextureWidth() || roi != r || video_size != material->frameSize();
     const int tc = shader->textureLocationCount();
@@ -143,6 +110,7 @@ void OpenGLVideoPrivate::bindAttributes(VideoShader* shader, const QRectF &t, co
         if (roi_changed || target != t) {
             target = t;
             update_geo = true;
+            //target_rect = target (if valid). // relate to gvf bug?
         }
     } else {
         if (roi_changed) {
@@ -150,90 +118,19 @@ void OpenGLVideoPrivate::bindAttributes(VideoShader* shader, const QRectF &t, co
         }
     }
     if (!update_geo)
-        goto end;
+        return;
     //qDebug("updating geometry...");
+    // setTextureCount may change the vertex data. Call it before setRect()
+    geometry.setTextureCount(shader->textureTarget() == GL_TEXTURE_RECTANGLE ? tc : 1);
     geometry.setRect(target_rect, material->mapToTexture(0, roi));
-    if (tex_rect) {
-        geometry.setTextureCount(tc);
+    if (shader->textureTarget() == GL_TEXTURE_RECTANGLE) {
         for (int i = 1; i < tc; ++i) {
             // tc can > planes, but that will compute chroma plane
             geometry.setTextureRect(material->mapToTexture(i, roi), i);
         }
     }
     update_geo = false;
-    if (!try_vbo)
-        goto end;
-    { //VAO scope BEGIN
-#if QT_VAO
-    if (try_vao) {
-        //qDebug("updating vao...");
-        if (!vao.isCreated()) {
-            if (!vao.create()) {
-                try_vao = false;
-                qDebug("VAO is not supported");
-            }
-        }
-    }
-    QOpenGLVertexArrayObject::Binder vao_bind(&vao);
-    Q_UNUSED(vao_bind);
-#endif
-    if (!vbo.isCreated()) {
-        if (!vbo.create()) {
-            try_vbo = false; // not supported by OpenGL
-            try_vao = false; // also disable VAO. destroy?
-            qWarning("VBO is not supported");
-            goto end;
-        }
-    }
-    //qDebug("updating vbo...");
-    vbo.bind(); //check here
-    vbo.allocate(geometry.data(), geometry.size());
-#if QT_VAO
-    if (try_vao) {
-        shader->program()->setAttributeBuffer(0, GL_FLOAT, 0, geometry.tupleSize(), geometry.stride());
-        shader->program()->setAttributeBuffer(1, GL_FLOAT, geometry.tupleSize()*sizeof(float), geometry.tupleSize(), geometry.stride());
-        if (tex_rect) {
-            for (int i = 1; i < tc; ++i) {
-                shader->program()->setAttributeBuffer(i + 1, GL_FLOAT, i*geometry.textureSize() + geometry.tupleSize()*sizeof(float), geometry.tupleSize(), geometry.stride());
-            }
-        }
-        char const *const *attr = shader->attributeNames();
-        for (int i = 0; attr[i]; ++i) {
-            shader->program()->enableAttributeArray(i); //TODO: in setActiveShader
-        }
-    }
-#endif
-    vbo.release();
-    } //VAO scope END
-end:
-#if QT_VAO
-    if (try_vao && vao.isCreated()) {
-        vao.bind();
-        return;
-    }
-#endif
-    if (try_vbo && vbo.isCreated()) {
-        vbo.bind();
-        shader->program()->setAttributeBuffer(0, GL_FLOAT, 0, geometry.tupleSize(), geometry.stride());
-        shader->program()->setAttributeBuffer(1, GL_FLOAT, geometry.tupleSize()*sizeof(float), geometry.tupleSize(), geometry.stride());
-        if (tex_rect) {
-            for (int i = 1; i < tc; ++i) {
-                shader->program()->setAttributeBuffer(i + 1, GL_FLOAT, i*geometry.textureSize() + geometry.tupleSize()*sizeof(float), geometry.tupleSize(), geometry.stride());
-            }
-        }
-    } else {
-        shader->program()->setAttributeArray(0, GL_FLOAT, geometry.data(0), geometry.tupleSize(), geometry.stride());
-        shader->program()->setAttributeArray(1, GL_FLOAT, geometry.data(1), geometry.tupleSize(), geometry.stride());
-        if (tex_rect) {
-            for (int i = 1; i < tc; ++i) {
-                shader->program()->setAttributeArray(i + 1, GL_FLOAT, geometry.data(1), i*geometry.textureSize() + geometry.tupleSize(), geometry.stride());
-            }
-        }
-    }
-    char const *const *attr = shader->attributeNames();
-    for (int i = 0; attr[i]; ++i) {
-        shader->program()->enableAttributeArray(i); //TODO: in setActiveShader
-    }
+    gr.updateGeometry(&geometry);
 }
 
 OpenGLVideo::OpenGLVideo() {}
@@ -248,14 +145,25 @@ void OpenGLVideo::setOpenGLContext(QOpenGLContext *ctx)
     DPTR_D(OpenGLVideo);
     if (d.ctx == ctx)
         return;
+    qreal b = 0, c = 0, h = 0, s = 0;
+    if (d.material) {
+        b = d.material->brightness();
+        c = d.material->contrast();
+        h = d.material->hue();
+        s = d.material->saturation();
+        delete d.material;
+        d.material = 0;
+    }
     d.resetGL(); //TODO: is it ok to destroygl resources in another context?
     d.ctx = ctx; // Qt4: set to null in resetGL()
     if (!ctx) {
         return;
     }
-    if (d.material)
-        delete d.material;
     d.material = new VideoMaterial();
+    d.material->setBrightness(b);
+    d.material->setContrast(c);
+    d.material->setHue(h);
+    d.material->setSaturation(s);
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     d.manager = ctx->findChild<ShaderManager*>(QStringLiteral("__qtav_shader_manager"));
     QSizeF surfaceSize = ctx->surface()->size();
@@ -314,6 +222,7 @@ QOpenGLContext* OpenGLVideo::openGLContext()
 void OpenGLVideo::setCurrentFrame(const VideoFrame &frame)
 {
     d_func().material->setCurrentFrame(frame);
+    d_func().has_a = frame.format().hasAlpha();
 }
 
 void OpenGLVideo::setProjectionMatrixToRect(const QRectF &v)
@@ -362,7 +271,7 @@ VideoShader* OpenGLVideo::userShader() const
 
 void OpenGLVideo::fill(const QColor &color)
 {
-    DYGL(glClearColor(color.red(), color.green(), color.blue(), color.alpha()));
+    DYGL(glClearColor(color.redF(), color.greenF(), color.blueF(), color.alphaF()));
     DYGL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 }
 
@@ -377,25 +286,25 @@ void OpenGLVideo::render(const QRectF &target, const QRectF& roi, const QMatrix4
         qDebug() << "material changed: " << VideoMaterial::typeName(d.material_type) << " => " << VideoMaterial::typeName(mt);
         d.material_type = mt;
     }
+    if (!d.material->bind()) // bind first because texture parameters(target) mapped from native buffer is unknown before it
+        return;
     VideoShader *shader = d.user_shader;
     if (!shader)
         shader = d.manager->prepareMaterial(d.material, mt); //TODO: print shader type name if changed. prepareMaterial(,sample_code, pp_code)
     shader->update(d.material);
-    d.material->setDirty(false); //
     shader->program()->setUniformValue(shader->matrixLocation(), transform*d.matrix);
     // uniform end. attribute begin
-    d.bindAttributes(shader, target, roi);
+    d.updateGeometry(shader, target, roi);
     // normalize?
-    const bool blending = d.material->hasAlpha();
+    const bool blending = d.has_a;
     if (blending) {
         DYGL(glEnable(GL_BLEND));
-        DYGL(glBlendFunc(GL_SRC_ALPHA , GL_ONE_MINUS_SRC_ALPHA));
+        gl().BlendFuncSeparate(GL_SRC_ALPHA , GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA , GL_ONE_MINUS_SRC_ALPHA); //
     }
-    DYGL(glDrawArrays(d.geometry.mode(), 0, d.geometry.textureVertexCount()));
+    d.gr.render();
     if (blending)
         DYGL(glDisable(GL_BLEND));
     // d.shader->program()->release(); //glUseProgram(0)
-    d.unbindAttributes(shader);
     d.material->unbind();
 
     Q_EMIT afterRendering();

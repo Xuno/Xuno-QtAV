@@ -1,8 +1,8 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
-*   This file is part of QtAV
+*   This file is part of QtAV (from 2014)
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -68,6 +68,13 @@ QImage SubtitleProcessor::getImage(qreal pts, QRect *boundingRect)
     return QImage();
 }
 
+SubImageSet SubtitleProcessor::getSubImages(qreal pts, QRect *boundingRect)
+{
+    Q_UNUSED(pts);
+    Q_UNUSED(boundingRect);
+    return SubImageSet();
+}
+
 void SubtitleProcessor::setFrameSize(int width, int height)
 {
     if (width == m_width && height == m_height)
@@ -80,6 +87,16 @@ void SubtitleProcessor::setFrameSize(int width, int height)
 QSize SubtitleProcessor::frameSize() const
 {
     return QSize(m_width, m_height);
+}
+
+int SubtitleProcessor::frameWidth() const
+{
+    return m_width;
+}
+
+int SubtitleProcessor::frameHeight() const
+{
+    return m_height;
 }
 
 void SubtitleProcessor::onFrameSizeChanged(int width, int height)

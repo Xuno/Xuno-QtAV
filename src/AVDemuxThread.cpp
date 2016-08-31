@@ -32,6 +32,16 @@
 
 namespace QtAV {
 
+class AutoSem {
+    QSemaphore *s;
+public:
+    AutoSem(QSemaphore* sem) : s(sem) { s->release();}
+    ~AutoSem() {
+        if (s->available() > 0)
+            s->acquire(s->available());
+    }
+};
+
 class QueueEmptyCall : public PacketBuffer::StateChangeCallback
 {
 public:
@@ -42,6 +52,8 @@ public:
         if (!mDemuxThread)
             return;
         if (mDemuxThread->isEnd())
+            return;
+        if (mDemuxThread->atEndOfMedia())
             return;
         mDemuxThread->updateBufferState(); // ensure detect buffering immediately
         AVThread *thread = mDemuxThread->videoThread();
@@ -163,7 +175,7 @@ void AVDemuxThread::stepBackward()
             AVThread *avt = demux_thread->videoThread();
             avt->packetQueue()->clear(); // clear here
             if (pts <= 0) {
-                demux_thread->demuxer->seek(qint64(-pts*1000.0) - 1000LL);
+                demux_thread->demuxer->seek(qint64(-pts*1000.0) - 500LL);
                 QVector<qreal> ts;
                 qreal t = -1.0;
                 while (t < -pts) {
@@ -173,9 +185,12 @@ void AVDemuxThread::stepBackward()
                     t = demux_thread->demuxer->packet().pts;
                     ts.push_back(t);
                 }
+                const qreal t0 = ts.back();
                 ts.pop_back();
+                const qreal dt = t0 - ts.back();
                 pts = ts.back();
-                // FIXME: sometimes can not seek to the previous pts, the result pts is always current pts
+                // FIXME: sometimes can not seek to the previous pts, the result pts is always current pts, so let the target pts a little earlier
+                pts -= dt/2.0;
             }
             qDebug("step backward: %lld, %f", qint64(pts*1000.0), pts);
             demux_thread->video_thread->setDropFrameOnSeek(false);
@@ -307,6 +322,11 @@ bool AVDemuxThread::isPaused() const
 bool AVDemuxThread::isEnd() const
 {
     return end;
+}
+
+bool AVDemuxThread::atEndOfMedia() const
+{
+    return demuxer->atEnd();
 }
 
 PacketBuffer* AVDemuxThread::buffer()
@@ -484,6 +504,19 @@ void AVDemuxThread::onAVThreadQuit()
     end = true; //(!audio_thread || !audio_thread->isRunning()) &&
 }
 
+bool AVDemuxThread::waitForStarted(int msec)
+{
+    if (!sem.tryAcquire(1, msec > 0 ? msec : std::numeric_limits<int>::max()))
+        return false;
+    sem.release(1); //ensure other waitForStarted() calls continue
+    return true;
+}
+
+void AVDemuxThread::eofDecoded()
+{
+    Q_EMIT mediaStatusChanged(QtAV::EndOfMedia);
+}
+
 void AVDemuxThread::run()
 {
     m_buffering = false;
@@ -512,6 +545,7 @@ void AVDemuxThread::run()
         vqueue->setBlocking(true);
     }
     connect(thread, SIGNAL(seekFinished(qint64)), this, SIGNAL(seekFinished(qint64)), Qt::DirectConnection);
+    connect(thread, SIGNAL(eofDecoded()), this, SLOT(eofDecoded()));
     seek_tasks.clear();
     int was_end = 0;
     if (ademuxer) {
@@ -519,6 +553,9 @@ void AVDemuxThread::run()
     }
     qreal last_apts = 0;
     qreal last_vpts = 0;
+
+    AutoSem as(&sem);
+    Q_UNUSED(as);
     while (!end) {
         processNextSeekTask();
         //vthread maybe changed by AVPlayer.setPriority() from no dec case
@@ -547,6 +584,7 @@ void AVDemuxThread::run()
             if (m_buffering) {
                 m_buffering = false;
                 Q_EMIT mediaStatusChanged(QtAV::BufferedMedia);
+                Q_EMIT mediaStatusChanged(QtAV::EndOfMedia);
             }
             was_end = qMin(was_end + 1, kMaxEof);
             bool exit_thread = !user_paused;
@@ -678,9 +716,9 @@ void AVDemuxThread::run()
         video_thread->pause(false);
         video_thread->wait(500);
     }
+    thread->disconnect(this, SIGNAL(eofDecoded()));
     thread->disconnect(this, SIGNAL(seekFinished(qint64)));
     qDebug("Demux thread stops running....");
-    Q_EMIT mediaStatusChanged(QtAV::EndOfMedia);
 }
 
 bool AVDemuxThread::tryPause(unsigned long timeout)
@@ -692,5 +730,4 @@ bool AVDemuxThread::tryPause(unsigned long timeout)
     cond.wait(&buffer_mutex, timeout);
     return true;
 }
-
 } //namespace QtAV

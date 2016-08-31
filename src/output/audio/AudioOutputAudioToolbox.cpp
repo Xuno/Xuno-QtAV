@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV (from 2016-02-11)
@@ -18,7 +18,7 @@
     License along with this library; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
-
+// FIXME: pause=>resume error
 #include "QtAV/private/AudioOutputBackend.h"
 #include <QtCore/QQueue>
 #include <QtCore/QSemaphore>
@@ -45,6 +45,7 @@ public:
     void onCallback() Q_DECL_OVERRIDE;
     bool write(const QByteArray& data) Q_DECL_OVERRIDE;
     bool play() Q_DECL_OVERRIDE;
+    bool setVolume(qreal value) override;
 private:
     static void outCallback(void* inUserData, AudioQueueRef inAQ, AudioQueueBufferRef inBuffer);
     void tryPauseTimeline();
@@ -123,6 +124,7 @@ void AudioOutputAudioToolbox::outCallback(void* inUserData, AudioQueueRef inAQ, 
 
 AudioOutputAudioToolbox::AudioOutputAudioToolbox(QObject *parent)
     : AudioOutputBackend(AudioOutput::DeviceFeatures()
+                         |AudioOutput::SetVolume
                          , parent)
     , m_queue(NULL)
     , m_waiting(false)
@@ -155,7 +157,7 @@ void AudioOutputAudioToolbox::tryPauseTimeline()
 
 bool AudioOutputAudioToolbox::isSupported(AudioFormat::SampleFormat smpfmt) const
 {
-    return !AudioFormat::isPlanar(smpfmt);
+    return !IsPlanar(smpfmt);
 }
 
 bool AudioOutputAudioToolbox::open()
@@ -222,6 +224,13 @@ bool AudioOutputAudioToolbox::play()
 {
     // no running check is fine
     AT_ENSURE(AudioQueueStart(m_queue, NULL), false);
+    return true;
+}
+
+bool AudioOutputAudioToolbox::setVolume(qreal value)
+{
+    // iOS document says the range is [0,1]. But >1.0 works on macOS. So no manually check range here
+    AT_ENSURE(AudioQueueSetParameter(m_queue, kAudioQueueParam_Volume, value), false);
     return true;
 }
 } //namespace QtAV

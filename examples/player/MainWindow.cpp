@@ -60,9 +60,12 @@
 //#include "filters/AVFilterSubtitle.h"
 #include "playlist/PlayList.h"
 #include "../common/common.h"
+
 #include <QUrl>
 #include "filters/advancedfilter.h"
-
+#ifndef QT_NO_OPENGL
+#include "QtAV/GLSLFilter.h"
+#endif
 
 /*
  *TODO:
@@ -115,6 +118,8 @@ MainWindow::MainWindow(QWidget *parent) :
   , mPlayerScale(1.)
   , m_preview(0)
   , mpAdvancedFilter(0)
+  , m_shader(NULL)
+
 {
     XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
     XUNOpresetUrl=XUNOserverUrl+QString::fromLatin1("/getpreset.php?");
@@ -178,6 +183,7 @@ void MainWindow::initPlayer()
     onCaptureConfigChanged();
     onAVFilterVideoConfigChanged();
     onAVFilterAudioConfigChanged();
+    connect(&Config::instance(), SIGNAL(forceFrameRateChanged()), SLOT(setFrameRate()));
     connect(&Config::instance(), SIGNAL(captureDirChanged(QString)), SLOT(onCaptureConfigChanged()));
     connect(&Config::instance(), SIGNAL(captureFormatChanged(QString)), SLOT(onCaptureConfigChanged()));
     connect(&Config::instance(), SIGNAL(captureQualityChanged(int)), SLOT(onCaptureConfigChanged()));
@@ -223,7 +229,7 @@ void MainWindow::stopUnload()
 {
     if (mpPlayer){
         mpPlayer->stop();
-        mpPlayer->unload();
+//        mpPlayer->unload();
     }
 }
 
@@ -724,8 +730,14 @@ void MainWindow::setupUi()
     connect(mpTimeSlider, SIGNAL(sliderPressed()), SLOT(seek()));
     connect(mpTimeSlider, SIGNAL(onLeave()), SLOT(onTimeSliderLeave()));
     connect(mpTimeSlider, SIGNAL(onHover(int,int)), SLOT(onTimeSliderHover(int,int)));
+
     //connect(mpWebBtn, SIGNAL(clicked()), SLOT(onXunoBrowser()));
     connect(mpFullScreenBtn, SIGNAL(clicked()), SLOT(onFullScreen()));
+
+    connect(&Config::instance(), SIGNAL(userShaderEnabledChanged()), SLOT(onUserShaderChanged()));
+    connect(&Config::instance(), SIGNAL(fragHeaderChanged()), SLOT(onUserShaderChanged()));
+    connect(&Config::instance(), SIGNAL(fragSampleChanged()), SLOT(onUserShaderChanged()));
+    connect(&Config::instance(), SIGNAL(fragPostProcessChanged()), SLOT(onUserShaderChanged()));
 
     QTimer::singleShot(0, this, SLOT(initPlayer()));
 }
@@ -749,7 +761,9 @@ void MainWindow::changeChannel(QAction *action)
         qWarning("close audio failed");
         return;
     }
-    ao->audioFormat().setChannelLayout(cl);
+    AudioFormat af(ao->audioFormat());
+    af.setChannelLayout(cl);
+    ao->setAudioFormat(af);
     if (!ao->open()) {
         qWarning("open audio failed");
         return;
@@ -879,8 +893,19 @@ bool MainWindow::setRenderer(QtAV::VideoRenderer *renderer)
     mpOSD->installTo(mpRenderer);
     mpSubtitle->installTo(mpRenderer);
 
-    //mpRenderer->widget()->hide();
-
+    onUserShaderChanged();
+#define GL_ASS 0
+#if GL_ASS
+    GLSLFilter* glsl = new GLSLFilter(this);
+    glsl->setOutputSize(QSize(4096, 2160));
+    //mpRenderer->installFilter(glsl);
+    if (mpRenderer->opengl()) {
+        connect(mpRenderer->opengl(), &OpenGLVideo::beforeRendering, [this](){
+            OpenGLVideo* glv = mpRenderer->opengl();
+            glv->setSubImages(mpSubtitle->subImages(glv->frameTime(), glv->frameWidth(), glv->frameHeight()));
+        });
+    }
+#endif
     return true;
 }
 
@@ -1144,7 +1169,7 @@ void MainWindow::onStartPlay()
 void MainWindow::onStopPlay()
 {
     mpPlayer->setPriority(idsFromNames(Config::instance().decoderPriorityNames()));
-    if (mpPlayer->currentRepeat() < mpPlayer->repeat())
+    if (mpPlayer->currentRepeat() >= 0 && mpPlayer->currentRepeat() < mpPlayer->repeat())
         return;
     // use shortcut to replay in EventFilter, the options will not be set, so set here
     mpPlayer->setFrameRate(Config::instance().forceFrameRate());
@@ -1179,6 +1204,13 @@ void MainWindow::onStopPlay()
 void MainWindow::onSpeedChange(qreal speed)
 {
     mpSpeed->setText(QString::fromLatin1("%1").arg(speed, 4, 'f', 2, QLatin1Char('0')));
+}
+
+void MainWindow::setFrameRate()
+{
+    if (!mpPlayer)
+        return;
+    mpPlayer->setFrameRate(Config::instance().forceFrameRate());
 }
 
 void MainWindow::seek(int value)
@@ -1384,6 +1416,7 @@ void MainWindow::wheelEvent(QWheelEvent *e)
 #endif //WHEEL_SPEED
     QPointF p = mpRenderer->widget()->mapFrom(this, e->pos());
     QPointF fp = mpRenderer->mapToFrame(p);
+    //qDebug() <<  p << fp;
     if (fp.x() < 0)
         fp.setX(0);
     if (fp.y() < 0)
@@ -1392,13 +1425,21 @@ void MainWindow::wheelEvent(QWheelEvent *e)
         fp.setX(mpRenderer->videoFrameSize().width());
     if (fp.y() > mpRenderer->videoFrameSize().height())
         fp.setY(mpRenderer->videoFrameSize().height());
-
     QRectF viewport = QRectF(mpRenderer->mapToFrame(QPointF(0, 0)), mpRenderer->mapToFrame(QPointF(mpRenderer->rendererWidth(), mpRenderer->rendererHeight())));
     //qDebug("vo: (%.1f, %.1f)=> frame: (%.1f, %.1f)", p.x(), p.y(), fp.x(), fp.y());
     qreal zoom = 1.0 + deg*3.14/180.0;
     if (!dp.isNull()) {
         zoom = 1.0 + (qreal)dp.y()/100.0;
     }
+    static qreal z = 1.0;
+    z *= zoom;
+    if (z < 1.0)
+        z = 1.0;
+    qreal x0 = fp.x() - fp.x()/z;
+    qreal y0 = fp.y() - fp.y()/z;
+    //qDebug() << "fr: " << QRectF(x0, y0, qreal(mpRenderer->videoFrameSize().width())/z, qreal(mpRenderer->videoFrameSize().height())/z) << fp << z;
+    mpRenderer->setRegionOfInterest(QRectF(x0, y0, qreal(mpRenderer->videoFrameSize().width())/z, qreal(mpRenderer->videoFrameSize().height())/z));
+    return;
     QTransform m;
     m.translate(fp.x(), fp.y());
     m.scale(1.0/zoom, 1.0/zoom);
@@ -1594,6 +1635,13 @@ void MainWindow::toggleRepeat(bool r)
     if (mpPlayer) {
         mpPlayer->setRepeat(mpRepeatLoop->isChecked()?-1:mRepeateMax-1);
         mpTimeSlider->setVisibleVisualLimit(r);
+
+        if (r) {
+            repeatAChanged(mpRepeatA->time());
+            repeatBChanged(mpRepeatB->time());
+        } else {
+            mpPlayer->setTimeRange(0);
+        }
     }
 }
 
@@ -1947,6 +1995,24 @@ void MainWindow::onAbortOnTimeoutChanged()
     if (!mpPlayer)
         return;
     mpPlayer->setInterruptOnTimeout(Config::instance().abortOnTimeout());
+}
+
+void MainWindow::onUserShaderChanged()
+{
+    if (!mpRenderer || !mpRenderer->opengl())
+        return;
+#ifndef QT_NO_OPENGL
+    if (Config::instance().userShaderEnabled()) {
+        if (!m_shader)
+            m_shader = new DynamicShaderObject(this);
+        m_shader->setHeader(Config::instance().fragHeader());
+        m_shader->setSample(Config::instance().fragSample());
+        m_shader->setPostProcess(Config::instance().fragPostProcess());
+        mpRenderer->opengl()->setUserShader(m_shader);
+    } else {
+        mpRenderer->opengl()->setUserShader(NULL);
+    }
+#endif
 }
 
 void MainWindow::setup()

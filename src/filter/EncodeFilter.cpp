@@ -1,8 +1,8 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2015 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
-*   This file is part of QtAV
+*   This file is part of QtAV (from 2015)
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -20,6 +20,10 @@
 ******************************************************************************/
 
 #include "QtAV/EncodeFilter.h"
+#include <limits>
+#include <QtCore/QAtomicInt>
+#include <QtCore/QCoreApplication>
+#include <QtCore/QThread>
 #include "QtAV/private/Filter_p.h"
 #include "QtAV/AudioEncoder.h"
 #include "QtAV/VideoEncoder.h"
@@ -30,7 +34,7 @@ namespace QtAV {
 class AudioEncodeFilterPrivate Q_DECL_FINAL : public AudioFilterPrivate
 {
 public:
-    AudioEncodeFilterPrivate() : enc(0), start_time(0) {}
+    AudioEncodeFilterPrivate() : enc(0), start_time(0), async(false), finishing(0) {}
     ~AudioEncodeFilterPrivate() {
         if (enc) {
             enc->close();
@@ -40,11 +44,33 @@ public:
 
     AudioEncoder* enc;
     qint64 start_time;
+    bool async;
+    QAtomicInt finishing;
+    QThread enc_thread;
 };
 
 AudioEncodeFilter::AudioEncodeFilter(QObject *parent)
     : AudioFilter(*new AudioEncodeFilterPrivate(), parent)
 {
+    connect(this, SIGNAL(requestToEncode(AudioFrame)), this, SLOT(encode(QtAV::AudioFrame)));
+    connect(this, SIGNAL(finished()), &d_func().enc_thread, SLOT(quit()));
+}
+
+void AudioEncodeFilter::setAsync(bool value)
+{
+    DPTR_D(AudioEncodeFilter);
+    if (d.async == value)
+        return;
+    if (value)
+        moveToThread(&d.enc_thread);
+    else
+        moveToThread(qApp->thread());
+    d.async = value;
+}
+
+bool AudioEncodeFilter::isAsync() const
+{
+    return d_func().async;
 }
 
 AudioEncoder* AudioEncodeFilter::createEncoder(const QString &name)
@@ -77,10 +103,34 @@ void AudioEncodeFilter::setStartTime(qint64 value)
     Q_EMIT startTimeChanged(value);
 }
 
+void AudioEncodeFilter::finish()
+{
+    DPTR_D(AudioEncodeFilter);
+    if (isAsync() && !d.enc_thread.isRunning())
+        return;
+    if (!d.finishing.testAndSetRelaxed(0, 1))
+        return;
+    qDebug("About finish audio encoding");
+    AudioFrame f;
+    f.setTimestamp(std::numeric_limits<qreal>::max());
+    if (isAsync()) {
+        Q_EMIT requestToEncode(f);
+    } else {
+        encode(f); //FIXME: not thread safe. lock in encode?
+    }
+}
+
 void AudioEncodeFilter::process(Statistics *statistics, AudioFrame *frame)
 {
     Q_UNUSED(statistics);
-    encode(*frame);
+    DPTR_D(AudioEncodeFilter);
+    if (!isAsync()) {
+        encode(*frame);
+        return;
+    }
+    if (!d.enc_thread.isRunning())
+        d.enc_thread.start();
+    Q_EMIT requestToEncode(*frame);
 }
 
 void AudioEncodeFilter::encode(const AudioFrame& frame)
@@ -105,14 +155,28 @@ void AudioEncodeFilter::encode(const AudioFrame& frame)
         }
         Q_EMIT readyToEncode();
     }
+    if (!frame.isValid() && frame.timestamp() == std::numeric_limits<qreal>::max()) {
+        while (d.enc->encode()) {
+            qDebug("encode delayed audio frames...");
+            Q_EMIT frameEncoded(d.enc->encoded());
+        }
+        d.enc->close();
+        Q_EMIT finished();
+        d.finishing = 0;
+        return;
+    }
     if (frame.timestamp()*1000.0 < startTime())
         return;
-    // TODO: async
     AudioFrame f(frame);
     if (f.format() != d.enc->audioFormat())
         f = f.to(d.enc->audioFormat());
-    if (!d.enc->encode(f))
+    if (!d.enc->encode(f)) {
+        if (f.timestamp() == std::numeric_limits<qreal>::max()) {
+            Q_EMIT finished();
+            d.finishing = 0;
+        }
         return;
+    }
     if (!d.enc->encoded().isValid())
         return;
     Q_EMIT frameEncoded(d.enc->encoded());
@@ -122,7 +186,7 @@ void AudioEncodeFilter::encode(const AudioFrame& frame)
 class VideoEncodeFilterPrivate Q_DECL_FINAL : public VideoFilterPrivate
 {
 public:
-    VideoEncodeFilterPrivate() : enc(0), start_time(0) {}
+    VideoEncodeFilterPrivate() : enc(0), start_time(0), async(false), finishing(0) {}
     ~VideoEncodeFilterPrivate() {
         if (enc) {
             enc->close();
@@ -132,11 +196,33 @@ public:
 
     VideoEncoder* enc;
     qint64 start_time;
+    bool async;
+    QAtomicInt finishing;
+    QThread enc_thread;
 };
 
 VideoEncodeFilter::VideoEncodeFilter(QObject *parent)
     : VideoFilter(*new VideoEncodeFilterPrivate(), parent)
 {
+    connect(this, SIGNAL(requestToEncode(QtAV::VideoFrame)), this, SLOT(encode(QtAV::VideoFrame)));
+    connect(this, SIGNAL(finished()), &d_func().enc_thread, SLOT(quit()));
+}
+
+void VideoEncodeFilter::setAsync(bool value)
+{
+    DPTR_D(VideoEncodeFilter);
+    if (d.async == value)
+        return;
+    if (value)
+        moveToThread(&d.enc_thread);
+    else
+        moveToThread(qApp->thread()); // if async but not in main thread, queued sig/slot connection will not work
+    d.async = value;
+}
+
+bool VideoEncodeFilter::isAsync() const
+{
+    return d_func().async;
 }
 
 VideoEncoder* VideoEncodeFilter::createEncoder(const QString &name)
@@ -169,10 +255,34 @@ void VideoEncodeFilter::setStartTime(qint64 value)
     Q_EMIT startTimeChanged(value);
 }
 
+void VideoEncodeFilter::finish()
+{
+    DPTR_D(VideoEncodeFilter);
+    if (isAsync() && !d.enc_thread.isRunning())
+        return;
+    if (!d.finishing.testAndSetRelaxed(0, 1))
+        return;
+    qDebug("About finish video encoding");
+    VideoFrame f;
+    f.setTimestamp(std::numeric_limits<qreal>::max());
+    if (isAsync()) {
+        Q_EMIT requestToEncode(f);
+    } else {
+        encode(f);
+    }
+}
+
 void VideoEncodeFilter::process(Statistics *statistics, VideoFrame *frame)
 {
     Q_UNUSED(statistics);
-    encode(*frame);
+    DPTR_D(VideoEncodeFilter);
+    if (!isAsync()) {
+        encode(*frame);
+        return;
+    }
+    if (!d.enc_thread.isRunning())
+        d.enc_thread.start();
+    requestToEncode(*frame);
 }
 
 void VideoEncodeFilter::encode(const VideoFrame& frame)
@@ -190,6 +300,16 @@ void VideoEncodeFilter::encode(const VideoFrame& frame)
         }
         Q_EMIT readyToEncode();
     }
+    if (!frame.isValid() && frame.timestamp() == std::numeric_limits<qreal>::max()) {
+        while (d.enc->encode()) {
+            qDebug("encode delayed video frames...");
+            Q_EMIT frameEncoded(d.enc->encoded());
+        }
+        d.enc->close();
+        Q_EMIT finished();
+        d.finishing = 0;
+        return;
+    }
     if (d.enc->width() != frame.width() || d.enc->height() != frame.height()) {
         qWarning("Frame size (%dx%d) and video encoder size (%dx%d) mismatch! Close encoder please.", d.enc->width(), d.enc->height(), frame.width(), frame.height());
         return;
@@ -200,11 +320,15 @@ void VideoEncodeFilter::encode(const VideoFrame& frame)
     VideoFrame f(frame);
     if (f.pixelFormat() != d.enc->pixelFormat())
         f = f.to(d.enc->pixelFormat());
-    if (!d.enc->encode(f))
+    if (!d.enc->encode(f)) {
+        if (f.timestamp() == std::numeric_limits<qreal>::max()) {
+            Q_EMIT finished();
+            d.finishing = 0;
+        }
         return;
+    }
     if (!d.enc->encoded().isValid())
         return;
     Q_EMIT frameEncoded(d.enc->encoded());
 }
-
 } //namespace QtAV

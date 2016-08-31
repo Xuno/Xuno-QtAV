@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
     
 *   This file is part of QtAV
@@ -57,8 +57,6 @@ public:
     bool isSupported(const AudioFormat& format) const Q_DECL_FINAL;
     bool isSupported(AudioFormat::SampleFormat sampleFormat) const Q_DECL_FINAL;
     bool isSupported(AudioFormat::ChannelLayout channelLayout) const Q_DECL_FINAL;
-    AudioFormat::SampleFormat preferredSampleFormat() const Q_DECL_FINAL;
-    AudioFormat::ChannelLayout preferredChannelLayout() const Q_DECL_FINAL;
 protected:
     BufferControl bufferControl() const Q_DECL_FINAL;
     bool write(const QByteArray& data) Q_DECL_FINAL;
@@ -101,7 +99,7 @@ typedef AudioOutputOpenAL AudioOutputBackendOpenAL;
 static const AudioOutputBackendId AudioOutputBackendId_OpenAL = mkid::id32base36_6<'O', 'p', 'e', 'n', 'A', 'L'>::value;
 FACTORY_REGISTER(AudioOutputBackend, OpenAL, kName)
 
-#define AL_ENSURE_OK(expr, ...) \
+#define AL_ENSURE(expr, ...) \
     do { \
         expr; \
         const ALenum err = alGetError(); \
@@ -165,28 +163,20 @@ static ALenum audioFormatToAL(const AudioFormat& fmt)
                 format = alGetEnumValue(s16fmt[c-1].ext);
         }
     } else if (ctx) {
-        if (AudioFormat::SampleFormat_Signed32 == spfmt) {
-            if (c > 3 && c <= 8) {
-                if (alIsExtensionPresent("AL_EXT_MCFORMATS")) {
-                    static const al_fmt_t s32fmt[] = {
-                        {"AL_FORMAT_QUAD32"},
-                        {"AL_FORMAT_REAR32"},
-                        {"AL_FORMAT_51CHN32"},
-                        {"AL_FORMAT_61CHN32"},
-                        {"AL_FORMAT_71CHN32"}
-                    };
-                    format = alGetEnumValue(s32fmt[c-4].ext);
-                }
-            }
-        } else if (AudioFormat::SampleFormat_Float == spfmt) {
-            if (c < 3) {
-                if (alIsExtensionPresent("AL_EXT_float32")) {
-                    static const al_fmt_t f32fmt[] = {
-                        {"AL_FORMAT_MONO_FLOAT32"},
-                        {"AL_FORMAT_STEREO_FLOAT32"}
-                    };
-                    format = alGetEnumValue(f32fmt[c-1].ext);
-                }
+        if (AudioFormat::SampleFormat_Float == spfmt) {
+            static const al_fmt_t f32fmt[] = {
+                {"AL_FORMAT_MONO_FLOAT32"},
+                {"AL_FORMAT_STEREO_FLOAT32"},
+                {0},
+                // AL_EXT_MCFORMATS
+                {"AL_FORMAT_QUAD32"},
+                {"AL_FORMAT_REAR32"},
+                {"AL_FORMAT_51CHN32"},
+                {"AL_FORMAT_61CHN32"},
+                {"AL_FORMAT_71CHN32"}
+            };
+            if (c <=8 && f32fmt[c-1].ext) {
+                format = alGetEnumValue(f32fmt[c-1].ext);
             }
         } else if (AudioFormat::SampleFormat_Double == spfmt) {
             if (c < 3) {
@@ -202,7 +192,10 @@ static ALenum audioFormatToAL(const AudioFormat& fmt)
     }
     ALCenum err = alGetError();
     if (err != AL_NO_ERROR) {
-        qWarning("OpenAL audioFormatToAL error: %s", alGetString(err));
+        if (ctx)
+            qWarning("OpenAL audioFormatToAL error: %s", alGetString(err));
+        else
+            qWarning("OpenAL audioFormatToAL error (null context): %#x", err);
     }
     if (format == 0) {
         qWarning("AudioOutputOpenAL Error: No OpenAL format available for audio data format %s %s."
@@ -222,6 +215,14 @@ AudioOutputOpenAL::AudioOutputOpenAL(QObject *parent)
     , format_al(AL_FORMAT_STEREO16)
     , state(0)
 {
+#if QTAV_HAVE(CAPI)
+#ifndef CAPI_LINK_OPENAL
+    if (!openal::capi::loaded()) {
+        available = false;
+        return;
+    }
+#endif //CAPI_LINK_OPENAL
+#endif
     //setDeviceFeatures(AudioOutput::SetVolume);
     // ensure we have a context to check format support
     // TODO: AudioOutput::getDevices() => ao.setDevice() => ao.open
@@ -339,9 +340,7 @@ bool AudioOutputOpenAL::isSupported(AudioFormat::SampleFormat sampleFormat) cons
 {
     if (sampleFormat == AudioFormat::SampleFormat_Unsigned8 || sampleFormat == AudioFormat::SampleFormat_Signed16)
         return true;
-    if (AudioFormat::isPlanar(sampleFormat))
-        return false;
-    if (!context)
+    if (IsPlanar(sampleFormat))
         return false;
     SCOPE_LOCK_CONTEXT();
     if (sampleFormat == AudioFormat::SampleFormat_Float)
@@ -352,19 +351,9 @@ bool AudioOutputOpenAL::isSupported(AudioFormat::SampleFormat sampleFormat) cons
     return false;
 }
 
-bool AudioOutputOpenAL::isSupported(AudioFormat::ChannelLayout channelLayout) const
+bool AudioOutputOpenAL::isSupported(AudioFormat::ChannelLayout channelLayout) const // FIXME: check
 {
     return channelLayout == AudioFormat::ChannelLayout_Mono || channelLayout == AudioFormat::ChannelLayout_Stereo;
-}
-
-AudioFormat::SampleFormat AudioOutputOpenAL::preferredSampleFormat() const
-{
-    return AudioFormat::SampleFormat_Signed16;
-}
-
-AudioFormat::ChannelLayout AudioOutputOpenAL::preferredChannelLayout() const
-{
-    return AudioFormat::ChannelLayout_Stereo;
 }
 
 QString AudioOutputOpenAL::deviceName() const
@@ -391,10 +380,10 @@ bool AudioOutputOpenAL::write(const QByteArray& data)
         buf = buffer[(-state)%buffer_count];
         --state;
     } else {
-        AL_ENSURE_OK(alSourceUnqueueBuffers(source, 1, &buf), false);
+        AL_ENSURE(alSourceUnqueueBuffers(source, 1, &buf), false);
     }
-    AL_ENSURE_OK(alBufferData(buf, format_al, data.constData(), data.size(), format.sampleRate()), false);
-    AL_ENSURE_OK(alSourceQueueBuffers(source, 1, &buf), false);
+    AL_ENSURE(alBufferData(buf, format_al, data.constData(), data.size(), format.sampleRate()), false);
+    AL_ENSURE(alSourceQueueBuffers(source, 1, &buf), false);
     return true;
 }
 
@@ -420,7 +409,7 @@ int AudioOutputOpenAL::getPlayedCount()
 bool AudioOutputOpenAL::setVolume(qreal value)
 {
     SCOPE_LOCK_CONTEXT();
-    AL_ENSURE_OK(alListenerf(AL_GAIN, value), false);
+    AL_ENSURE(alListenerf(AL_GAIN, value), false);
     return true;
 }
 
