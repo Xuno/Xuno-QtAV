@@ -113,11 +113,6 @@ void CaptureConfigPage::applyToUi()
     mpQuality->setValue(Config::instance().captureQuality());
 }
 
-void CaptureConfigPage::typeChanged(int type)
-{
-    qDebug()<<"CaptureConfigPage::typeChanged"<<type;
-        mpCaptFrame->setChecked(type==Config::DecodedFrame);
-}
 
 void CaptureConfigPage::selectSaveDir()
 {

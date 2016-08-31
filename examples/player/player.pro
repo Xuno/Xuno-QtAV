@@ -3,9 +3,7 @@ TEMPLATE = app
 contains(QT_CONFIG, opengl): QT += opengl
 QT += sql
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
-greaterThan(QT_MAJOR_VERSION, 4): QT += network
 greaterThan(QT_MAJOR_VERSION, 4): QT += webenginewidgets
-
 TRANSLATIONS = res/player_zh_CN.ts
 VERSION = $$QTAV_VERSION
 
@@ -14,11 +12,10 @@ include($$PROJECTROOT/src/libQtAV.pri)
 include($$PROJECTROOT/widgets/libQtAVWidgets.pri)
 STATICLINK=1
 include($$PWD/../common/libcommon.pri)
-preparePaths($$OUT_PWD)
+preparePaths($$OUT_PWD/../../out)
 INCLUDEPATH += $$PWD
 mac: RC_FILE = $$PROJECTROOT/src/QtAV.icns
 genRC($$TARGET)
-
 include(src.pri)
 
 unix:!android:!mac {
@@ -45,11 +42,4 @@ tv.files = res/tv.ini
 target.path = $$[QT_INSTALL_BINS]
 include($$PROJECTROOT/deploy.pri)
 
-FORMS += \
-    config/configwebmemu.ui
-
 RESOURCES += res/player.qrc
-#    theme.qrc
-
-LIBS+= -luser32
-

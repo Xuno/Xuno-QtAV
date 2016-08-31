@@ -28,7 +28,7 @@ SOURCES += main.cpp \
     $$PWD/filters/advancedfilter.cpp \
     $$PWD/filters/ShaderFilterXuno.cpp \
     $$PWD/filters/savegl.cpp \
-    $$PWD/filters/XunoGlslFilter.cpp
+    $$PWD/filters/XunoGlslFilter.cpp \
     config/ShaderPage.cpp \
     filters/AVFilterSubtitle.cpp
 
@@ -54,7 +54,6 @@ HEADERS += \
     config/PropertyEditor.h \
     config/AVFormatConfigPage.h \
     config/AVFilterConfigPage.h \
-
     filters/AVFilterSubtitle.h \
     $$PWD/version.h \
     $$PWD/filters/netstreamserver.h \
@@ -77,6 +76,6 @@ HEADERS += \
     config/ImageSequenceConfigPage.h \
     config/configwebmemu.h \
     config/WebConfigPage.h \
-    config/ImageSequenceExtractControl.h
+    config/ImageSequenceExtractControl.h \
     config/ShaderPage.h \
     filters/AVFilterSubtitle.h

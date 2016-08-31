@@ -53,8 +53,8 @@ contains(QT_CONFIG, opengl):!no-gl:!no-widgets {
 #configure.prf always use simulator
 !iphoneos:!no-sse4_1:!sse4_1: OptionalDepends *= sse4_1
 # no-xxx can set in $$PWD/user.conf
-!no-openal:!mac:!ios: OptionalDepends *= openal #FIXME: ios openal header not found in qtCompileTest but fine if manually make
-!no-libass: OptionalDepends *= libass
+#!no-openal:!mac:!ios: OptionalDepends *= openal #FIXME: ios openal header not found in qtCompileTest but fine if manually make
+#!no-libass: OptionalDepends *= libass
 !no-uchardet: OptionalDepends *= uchardet
 win32:macx:!android:!winrt:!no-portaudio: OptionalDepends *= portaudio
 win32 {
@@ -84,7 +84,7 @@ runConfigTests()
 }
 PACKAGE_VERSION = $$QTAV_VERSION
 
-PACKAGE_NAME= Xuno-QtAV
+PACKAGE_NAME= QtAV
 
 include(pack.pri)
 #packageSet($$QTAV_VERSION, QtAV)

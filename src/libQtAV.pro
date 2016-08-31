@@ -389,16 +389,18 @@ config_openglwindow {
   SDK_HEADERS *= QtAV/OpenGLWindowRenderer.h
   SOURCES *= output/video/OpenGLWindowRenderer.cpp
 }
-config_libass {
-#link against libass instead of dynamic load
-  !capi|winrt|android|ios|config_libass_link {
-    LIBS += -lass #-lfribidi -lfontconfig -lxml2 -lfreetype -lharfbuzz -lz
-    DEFINES += CAPI_LINK_ASS
-  }
-  DEFINES *= QTAV_HAVE_LIBASS=1
-  HEADERS *= capi/ass_api.h
-  SOURCES *= capi/ass_api.cpp
-  SOURCES *= subtitle/SubtitleProcessorLibASS.cpp
+!win32 {
+#config_libass {
+##link against libass instead of dynamic load
+#  !capi|winrt|android|ios|config_libass_link {
+#    LIBS += -lass #-lfribidi -lfontconfig -lxml2 -lfreetype -lharfbuzz -lz
+#    DEFINES += CAPI_LINK_ASS
+#  }
+#  DEFINES *= QTAV_HAVE_LIBASS=1
+#  HEADERS *= capi/ass_api.h
+#  SOURCES *= capi/ass_api.cpp
+#  SOURCES *= subtitle/SubtitleProcessorLibASS.cpp
+#}
 }
 # mac is -FQTDIR we need -LQTDIR
 LIBS *= -L$$[QT_INSTALL_LIBS] -lavcodec -lavformat -lswscale -lavutil
