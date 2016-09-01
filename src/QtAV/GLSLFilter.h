@@ -63,7 +63,6 @@ public:
     void setOutputSize(int width, int height);
 Q_SIGNALS:
     void outputSizeChanged(const QSize& size);
-
 protected:
     GLSLFilter(GLSLFilterPrivate& d, QObject *parent = 0);
     /*!
@@ -74,7 +73,6 @@ protected:
      * When process() is done, FBO before before process() is bounded.
      */
     void process(Statistics* statistics, VideoFrame* frame = 0) Q_DECL_OVERRIDE;
-
 };
 } //namespace QtAV
 #endif // QTAV_GLSLFILTER_H

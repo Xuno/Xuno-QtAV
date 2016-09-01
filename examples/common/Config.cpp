@@ -89,7 +89,6 @@ public:
         settings.setValue(QString::fromLatin1("abort_timeoutImgSeq"), abort_timeoutI);
         settings.setValue(QString::fromLatin1("force_videoclockI"), force_videoclockI);
         settings.setValue(QString::fromLatin1("floatcontrol_enabled"), floatcontrol_enabled);
-        settings.setValue(QString::fromLatin1("advancedFilter_enabled"), advancedFilter_enabled);
         settings.setValue(QString::fromLatin1("log"), log);
         settings.setValue(QString::fromLatin1("language"), lang);
         settings.setValue(QString::fromLatin1("last_file"), last_file);
@@ -197,7 +196,6 @@ public:
     bool avformat_on;
     bool direct;
     bool floatcontrol_enabled;
-    bool advancedFilter_enabled;
     unsigned int probe_size;
     int analyze_duration;
     QString avformat_extra;
@@ -344,7 +342,6 @@ void Config::reload()
     setAbortOnTimeout(settings.value(QString::fromLatin1("abort_timeout"), true).toBool());
     setForceFrameRate(settings.value(QString::fromLatin1("force_fps"), 0.0).toReal());
     setFloatControlEnabled(settings.value(QString::fromLatin1("floatcontrol_enabled"), false).toBool());
-    setAdvancedFilterEnabled(settings.value(QString::fromLatin1("advancedFilter_enabled"), false).toBool());
     settings.beginGroup(QString::fromLatin1("decoder"));
     settings.beginGroup(QString::fromLatin1("video"));
     QString decs_default(QString::fromLatin1("FFmpeg"));
@@ -756,20 +753,6 @@ Config& Config::setFloatControlEnabled(bool value)
         return *this;
     mpData->floatcontrol_enabled = value;
     emit floatControlEnabledChanged();
-    return *this;
-}
-
-bool Config::advancedFilterEnabled() const
-{
-    return mpData->advancedFilter_enabled;
-}
-
-Config& Config::setAdvancedFilterEnabled(bool value)
-{
-    if (mpData->advancedFilter_enabled == value)
-        return *this;
-    mpData->advancedFilter_enabled = value;
-    emit advancedFilterEnabledChanged();
     return *this;
 }
 

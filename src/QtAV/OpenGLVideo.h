@@ -88,6 +88,7 @@ public:
     void setContrast(qreal value);
     void setHue(qreal value);
     void setSaturation(qreal value);
+
     void setUserShader(VideoShader* shader);
     VideoShader* userShader() const;
 Q_SIGNALS:

@@ -27,7 +27,6 @@
 #include "config/configwebmemu.h"
 #include "config/ImageSequenceConfigPage.h"
 #include "config/ImageSequenceExtractControl.h"
-#include "filters/runmpvpipe.h"
 #include "filters/ShaderFilterXuno.h"
 #include "filters/savegl.h"
 #include "filters/XunoGlslFilter.h"
@@ -70,7 +69,6 @@ class OSDFilter;
 class AVFilterSubtitle;
 class Preview;
 class ImageSequenceConfigPage;
-class AdvancedFilter;
 class ShaderFilterXuno;
 
 
@@ -189,12 +187,6 @@ private slots:
     void syncVolumeUi(qreal value);
     void onImageSequenceConfig();
     void onImageSequenceToogledFrameExtractor(bool state);
-    void runMpvPlayer();
-    void runMpvPlayerStop();
-    void runMpvPlayerRunned();
-    void runMpvPlayerFinished(int c);
-    void advacedFilterSentFrame();
-
     void captureGL();
 
 protected:
@@ -217,7 +209,6 @@ private:
     bool isFileImgageSequence();
     bool applyCustomFPS();
     void analyeUsedFPS();
-    void installAdvancedFilter();
     void installShaderXuno();
     void installSaveGL();
     void installGLSLFilter();
@@ -294,11 +285,6 @@ private:
     QString aboutXunoQtAV_PlainText();
     QString aboutXunoQtAV_HTML();
 
-    AdvancedFilter *mpAdvancedFilter;
-    qint64 mpvPlayerPorcessId=0;
-    runmpvpipe *mpvpipe=Q_NULLPTR;
-    QWidget *mpvPlayerWindow=Q_NULLPTR;
-    QWidget *mpvPlayerWindow1=Q_NULLPTR;
     ShaderFilterXuno *shaderXuno=Q_NULLPTR;
     SaveGLXuno *mSaveGLXuno=Q_NULLPTR;
 

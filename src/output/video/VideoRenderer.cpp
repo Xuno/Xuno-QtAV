@@ -48,7 +48,7 @@ VideoRenderer::~VideoRenderer()
 {
 }
 
-
+//Xuno addon
 bool VideoRenderer::getPixels(uchar *&pixels, int &w, int &h, int &bpp)
 {
     Q_UNUSED(w);
@@ -58,7 +58,7 @@ bool VideoRenderer::getPixels(uchar *&pixels, int &w, int &h, int &bpp)
     qDebug()<<"VideoRenderer::getPixels";
     return false;
 }
-
+//Xuno addon
 bool VideoRenderer::receive(const VideoFrame &frame)
 {
     DPTR_D(VideoRenderer);
@@ -620,31 +620,6 @@ bool VideoRenderer::setSaturation(qreal saturation)
     return true;
 }
 
-void VideoRenderer::updateFiltersAfterDrawFrame()
-{
-    DPTR_D(VideoRenderer);
-    if (!d.filters.isEmpty() && d.statistics) {
-        // vo filter will not modify video frame, no lock required
-        foreach(Filter* filter, d.filters) {
-            VideoFilter *vf = static_cast<VideoFilter*>(filter);
-            if (!vf) {
-                qWarning("a null filter!");
-                //d.filters.removeOne(filter);
-                continue;
-            }
-            if (!vf->isEnabled())
-                continue;
-            //  if (!vf->context() || vf->context()->type() != VideoFilterContext::OpenGL)
-            //  continue;
-
-            //qDebug()<<"VideoRenderer::updateUiAfterRenderig. postEvent("<<vf->objectName();
-            //vf->onPostDraw();
-            //QCoreApplication::postEvent(vf, new QEvent(QEvent::User),Qt::HighEventPriority);
-        }
-    }
-}
-
-
 bool VideoRenderer::onSetBrightness(qreal b)
 {
     Q_UNUSED(b);
@@ -714,6 +689,4 @@ void VideoRenderer::updateUi()
             QCoreApplication::instance()->postEvent(obj, new QEvent(QEvent::UpdateRequest));
     }
 }
-
-
 } //namespace QtAV

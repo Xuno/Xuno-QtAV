@@ -228,9 +228,6 @@ void VideoShader::initialize(QOpenGLShaderProgram *shaderProgram)
         d.u_Texture[i] = shaderProgram->uniformLocation(tex_var);
         qDebug("%s: %d", tex_var.toUtf8().constData(), d.u_Texture[i]);
     }
-    //qDebug("glGetUniformLocation(\"u_MVP_matrix\") = %d", d.u_MVP_matrix);
-    qDebug("glGetUniformLocation(\"u_colorMatrix\") = %d", d.u_colorMatrix);
-    qDebug("glGetUniformLocation(\"u_opacity\") = %d", d.u_opacity);
     qDebug("u_Matrix: %d", d.u_Matrix);
     qDebug("u_colorMatrix: %d", d.u_colorMatrix);
     qDebug("u_opacity: %d", d.u_opacity);
@@ -1137,12 +1134,7 @@ bool VideoMaterialPrivate::ensureTextures()
 
 void VideoMaterialPrivate::setupQuality()
 {
-#if (GLSL_BICUBIC)
-    DYGL(glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
-    DYGL(glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
-#else
     DYGL(glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
     DYGL(glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-#endif
 }
 } //namespace QtAV

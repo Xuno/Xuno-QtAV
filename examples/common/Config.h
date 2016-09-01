@@ -79,7 +79,6 @@ class COMMON_EXPORT Config : public QObject
     Q_PROPERTY(QString logLevel READ logLevel WRITE setLogLevel NOTIFY logLevelChanged)
     Q_ENUMS(OpenGLType)
     Q_PROPERTY(bool floatControlEnabled READ floatControlEnabled WRITE setFloatControlEnabled NOTIFY floatControlEnabledChanged)
-    Q_PROPERTY(bool advancedFilterEnabled READ advancedFilterEnabled WRITE setAdvancedFilterEnabled NOTIFY advancedFilterEnabledChanged)
     Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
 
     Q_PROPERTY(bool userShaderEnabled READ userShaderEnabled WRITE setUserShaderEnabled NOTIFY userShaderEnabledChanged)
@@ -180,9 +179,6 @@ public:
 
     bool floatControlEnabled() const;
     Config& setFloatControlEnabled(bool value);
-
-    bool advancedFilterEnabled() const;
-    Config& setAdvancedFilterEnabled(bool value);
 
     QVariantHash avformatOptions() const;
     bool avformatOptionsEnabled() const;
@@ -327,7 +323,6 @@ public:
     Q_SIGNAL void abortOnTimeoutChangedI();
     Q_SIGNAL void forceVideoClockChangedI();
     Q_SIGNAL void floatControlEnabledChanged();
-    Q_SIGNAL void advancedFilterEnabledChanged();
     Q_SIGNAL void logLevelChanged();
     Q_SIGNAL void languageChanged();
     Q_SIGNAL void historyChanged();

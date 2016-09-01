@@ -167,7 +167,6 @@ public:
 
     bool dirty;
     ColorTransform colorTransform;
-
     bool try_pbo;
     QVector<QOpenGLBuffer> pbo;
     QVector2D vec_to8; //TODO: vec3 to support both RG and LA (.rga, vec_to8)

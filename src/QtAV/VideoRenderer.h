@@ -82,8 +82,10 @@ public:
     VideoRenderer();
     virtual ~VideoRenderer();
     virtual VideoRendererId id() const = 0;
+    //Xuno addons	
     virtual void enableGetPixels(bool s) {Q_UNUSED(s)}
     virtual bool getPixels(uchar *&pixels, int &w, int &h, int &bpp);
+    //Xuno addons
 
     bool receive(const VideoFrame& frame);
     /*!
@@ -217,7 +219,6 @@ protected:
     virtual void drawFrame() = 0; //You MUST reimplement this to display a frame. Other draw functions are not essential
     virtual void handlePaintEvent(); //has default. User don't have to implement it
     virtual void updateUi(); // by default post an UpdateRequest event for window and UpdateLater event for widget to ensure ui update
-    void updateFiltersAfterDrawFrame();
 
 private: // property change. used as signals in subclasses. implemented by moc
     virtual void sourceAspectRatioChanged(qreal) {}
@@ -234,7 +235,6 @@ private: // property change. used as signals in subclasses. implemented by moc
     virtual void hueChanged(qreal) {}
     virtual void saturationChanged(qreal) {}
     virtual void backgroundColorChanged() {}
-
 private: // mainly used by VideoOutput class
     /*!
      * return false if value not changed. default is true

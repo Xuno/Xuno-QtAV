@@ -62,10 +62,12 @@ OpenGLRendererBase::OpenGLRendererBase(OpenGLRendererBasePrivate &d)
 OpenGLRendererBase::~OpenGLRendererBase()
 {
     d_func().glv.setOpenGLContext(0);
+    //Xuno addons
     if (m_RAWImagePixels){
         delete []m_RAWImagePixels;
         m_RAWImagePixels = Q_NULLPTR;
     }
+    //Xuno addons
 }
 
 bool OpenGLRendererBase::isSupported(VideoFormat::PixelFormat pixfmt) const
@@ -73,11 +75,13 @@ bool OpenGLRendererBase::isSupported(VideoFormat::PixelFormat pixfmt) const
     return OpenGLVideo::isSupported(pixfmt);
 }
 
+//Xuno addons
 void OpenGLRendererBase::enableGetPixels(bool s)
 {
     isRenderRAWImage=s;
 }
-
+//Xuno addons
+//Xuno addons
 bool OpenGLRendererBase::getPixels(uchar *&pixels, int &w, int &h, int &bpp)
 {
     //qDebug()<<"OpenGLRendererBase::getPixels"<<m_RAWImagePixels;
@@ -90,6 +94,7 @@ bool OpenGLRendererBase::getPixels(uchar *&pixels, int &w, int &h, int &bpp)
     }
     return false;
 }
+//Xuno addons
 
 OpenGLVideo* OpenGLRendererBase::opengl() const
 {
@@ -121,10 +126,12 @@ void OpenGLRendererBase::drawFrame()
     // QRectF() means the whole viewport
     if (d.frame_changed) {
         d.glv.setCurrentFrame(d.video_frame);
+	//Xuno addons
+        //d.frame_changed = false;
+	//Xuno addons
     }
-
     d.glv.render(QRectF(), roi, d.matrix);
-
+    //Xuno addons
     if (1 && d.frame_changed && isRenderRAWImage && d.glv.openGLContext()){
 
         if (!m_RAWImagePixels){
@@ -135,13 +142,12 @@ void OpenGLRendererBase::drawFrame()
 
         if (m_RAWImagePixels){
             glReadPixels(0, 0, m_RAWImageWidth, m_RAWImageHeiht, GL_BGRA, GL_UNSIGNED_BYTE, m_RAWImagePixels);
-            //updateFiltersAfterDrawFrame();
         }
-
     }
     if (d.frame_changed) {
         d.frame_changed = false;
     }
+    //Xuno addons
 }
 
 void OpenGLRendererBase::onInitializeGL()
@@ -187,6 +193,7 @@ void OpenGLRendererBase::onResizeEvent(int w, int h)
     resizeRenderer(w, h);
     d.setupAspectRatio();
     //QOpenGLWindow::resizeEvent(e); //will call resizeGL(). TODO:will call paintEvent()?
+    //Xuno addons
     if (m_RAWImagePixels){
         delete []m_RAWImagePixels;
         m_RAWImagePixels = nullptr;
@@ -194,6 +201,7 @@ void OpenGLRendererBase::onResizeEvent(int w, int h)
         m_RAWImageHeiht=h;
         m_RAWImagePixels = new uchar[m_RAWImageWidth * m_RAWImageHeiht * m_RAWImageBPP];
     }
+    //Xuno addons
 }
 //TODO: out_rect not correct when top level changed
 void OpenGLRendererBase::onShowEvent()
@@ -251,6 +259,5 @@ bool OpenGLRendererBase::onSetSaturation(qreal s)
     d_func().glv.setSaturation(s);
     return true;
 }
-
 
 } //namespace QtAV

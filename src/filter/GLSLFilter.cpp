@@ -46,13 +46,11 @@ public:
 
 GLSLFilter::GLSLFilter(QObject *parent)
     : VideoFilter(*new GLSLFilterPrivate(), parent)
-{
-}
+{}
 
 GLSLFilter::GLSLFilter(GLSLFilterPrivate &d, QObject *parent)
     : VideoFilter(d, parent)
-{
-}
+{}
 
 OpenGLVideo* GLSLFilter::opengl() const
 {
@@ -75,7 +73,6 @@ void GLSLFilter::setOutputSize(const QSize &value)
     if (d.size == value)
         return;
     d.size = value;
-
     Q_EMIT outputSizeChanged(value);
 }
 
@@ -83,8 +80,6 @@ void GLSLFilter::setOutputSize(int width, int height)
 {
     setOutputSize(QSize(width, height));
 }
-
-
 
 void GLSLFilter::process(Statistics *statistics, VideoFrame *frame)
 {
