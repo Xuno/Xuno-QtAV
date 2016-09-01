@@ -2360,7 +2360,7 @@ void MainWindow::installShaderXuno()
         if (shaderXuno==Q_NULLPTR) shaderXuno=new ShaderFilterXuno();
         if (shaderXuno!=Q_NULLPTR) {
             shaderXuno->setGammaValue(0.f);
-            shaderXuno->setSharpValue(0.f);
+            shaderXuno->setSharpValue(-1.f); //-1..0..1
             //mpRenderer->opengl()->setUserShader(shaderXuno);
         }
     }
