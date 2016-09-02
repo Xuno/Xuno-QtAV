@@ -4,3 +4,6 @@
 [submodule "contrib/uchardet"]
 	path = contrib/uchardet
 	url = https://github.com/BYVoid/uchardet.git
+[submodule "contrib/contrib"]
+	path = contrib/contrib
+	url = https://github.com/wang-bin/capi.git
