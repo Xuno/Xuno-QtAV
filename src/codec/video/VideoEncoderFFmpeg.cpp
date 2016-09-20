@@ -137,57 +137,88 @@ bool VideoEncoderFFmpegPrivate::open()
     avctx->width = width; // coded_width works, why?
     avctx->height = height;
     // reset format_used to user defined format. important to update default format if format is invalid
-    format_used = format.pixelFormat();
-    AVPixelFormat hwfmt = AVPixelFormat(-1);
-    if (format.pixelFormat() == VideoFormat::Format_Invalid) {
-        if (codec->pix_fmts) {
-            qDebug("use first supported pixel format: %d", codec->pix_fmts[0]);
-            format_used = VideoFormat::pixelFormatFromFFmpeg((int)codec->pix_fmts[0]);
-        } else {
-            qWarning("pixel format and supported pixel format are not set. use yuv420p");
-            format_used = VideoFormat::Format_YUV420P;
+    format_used = VideoFormat::Format_Invalid;
+    AVPixelFormat fffmt = (AVPixelFormat)format.pixelFormatFFmpeg();
+    if (codec->pix_fmts && format.isValid()) {
+        for (int i = 0; codec->pix_fmts[i] != AVPixelFormat(-1); ++i) {
+            if (fffmt == codec->pix_fmts[i]) {
+                format_used = format.pixelFormat();
+                break;
+            }
         }
     }
     //avctx->sample_aspect_ratio =
+    AVPixelFormat hwfmt = AVPixelFormat(-1);
     if (av_pix_fmt_desc_get(codec->pix_fmts[0])->flags & AV_PIX_FMT_FLAG_HWACCEL)
         hwfmt = codec->pix_fmts[0];
+    bool use_hwctx = false;
     if (hwfmt != AVPixelFormat(-1)) {
 #ifdef HAVE_AVHWCTX
-        avctx->pix_fmt = hwfmt;
-        hw_device_ctx = NULL;
-        AV_ENSURE(av_hwdevice_ctx_create(&hw_device_ctx, fromHWAName(codec_name.section(QChar('_'), -1).toUtf8().constData()), hwdev.toLatin1().constData(), NULL, 0), false);
-        avctx->hw_frames_ctx = av_hwframe_ctx_alloc(hw_device_ctx);
-        if (!avctx->hw_frames_ctx) {
-            qWarning("Failed to create hw frame context for '%s'", codec_name.toLatin1().constData());
-            return false;
-        }
-        // get sw formats
-        const void *hwcfg = NULL;
-        AVHWFramesConstraints *constraints = av_hwdevice_get_hwframe_constraints(hw_device_ctx, hwcfg);
-        const AVPixelFormat* in_fmts = constraints->valid_sw_formats;
-        if (in_fmts) {
-            while (*in_fmts != AVPixelFormat(-1)) {
-                sw_fmts.append(*in_fmts);
-                ++in_fmts;
+        const AVHWDeviceType dt = fromHWAName(codec_name.section(QChar('_'), -1).toUtf8().constData());
+        if (dt != AVHWDeviceType(-1)) {
+            use_hwctx = true;
+            avctx->pix_fmt = hwfmt;
+            hw_device_ctx = NULL;
+            AV_ENSURE(av_hwdevice_ctx_create(&hw_device_ctx, dt, hwdev.toLatin1().constData(), NULL, 0), false);
+            avctx->hw_frames_ctx = av_hwframe_ctx_alloc(hw_device_ctx);
+            if (!avctx->hw_frames_ctx) {
+                qWarning("Failed to create hw frame context for '%s'", codec_name.toLatin1().constData());
+                return false;
+            }
+            // get sw formats
+            const void *hwcfg = NULL;
+            AVHWFramesConstraints *constraints = av_hwdevice_get_hwframe_constraints(hw_device_ctx, hwcfg);
+            const AVPixelFormat* in_fmts = constraints->valid_sw_formats;
+            AVPixelFormat sw_fmt = AVPixelFormat(-1);
+            if (in_fmts) {
+                sw_fmt = in_fmts[0];
+                while (*in_fmts != AVPixelFormat(-1)) {
+                    if (*in_fmts == fffmt)
+                        sw_fmt = *in_fmts;
+                    sw_fmts.append(*in_fmts);
+                    ++in_fmts;
+                }
+            } else {
+                sw_fmt = QTAV_PIX_FMT_C(YUV420P);
+            }
+            av_hwframe_constraints_free(&constraints);
+            format_used = VideoFormat::pixelFormatFromFFmpeg(sw_fmt);
+            // encoder surface pool parameters
+            AVHWFramesContext* hwfs = (AVHWFramesContext*)avctx->hw_frames_ctx->data;
+            hwfs->format = hwfmt; // must the same as avctx->pix_fmt
+            hwfs->sw_format = sw_fmt; // if it's not set, vaapi will choose the last valid_sw_formats, but that's wrong for vaGetImage/DeriveImage. nvenc always need sw_format
+            // hw upload parameters. encoder's hwframes is just for parameter checking, will never be intialized, so we allocate an individual one.
+            hwframes_ref = av_hwframe_ctx_alloc(hw_device_ctx);
+            if (!hwframes_ref) {
+                qWarning("Failed to create hw frame context for uploading '%s'", codec_name.toLatin1().constData());
+            } else {
+                hwframes = (AVHWFramesContext*)hwframes_ref->data;
+                hwframes->format = hwfmt;
             }
         }
-        av_hwframe_constraints_free(&constraints);
-        if (format_used == AVPixelFormat(-1))
-            format_used = VideoFormat::pixelFormatFromFFmpeg(sw_fmts[0]);
-        // encoder surface pool parameters
-        AVHWFramesContext* hwfs = (AVHWFramesContext*)avctx->hw_frames_ctx->data;
-        hwfs->format = hwfmt; // must the same as avctx->pix_fmt
-        hwfs->sw_format = sw_fmts[0]; // if it's not set, vaapi will choose the last valid_sw_formats, but that's wrong for vaGetImage/DeriveImage. nvenc always need sw_format
-        // hw upload parameters. encoder's hwframes is just for parameter checking, will never be intialized, so we allocate an individual one.
-        hwframes_ref = av_hwframe_ctx_alloc(hw_device_ctx);
-        if (!hwframes_ref) {
-            qWarning("Failed to create hw frame context for uploading '%s'", codec_name.toLatin1().constData());
-        } else {
-            hwframes = (AVHWFramesContext*)hwframes_ref->data;
-            hwframes->format = hwfmt;
-        }
 #endif //HAVE_AVHWCTX
-    } else {
+    }
+
+    if (!use_hwctx) { // no hw device (videotoolbox, wrong device name etc.), or old ffmpeg
+        // TODO: check frame is hw frame
+        if (hwfmt == AVPixelFormat(-1)) { // sw enc
+            if (format_used == VideoFormat::Format_Invalid) {// requested format is not supported by sw enc
+                if (codec->pix_fmts) { //pix_fmts[0] is always a sw format here
+                    qDebug("use first supported pixel format '%d' for sw encoder", codec->pix_fmts[0]);
+                    format_used = VideoFormat::pixelFormatFromFFmpeg((int)codec->pix_fmts[0]);
+                }
+            }
+        } else {
+            if (format_used == VideoFormat::Format_Invalid) { // requested format is not supported by hw enc
+                qDebug("use first supported sw pixel format '%d' for hw encoder", codec->pix_fmts[1]);
+                if (codec->pix_fmts && codec->pix_fmts[1] != AVPixelFormat(-1))
+                    format_used = VideoFormat::pixelFormatFromFFmpeg(codec->pix_fmts[1]);
+            }
+        }
+        if (format_used == VideoFormat::Format_Invalid) {
+            qWarning("fallback to yuv420p");
+            format_used = VideoFormat::Format_YUV420P;
+        }
         avctx->pix_fmt = (AVPixelFormat)VideoFormat::pixelFormatToFFmpeg(format_used);
     }
     if (frame_rate > 0)
@@ -200,8 +231,8 @@ bool VideoEncoderFFmpegPrivate::open()
     if(avctx->codec_id == QTAV_CODEC_ID(H264)) {
         avctx->gop_size = 10;
         //avctx->max_b_frames = 3;//h264
-        av_dict_set(&dict, "preset", "fast", 0);
-        av_dict_set(&dict, "tune", "zerolatency", 0);
+        av_dict_set(&dict, "preset", "fast", 0); //x264
+        av_dict_set(&dict, "tune", "zerolatency", 0);  //x264
         //av_dict_set(&dict, "profile", "main", 0); // conflict with vaapi (int values)
     }
     if(avctx->codec_id == AV_CODEC_ID_HEVC){
@@ -301,10 +332,10 @@ bool VideoEncoderFFmpeg::encode(const VideoFrame &frame)
                 // reinit or got an unsupported format. assume parameters will not change, so it's  the 1st init
                 // check constraints
                 bool init_frames_ctx = d.hwframes->sw_format == AVPixelFormat(-1);
-                pixfmt = d.sw_fmts[0];
                 if (d.sw_fmts.contains(pixfmt)) { // format changed
                     init_frames_ctx = true;
                 } else { // convert to supported sw format
+                    pixfmt = d.sw_fmts[0];
                     f->format = pixfmt;
                     VideoFrame converted = frame.to(VideoFormat::pixelFormatFromFFmpeg(pixfmt));
                     for (int i = 0; i < converted.planeCount(); ++i) {
