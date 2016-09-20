@@ -3,7 +3,12 @@
 #include <QFile>
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef OS_WINDOWS
 #include "windows.h"
+#else
+#define _popen popen
+#define _pclose pclose
+#endif
 #include <QFileInfo>
 #include <QSize>
 #include <QTimer>
@@ -97,6 +102,7 @@ void runmpvpipe::started()
 
 WId runmpvpipe::findAppWindow(QString ext)
 {
+#ifdef OS_WINDOWS
     if (ext=="exe"){
         // Windows: Find HWND by window title EXE
         WId id = (WId)FindWindow(NULL, L"- - mpv");
@@ -144,6 +150,7 @@ WId runmpvpipe::findAppWindow(QString ext)
 
         return id;
     }
+#endif
     return -1;
 }
 

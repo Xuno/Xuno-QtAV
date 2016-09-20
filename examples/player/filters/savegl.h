@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
-#include <QtAv>
+#include <QtAV>
 #include <QtAV/AVPlayer.h>
 #include <Config.h>
 

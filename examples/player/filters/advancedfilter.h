@@ -8,7 +8,9 @@
 #include <QtAV/AVPlayer.h>
 #include <QtAV/VideoRenderer.h>
 //#include "netstreamserver.h"
+//#ifdef OS_WINDOWS
 #include "runmpvpipe.h"
+//#endif
 
 
 class AdvancedFilter : public QtAV::VideoFilter

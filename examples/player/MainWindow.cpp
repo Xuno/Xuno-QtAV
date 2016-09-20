@@ -61,7 +61,9 @@
 #include "playlist/PlayList.h"
 #include "../common/common.h"
 #include <QUrl>
+#ifdef OS_WINDOWS
 #include "filters/advancedfilter.h"
+#endif
 
 
 /*
@@ -114,7 +116,9 @@ MainWindow::MainWindow(QWidget *parent) :
   , mCustomFPS(0.)
   , mPlayerScale(1.)
   , m_preview(0)
+#ifdef ADVANCEDFILTER_H
   , mpAdvancedFilter(0)
+#endif
 {
     XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
     XUNOpresetUrl=XUNOserverUrl+QString::fromLatin1("/getpreset.php?");
@@ -2252,13 +2256,14 @@ void MainWindow::installAdvancedFilter()
         mpvPlayerWindow->setStyleSheet("background-color:black;");
         //mpvPlayerWindow->move(0,0);
 
-
+#ifdef ADVANCEDFILTER_H
         if (mpAdvancedFilter==0 && mpPlayer){
             mpAdvancedFilter = new AdvancedFilter(this);
             connect(mpAdvancedFilter, &AdvancedFilter::onSentFrame,this,&MainWindow::advacedFilterSentFrame);
             mpAdvancedFilter->setEnabled(true);
             mpAdvancedFilter->installTo(mpPlayer);
             mpAdvancedFilter->setPlayer(mpPlayer);
+#ifdef RUNMPVPIPE_H
             if (!mpvpipe) {
                 mpvpipe=new runmpvpipe();
                 mpvpipe->setWidget(mpvPlayerWindow);
@@ -2266,7 +2271,9 @@ void MainWindow::installAdvancedFilter()
                 connect(mpvpipe,SIGNAL(finished(int)),this,SLOT(runMpvPlayerFinished(int)));
             }
             mpAdvancedFilter->setMpvPipe(mpvpipe);
+#endif
         }
+#endif
 
         if (mpRenderer){
             QWidget *r = mpRenderer->widget();
@@ -2369,13 +2376,14 @@ void MainWindow::runMpvPlayer()
     //    const int bytesPerPixel=4;
     //    int framebytes=frameW*frameH*bytesPerPixel;
     //    int serverPort=8888;
-
+#ifdef RUNMPVPIPE_H
     if (mpvpipe){
         mpvpipe->setFameInfo(frameW,frameH,fps);
         if (mpvpipe->runApp()){
             //mpvpipe->moveMpvApp();
         }
     }
+#endif
     //    QString mpvparam;//="--vo-defaults=opengl:scale=ewa_lanczossharp:cscale=haasnsoft:dscale=mitchell:target-prim=bt.709:target-trc=srgb:scaler-resizes-only:no-deband:prescale-passes=2:prescale-downscaling-threshold=1.6:prescale=superxbr:superxbr-sharpness=0.7";
     //    //mpv.com "tcp://localhost:8888" --cache=no --demuxer=rawvideo --demuxer-rawvideo-mp-format=bgra --demuxer-rawvideo-size=1228800 --demuxer-rawvideo-fps=25  --demuxer-rawvideo-w=640 --demuxer-rawvideo-h=480 --no-audio
     //    mpvparam = QString("tcp://127.0.0.1:%1 --cache=no --demuxer=rawvideo --demuxer-rawvideo-mp-format=bgra --demuxer-rawvideo-size=%2 --demuxer-rawvideo-fps=%3  --demuxer-rawvideo-w=%4 --demuxer-rawvideo-h=%5 --no-audio").arg(serverPort).arg(framebytes).arg(fps).arg(frameW).arg(frameH);
@@ -2387,10 +2395,12 @@ void MainWindow::runMpvPlayer()
 
 void MainWindow::runMpvPlayerStop()
 {
+#ifdef RUNMPVPIPE_H
     if (mpvpipe){
         //if (mpvPlayerWindow1) mpvPlayerWindow1->close();
         mpvpipe->closeApp();
     }
+#endif
 }
 
 void MainWindow::runMpvPlayerRunned()
@@ -2406,6 +2416,7 @@ void MainWindow::runMpvPlayerFinished(int c)
 void MainWindow::advacedFilterSentFrame()
 {
     //qDebug()<<"MainWindow::advacedFilterSentFrame";
+#ifdef RUNMPVPIPE_H
     if (mpvpipe && !mpvpipe->getMovedApp()) {
         QWidget *r=nullptr;
         r=mpvpipe->moveMpvApp();
@@ -2415,6 +2426,7 @@ void MainWindow::advacedFilterSentFrame()
             //r->deleteLater();
         }
     }
+#endif
 }
 
 void MainWindow::captureGL()

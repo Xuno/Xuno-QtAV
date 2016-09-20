@@ -27,7 +27,9 @@
 #include "config/configwebmemu.h"
 #include "config/ImageSequenceConfigPage.h"
 #include "config/ImageSequenceExtractControl.h"
+#ifdef OS_WINDOWS
 #include "filters/runmpvpipe.h"
+#endif
 #include "filters/ShaderFilterXuno.h"
 #include "filters/savegl.h"
 #include "filters/XunoGlslFilter.h"
@@ -69,7 +71,7 @@ class OSDFilter;
 class AVFilterSubtitle;
 class Preview;
 class ImageSequenceConfigPage;
-class AdvancedFilter;
+//class AdvancedFilter;
 class ShaderFilterXuno;
 
 
@@ -289,10 +291,15 @@ private:
     ImgSeqExtractControl *mpImgSeqExtract=0;
     QString aboutXunoQtAV_PlainText();
     QString aboutXunoQtAV_HTML();
-
+#ifdef ADVANCEDFILTER_H
     AdvancedFilter *mpAdvancedFilter;
+#endif
     qint64 mpvPlayerPorcessId=0;
+#ifdef RUNMPVPIPE_H
     runmpvpipe *mpvpipe=Q_NULLPTR;
+#else
+    void *mpvpipe=Q_NULLPTR;
+#endif
     QWidget *mpvPlayerWindow=Q_NULLPTR;
     QWidget *mpvPlayerWindow1=Q_NULLPTR;
     ShaderFilterXuno *shaderXuno=Q_NULLPTR;
