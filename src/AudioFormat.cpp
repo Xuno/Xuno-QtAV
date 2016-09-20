@@ -1,6 +1,6 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -135,37 +135,16 @@ public:
     qint64 channel_layout_ff;
 };
 
-bool AudioFormat::isPlanar(SampleFormat format)
+AudioFormat::SampleFormat AudioFormat::make(int bytesPerSample, bool isFloat, bool isUnsigned, bool isPlanar)
 {
-    return format & kPlanar;
-}
-
-AudioFormat::SampleFormat AudioFormat::packedSampleFormat(SampleFormat fmt)
-{
-    switch (fmt) {
-    case SampleFormat_Unsigned8Planar: return SampleFormat_Unsigned8;
-    case SampleFormat_Signed16Planar: return SampleFormat_Signed16;
-    case SampleFormat_Signed32Planar: return SampleFormat_Signed32;
-    case SampleFormat_FloatPlanar: return SampleFormat_Float;
-    case SampleFormat_DoublePlanar: return SampleFormat_Double;
-    default:
-        break;
-    }
-    return fmt;
-}
-
-AudioFormat::SampleFormat AudioFormat::planarSampleFormat(SampleFormat fmt)
-{
-    switch (fmt) {
-    case SampleFormat_Unsigned8: return SampleFormat_Unsigned8Planar;
-    case SampleFormat_Signed16: return SampleFormat_Signed16Planar;
-    case SampleFormat_Signed32: return SampleFormat_Signed32Planar;
-    case SampleFormat_Float: return SampleFormat_FloatPlanar;
-    case SampleFormat_Double: return SampleFormat_DoublePlanar;
-    default:
-        break;
-    }
-    return fmt;
+    int f = bytesPerSample;
+    if (isFloat)
+        f |= kFloat;
+    if (isUnsigned)
+        f |= kUnsigned;
+    if (isPlanar)
+        f |= kPlanar;
+    return SampleFormat(f);
 }
 
 AudioFormat::AudioFormat():
@@ -234,12 +213,12 @@ bool AudioFormat::isFloat() const
 
 bool AudioFormat::isUnsigned() const
 {
-    return d->sample_fmt & kUnsigned;
+    return IsUnsigned(d->sample_fmt);
 }
 
 bool AudioFormat::isPlanar() const
 {
-    return d->sample_fmt & kPlanar;
+    return IsPlanar(d->sample_fmt);
 }
 
 int AudioFormat::planeCount() const
@@ -493,7 +472,7 @@ QDebug operator<<(QDebug dbg, const QtAV::AudioFormat &fmt)
 
 QDebug operator<<(QDebug dbg, QtAV::AudioFormat::SampleFormat sampleFormat)
 {
-    dbg.nospace() << av_get_sample_fmt_name((AVSampleFormat)sampleFormat);
+    dbg.nospace() << av_get_sample_fmt_name((AVSampleFormat)AudioFormat::sampleFormatToFFmpeg(sampleFormat));
     return dbg.space();
 }
 

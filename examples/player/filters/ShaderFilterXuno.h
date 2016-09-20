@@ -27,7 +27,7 @@ private:
     bool setUserUniformValues();
 
     GLfloat u_gammaRGB=1.;
-    qreal filterSharp=0.;
+    qreal filterSharp=1.;
 
     const QVector2D pixeloffsetkernel[9] =  {
        QVector2D(  -1.0   , -1.0  ),

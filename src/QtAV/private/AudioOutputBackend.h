@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV (from 2015)
@@ -53,19 +53,10 @@ public:
     virtual bool flush() { return false;}
     virtual bool clear() { return false;}
     virtual bool isSupported(const AudioFormat& format) const { return isSupported(format.sampleFormat()) && isSupported(format.channelLayout());}
-    virtual bool isSupported(AudioFormat::SampleFormat) const { return true;}
-    virtual bool isSupported(AudioFormat::ChannelLayout) const { return true;}
-    /*!
-     * \brief preferredSampleFormat
-     * \return the preferred sample format. default is signed16 packed
-     *  If the specified format is not supported, resample to preffered format
-     */
-    virtual AudioFormat::SampleFormat preferredSampleFormat() const { return AudioFormat::SampleFormat_Signed16;}
-    /*!
-     * \brief preferredChannelLayout
-     * \return the preferred channel layout. default is stereo
-     */
-    virtual AudioFormat::ChannelLayout preferredChannelLayout() const { return AudioFormat::ChannelLayout_Stereo;}
+    // FIXME: workaround. planar convertion crash now!
+    virtual bool isSupported(AudioFormat::SampleFormat f) const { return !IsPlanar(f);}
+    // 5, 6, 7 channels may not play
+    virtual bool isSupported(AudioFormat::ChannelLayout cl) const { return int(cl) < int(AudioFormat::ChannelLayout_Unsupported);}
     /*!
      * \brief The BufferControl enum
      * Used to adapt to different audio playback backend. Usually you don't need this in application level development.

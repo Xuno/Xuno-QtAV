@@ -24,7 +24,7 @@
 #include <QtAV/QtAV_Global.h>
 
 namespace QtAV {
-
+// TODO: namespace gl/gfx?
 class Q_AV_EXPORT Uniform {
 public:
     enum { V = 16, Vec = 1<<V, M = 20, Mat = 1<<M };
@@ -141,55 +141,6 @@ private:
 Q_AV_EXPORT QDebug operator<<(QDebug debug, const Uniform &u);
 Q_AV_EXPORT QDebug operator<<(QDebug debug, Uniform::Type ut);
 #endif
-
-class Q_AV_EXPORT TexturedGeometry {
-public:
-    typedef struct {
-        float x, y;
-        float tx, ty;
-    } Point;
-    enum Triangle { Strip, Fan };
-    TexturedGeometry(int texCount = 1, int count = 4, Triangle t = Strip);
-    /*!
-     * \brief setTextureCount
-     * sometimes we needs more than 1 texture coordinates, for example we have to set rectangle texture
-     * coordinates for each plane.
-     */
-    void setTextureCount(int value);
-    int textureCount() const;
-    /*!
-     * \brief size
-     * totoal data size in bytes
-     */
-    int size() const;
-    /*!
-     * \brief textureSize
-     * data size of 1 texture. equals textureVertexCount()*stride()
-     */
-    int textureSize() const;
-    Triangle triangle() const { return tri;}
-    int mode() const;
-    int tupleSize() const { return 2;}
-    int stride() const { return sizeof(Point); }
-    /// vertex count per texture
-    int textureVertexCount() const { return points_per_tex;}
-    /// totoal vertex count
-    int vertexCount() const { return v.size(); }
-    void setPoint(int index, const QPointF& p, const QPointF& tp, int texIndex = 0);
-    void setGeometryPoint(int index, const QPointF& p, int texIndex = 0);
-    void setTexturePoint(int index, const QPointF& tp, int texIndex = 0);
-    void setRect(const QRectF& r, const QRectF& tr, int texIndex = 0);
-    void setGeometryRect(const QRectF& r, int texIndex = 0);
-    void setTextureRect(const QRectF& tr, int texIndex = 0);
-    void* data(int idx = 0, int texIndex = 0) { return (char*)v.data() + texIndex*textureSize() + idx*2*sizeof(float); } //convert to char* float*?
-    const void* data(int idx = 0, int texIndex = 0) const { return (char*)v.constData() + texIndex*textureSize() + idx*2*sizeof(float); }
-    const void* constData(int idx = 0, int texIndex = 0) const { return (char*)v.constData() + texIndex*textureSize() + idx*2*sizeof(float); }
-private:
-    Triangle tri;
-    int points_per_tex;
-    int nb_tex;
-    QVector<Point> v;
-};
 } //namespace QtAV
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)

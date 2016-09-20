@@ -1,8 +1,8 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2013-2015 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
-*   This file is part of QtAV
+*   This file is part of QtAV (from 2013)
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -229,7 +229,7 @@ QtAVDebug::QtAVDebug(QtMsgType t, QDebug *d)
     if (!sFirstRun)
         return;
     sFirstRun = false;
-    //printf("Qt Logging first run........\n");
+    printf("%s\n", aboutQtAV_PlainText().toUtf8().constData());
     // check environment var and call other functions at first Qt logging call
     // always override setLogLevel()
     QByteArray env = qgetenv("QTAV_LOG_LEVEL");

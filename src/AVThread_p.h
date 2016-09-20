@@ -24,8 +24,16 @@
 
 #include <QtCore/QMutex>
 #include <QtCore/QMutexLocker>
+#include <QtCore/QSemaphore>
 #include <QtCore/QVariant>
 #include <QtCore/QWaitCondition>
+#if QT_VERSION >= QT_VERSION_CHECK(4, 7, 0)
+#include <QtCore/QElapsedTimer>
+#else
+#include <QtCore/QTime>
+typedef QTime QElapsedTimer;
+#endif
+
 #include "PacketBuffer.h"
 #include "utils/ring.h"
 
@@ -35,7 +43,6 @@ QT_END_NAMESPACE
 namespace QtAV {
 
 const double kSyncThreshold = 0.2; // 200 ms
-
 class AVDecoder;
 class AVOutput;
 class AVClock;
@@ -54,11 +61,11 @@ public:
       , outputSet(0)
       , delay(0)
       , statistics(0)
-      , ready(false)
       , seek_requested(false)
       , render_pts0(-1)
       , drop_frame_seek(true)
       , pts_history(30)
+      , wait_err(0)
     {
         tasks.blockFull(false);
 
@@ -82,9 +89,7 @@ public:
     QList<Filter*> filters;
     Statistics *statistics; //not obj. Statistics is unique for the player, which is in AVPlayer
     BlockingQueue<QRunnable*> tasks;
-    QWaitCondition ready_cond;
-    QMutex ready_mutex;
-    bool ready;
+    QSemaphore sem;
     bool seek_requested;
     //only decode video without display or skip decode audio until pts reaches
     qreal render_pts0;
@@ -92,6 +97,9 @@ public:
     static QVariantHash dec_opt_framedrop, dec_opt_normal;
     bool drop_frame_seek;
     ring<qreal> pts_history;
+
+    qint64 wait_err;
+    QElapsedTimer wait_timer;
 };
 
 } //namespace QtAV

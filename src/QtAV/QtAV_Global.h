@@ -46,7 +46,6 @@
 Q_AV_EXPORT unsigned QtAV_Version();
 Q_AV_EXPORT QString QtAV_Version_String();
 Q_AV_EXPORT QString QtAV_Version_String_Long();
-
 namespace QtAV {
 enum LogLevel {
     LogOff,
@@ -134,8 +133,8 @@ enum ColorSpace {
  */
 enum ColorRange {
     ColorRange_Unknown,
-    ColorRange_Limited,
-    ColorRange_Full
+    ColorRange_Limited, // TV, MPEG
+    ColorRange_Full     // PC, JPEG
 };
 
 /*!

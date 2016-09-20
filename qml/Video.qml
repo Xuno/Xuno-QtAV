@@ -1,6 +1,6 @@
 
 import QtQuick 2.0
-import QtAV 1.11
+import QtAV 1.7
 
 /*!
     \qmltype Video
@@ -17,7 +17,7 @@ import QtAV 1.11
 
     \qml
     import QtQuick 2.0
-    import QtAV 1.3
+    import QtAV 1.7
 
     Video {
         id: video
@@ -62,10 +62,18 @@ import QtAV 1.11
 Item {
     id: video
 
+    property alias startPosition: player.startPosition
+    property alias stopPosition: player.stopPosition
     property alias videoFiltersGPU: videoOut.filters
     property alias audioFilters: player.audioFilters
     property alias videoFilters: player.videoFilters
+    property alias audioBackends: player.audioBackends
+    property alias supportedAudioBackends: player.supportedAudioBackends
     property alias backgroundColor: videoOut.backgroundColor
+    property alias brightness: videoOut.brightness
+    property alias contrast: videoOut.contrast
+    property alias hue: videoOut.hue
+    property alias saturation: videoOut.saturation
     property alias frameSize: videoOut.frameSize
     property alias sourceAspectRatio: videoOut.sourceAspectRatio
     property alias opengl: videoOut.opengl

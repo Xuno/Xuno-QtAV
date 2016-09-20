@@ -25,6 +25,7 @@
 #include "QtAV/AudioDecoder.h"
 #include "QtAV/AudioFormat.h"
 #include "QtAV/AudioResampler.h"
+#include "QtAV/MediaIO.h"
 #include "QtAV/VideoCapture.h"
 #include "QtAV/private/AVCompat.h"
 #include "utils/Logger.h"
@@ -69,12 +70,13 @@ AVPlayer::Private::Private()
     , relative_time_mode(true)
     , media_start_pts(0)
     , media_end(kInvalidPosition)
-    , last_position(0)
     , reset_state(true)
     , start_position(0)
     , stop_position(kInvalidPosition)
+    , start_position_norm(0)
+    , stop_position_norm(kInvalidPosition)
     , repeat_max(0)
-    , repeat_current(0)
+    , repeat_current(-1)
     , timer_id(-1)
     , audio_track(0)
     , video_track(0)
@@ -162,12 +164,54 @@ AVPlayer::Private::~Private() {
     }
 }
 
+bool AVPlayer::Private::checkSourceChange()
+{
+    if (current_source.type() == QVariant::String)
+        return demuxer.fileName() != current_source.toString();
+    if (current_source.canConvert<QIODevice*>())
+        return demuxer.ioDevice() != current_source.value<QIODevice*>();
+    return demuxer.mediaIO() != current_source.value<QtAV::MediaIO*>();
+}
+
 void AVPlayer::Private::updateNotifyInterval()
 {
     if (notify_interval <= 0) {
         notify_interval = -Internal::computeNotifyPrecision(demuxer.duration(), demuxer.frameRate());
     }
     qDebug("notify_interval: %d", qAbs(notify_interval));
+}
+
+void AVPlayer::Private::applyFrameRate()
+{
+    qreal vfps = force_fps;
+    bool force = vfps > 0;
+    const bool ao_null = ao && ao->backend().toLower() == QLatin1String("null");
+    if (athread && !ao_null) { // TODO: no null ao check. null ao block internally
+        force = vfps > 0 && !!vthread;
+    } else if (!force) {
+        force = !!vthread;
+        vfps = statistics.video.frame_rate > 0 ? statistics.video.frame_rate : 25;
+        // vfps<0: try to use pts (ExternalClock). if no pts (raw codec), try the default fps(VideoClock)
+        vfps = -vfps;
+    }
+    qreal r = speed;
+    if (force) {
+        clock->setClockAuto(false);
+        // vfps>0: force video fps to vfps. clock must be external
+        clock->setClockType(vfps > 0 ? AVClock::VideoClock : AVClock::ExternalClock);
+        vthread->setFrameRate(vfps);
+        if (statistics.video.frame_rate > 0)
+            r = qAbs(qreal(vfps))/statistics.video.frame_rate;
+    } else {
+        clock->setClockAuto(true);
+        clock->setClockType(athread && ao->isOpen() ? AVClock::AudioClock : AVClock::ExternalClock);
+        if (vthread)
+            vthread->setFrameRate(0.0);
+        ao->setSpeed(1);
+        clock->setSpeed(1);
+    }
+    ao->setSpeed(r);
+    clock->setSpeed(r);
 }
 
 void AVPlayer::Private::initStatistics()
@@ -328,34 +372,17 @@ bool AVPlayer::Private::setupAudioThread(AVPlayer *player)
     af.setSampleRate(avctx->sample_rate);
     af.setSampleFormatFFmpeg(avctx->sample_fmt);
     af.setChannelLayoutFFmpeg(avctx->channel_layout);
-    qDebug() << "audio format from codec: " << af;
     if (!af.isValid()) {
         qWarning("invalid audio format. audio stream will be disabled");
         return false;
     }
-    // 5, 6, 7 channels may not play
-    if (avctx->channels > 2)
-        af.setChannelLayout(ao->preferredChannelLayout());
     //af.setChannels(avctx->channels);
-    // FIXME: workaround. planar convertion crash now!
-    if (af.isPlanar()) {
-        af.setSampleFormat(AudioFormat::packedSampleFormat(af.sampleFormat()));
-    }
-    if (!ao->isSupported(af)) {
-        if (!ao->isSupported(af.sampleFormat())) {
-            af.setSampleFormat(ao->preferredSampleFormat());
-        }
-        if (!ao->isSupported(af.channelLayout())) {
-            af.setChannelLayout(ao->preferredChannelLayout());
-        }
-    }
     // always reopen to ensure internal buffer queue inside audio backend(openal) is clear. also make it possible to change backend when replay.
     //if (ao->audioFormat() != af) {
         //qDebug("ao audio format is changed. reopen ao");
+        ao->setAudioFormat(af); /// set before close to workaround OpenAL context lost
         ao->close();
-        if (ao->audioFormat() != af)
-            ao->setAudioFormat(af);
-        qDebug() << "AudioOutput format: " <<ao->audioFormat();
+        qDebug() << "AudioOutput format: " << ao->audioFormat() << "; requested: " << ao->requestedFormat();
         if (!ao->open()) {
             return false;
         }

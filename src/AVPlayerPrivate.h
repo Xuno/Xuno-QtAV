@@ -22,7 +22,6 @@
 #ifndef QTAV_AVPLAYER_PRIVATE_H
 #define QTAV_AVPLAYER_PRIVATE_H
 
-#include <limits>
 #include "QtAV/AVDemuxer.h"
 #include "QtAV/AVPlayer.h"
 #include "AudioThread.h"
@@ -39,7 +38,9 @@ public:
     Private();
     ~Private();
 
+    bool checkSourceChange();
     void updateNotifyInterval();
+    void applyFrameRate();
     void initStatistics();
     void initBaseStatistics();
     void initCommonStatistics(int s, Statistics::Common* st, AVCodecContext* avctx);
@@ -107,15 +108,9 @@ public:
     bool relative_time_mode;
     qint64 media_start_pts; // read from media stream
     qint64 media_end;
-    /*
-     * unit: s. 0~1. stream's start time/duration(). or last position/duration() if change to new stream
-     * auto set to 0 if stop(). to stream start time if load()
-     *
-     * -1: used by play() to get current playing position
-     */
-    qint64 last_position; //last_pos
     bool reset_state;
     qint64 start_position, stop_position;
+    qint64 start_position_norm, stop_position_norm; // real position
     int repeat_max, repeat_current;
     int timer_id; //notify position change and check AB repeat range. active when playing
 

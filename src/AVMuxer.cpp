@@ -1,8 +1,8 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2015 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
-*   This file is part of QtAV
+*   This file is part of QtAV (from 2015)
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -30,7 +30,6 @@
 namespace QtAV {
 static const char kFileScheme[] = "file:";
 #define CHAR_COUNT(s) (sizeof(s) - 1) // tail '\0'
-extern QString getLocalPath(const QString& fullPath);
 
 // Packet::asAVPacket() assumes time base is 0.001
 static const AVRational kTB = {1, 1000};
@@ -275,7 +274,7 @@ bool AVMuxer::setMedia(const QString &fileName)
     if (d->file.startsWith(QLatin1String("mms:")))
         d->file.insert(3, QLatin1Char('h'));
     else if (d->file.startsWith(QLatin1String(kFileScheme)))
-        d->file = getLocalPath(d->file);
+        d->file = Internal::Path::toLocal(d->file);
     int colon = d->file.indexOf(QLatin1Char(':'));
     if (colon == 1) {
 #ifdef Q_OS_WINRT
@@ -406,6 +405,7 @@ bool AVMuxer::close()
     // custom io will call avio_close in ~MediaIO()
     if (!(d->format_ctx->oformat->flags & AVFMT_NOFILE) && !(d->format_ctx->flags & AVFMT_FLAG_CUSTOM_IO)) {
         if (d->format_ctx->pb) {
+            avio_flush(d->format_ctx->pb);
             avio_close(d->format_ctx->pb);
             d->format_ctx->pb = 0;
         }

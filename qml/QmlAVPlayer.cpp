@@ -52,6 +52,8 @@ QmlAVPlayer::QmlAVPlayer(QObject *parent) :
   , m_fastSeek(false)
   , m_loading(false)
   , mLoopCount(1)
+  , mStart(0)
+  , mStop(PositionMax)
   , mPlaybackRate(1.0)
   , mVolume(1.0)
   , mPlaybackState(StoppedState)
@@ -62,6 +64,7 @@ QmlAVPlayer::QmlAVPlayer(QObject *parent) :
   , m_abort_timeout(true)
   , m_audio_track(0)
   , m_sub_track(0)
+  , m_ao(AudioOutput::backendsAvailable())
 {
     classBegin();
 }
@@ -100,18 +103,13 @@ void QmlAVPlayer::componentComplete()
 {
     // TODO: set player parameters
     if (mSource.isValid() && (mAutoLoad || mAutoPlay)) {
-        mpPlayer->setFile(QUrl::fromPercentEncoding(mSource.toEncoded()));
+        if (mAutoLoad)
+            mpPlayer->load();
+        if (mAutoPlay)
+            mpPlayer->play();
     }
 
     m_complete = true;
-
-    if (mAutoPlay) {
-        if (!mSource.isValid()) {
-            stop();
-        } else {
-            play();
-        }
-    }
 }
 
 bool QmlAVPlayer::hasAudio() const
@@ -138,7 +136,10 @@ void QmlAVPlayer::setSource(const QUrl &url)
     if (mSource == url)
         return;
     mSource = url;
-    mpPlayer->setFile(QUrl::fromPercentEncoding(mSource.toEncoded()));
+    if (url.isLocalFile() || url.scheme().isEmpty() || url.scheme().startsWith("qrc"))
+        mpPlayer->setFile(QUrl::fromPercentEncoding(mSource.toEncoded()));
+    else
+        mpPlayer->setFile(url.toEncoded());
     Q_EMIT sourceChanged(); //TODO: Q_EMIT only when player loaded a new source
 
     if (mHasAudio) {
@@ -156,8 +157,9 @@ void QmlAVPlayer::setSource(const QUrl &url)
         mErrorString = tr("No error");
         Q_EMIT error(mError, mErrorString);
         Q_EMIT errorChanged();
-        stop();
-        //mpPlayer->load(); //QtAV internal bug: load() or play() results in reload
+        stop(); // TODO: no stop for autoLoad?
+        if (mAutoLoad)
+            mpPlayer->load();
         if (mAutoPlay) {
             //mPlaybackState is actually changed in slots. But if set to a new source the state may not change before call play()
             mPlaybackState = StoppedState;
@@ -249,6 +251,10 @@ void QmlAVPlayer::setVideoCodecOptions(const QVariantMap &value)
         return;
     vcodec_opt = value;
     Q_EMIT videoCodecOptionsChanged();
+    if (!mpPlayer) {
+        qWarning("player not ready");
+        return;
+    }
     QVariantHash vcopt;
     for (QVariantMap::const_iterator cit = vcodec_opt.cbegin(); cit != vcodec_opt.cend(); ++cit) {
         vcopt[cit.key()] = cit.value();
@@ -256,6 +262,29 @@ void QmlAVPlayer::setVideoCodecOptions(const QVariantMap &value)
     if (!vcopt.isEmpty())
         mpPlayer->setOptionsForVideoCodec(vcopt);
     mpPlayer->setVideoDecoderPriority(videoCodecPriority());
+}
+
+QVariantMap QmlAVPlayer::avFormatOptions() const
+{
+    return avfmt_opt;
+}
+
+void QmlAVPlayer::setAVFormatOptions(const QVariantMap &value)
+{
+    if (value == avfmt_opt)
+        return;
+    avfmt_opt = value;
+    Q_EMIT avFormatOptionsChanged();
+    if (!mpPlayer) {
+        qWarning("player not ready");
+        return;
+    }
+    QVariantHash avfopt;
+    for (QVariantMap::const_iterator cit = avfmt_opt.cbegin(); cit != avfmt_opt.cend(); ++cit) {
+        avfopt[cit.key()] = cit.value();
+    }
+    if (!avfopt.isEmpty())
+        mpPlayer->setOptionsForFormat(avfopt);
 }
 
 bool QmlAVPlayer::useWallclockAsTimestamps() const
@@ -476,6 +505,24 @@ void QmlAVPlayer::vf_clear(QQmlListProperty<QuickVideoFilter> *property)
     self->m_vfilters.clear();
 }
 
+QStringList QmlAVPlayer::audioBackends() const
+{
+    return m_ao;
+}
+
+void QmlAVPlayer::setAudioBackends(const QStringList &value)
+{
+    if (m_ao == value)
+        return;
+    m_ao = value;
+    Q_EMIT audioBackendsChanged();
+}
+
+QStringList QmlAVPlayer::supportedAudioBackends() const
+{
+    return AudioOutput::backendsAvailable();
+}
+
 int QmlAVPlayer::loopCount() const
 {
     return mLoopCount;
@@ -540,6 +587,41 @@ int QmlAVPlayer::position() const
 bool QmlAVPlayer::isSeekable() const
 {
     return mpPlayer && mpPlayer->isSeekable();
+}
+
+int QmlAVPlayer::startPosition() const
+{
+    return mStart;
+}
+
+void QmlAVPlayer::setStartPosition(int value)
+{
+    if (mStart == value)
+        return;
+    mStart = value;
+    Q_EMIT startPositionChanged();
+    if (mpPlayer) {
+        mpPlayer->setStartPosition(mStart);
+    }
+}
+
+int QmlAVPlayer::stopPosition() const
+{
+    return mStop;
+}
+
+void QmlAVPlayer::setStopPosition(int value)
+{
+    if (mStop == value)
+        return;
+    mStop = value;
+    Q_EMIT stopPositionChanged();
+    if (mpPlayer) {
+        if (value == PositionMax)
+            mpPlayer->setStopPosition();
+        else
+            mpPlayer->setStopPosition(value);
+    }
 }
 
 bool QmlAVPlayer::isFastSeek() const
@@ -609,7 +691,24 @@ void QmlAVPlayer::setPlaybackState(PlaybackState playbackState)
                 if (!vcopt.isEmpty())
                     mpPlayer->setOptionsForVideoCodec(vcopt);
             }
+            if (!avfmt_opt.isEmpty()) {
+                QVariantHash avfopt;
+                for (QVariantMap::const_iterator cit = avfmt_opt.cbegin(); cit != avfmt_opt.cend(); ++cit) {
+                    avfopt[cit.key()] = cit.value();
+                }
+                if (!avfopt.isEmpty())
+                    mpPlayer->setOptionsForFormat(avfopt);
+            }
+
+            mpPlayer->setStartPosition(startPosition());
+            if (stopPosition() == PositionMax)
+                mpPlayer->setStopPosition();
+            else
+                mpPlayer->setStopPosition(stopPosition());
+
             m_loading = true;
+            // TODO: change backends is not thread safe now, so change when stopped
+            mpPlayer->audio()->setBackends(m_ao);
             mpPlayer->play();
         }
         break;
@@ -619,7 +718,6 @@ void QmlAVPlayer::setPlaybackState(PlaybackState playbackState)
         break;
     case StoppedState:
         mpPlayer->stop();
-        mpPlayer->unload();
         m_loading = false;
         mPlaybackState = StoppedState;
         break;
@@ -660,7 +758,7 @@ void QmlAVPlayer::play(const QUrl &url)
 void QmlAVPlayer::play()
 {
     // if not autoPlay, maybe a different source was set and play() was not called
-    if (isAutoLoad() && (playbackState() != StoppedState || m_loading))
+    if (isAutoLoad() && (playbackState() == PlayingState || m_loading))
         return;
     setPlaybackState(PlayingState);
 }

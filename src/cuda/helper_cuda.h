@@ -1,6 +1,6 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -21,14 +21,6 @@
 ///from nv's helper_cuda.h
 
 #include <stdio.h>
-
-#undef NV_CONFIG
-#define NV_CONFIG(FEATURE) (defined QTAV_HAVE_##FEATURE && QTAV_HAVE_##FEATURE)
-
-// high version will define cuXXX macro, so functions here will be not they look like
-#if !NV_CONFIG(DLLAPI_CUDA) && !defined(CUDA_LINK)
-#define CUDA_FORCE_API_VERSION 3010
-#endif
 
 #include "dllapi/nv_inc.h"
 #if NV_CONFIG(DLLAPI_CUDA)

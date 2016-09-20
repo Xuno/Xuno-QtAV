@@ -60,11 +60,11 @@
 //#include "filters/AVFilterSubtitle.h"
 #include "playlist/PlayList.h"
 #include "../common/common.h"
-#include <QUrl>
-#ifdef OS_WINDOWS
-#include "filters/advancedfilter.h"
-#endif
 
+#include <QUrl>
+#ifndef QT_NO_OPENGL
+#include "QtAV/GLSLFilter.h"
+#endif
 
 /*
  *TODO:
@@ -116,9 +116,7 @@ MainWindow::MainWindow(QWidget *parent) :
   , mCustomFPS(0.)
   , mPlayerScale(1.)
   , m_preview(0)
-#ifdef ADVANCEDFILTER_H
-  , mpAdvancedFilter(0)
-#endif
+  , m_shader(NULL)
 {
     XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
     XUNOpresetUrl=XUNOserverUrl+QString::fromLatin1("/getpreset.php?");
@@ -171,7 +169,6 @@ void MainWindow::initPlayer()
     //mpSubtitle->installTo(mpPlayer); //filter on frame
     mpSubtitle->setPlayer(mpPlayer);
     //mpPlayer->setAudioOutput(AudioOutputFactory::create(AudioOutputId_OpenAL));
-    installAdvancedFilter();
     installGLSLFilter();
     //installSaveGL();
 
@@ -182,6 +179,7 @@ void MainWindow::initPlayer()
     onCaptureConfigChanged();
     onAVFilterVideoConfigChanged();
     onAVFilterAudioConfigChanged();
+    connect(&Config::instance(), SIGNAL(forceFrameRateChanged()), SLOT(setFrameRate()));
     connect(&Config::instance(), SIGNAL(captureDirChanged(QString)), SLOT(onCaptureConfigChanged()));
     connect(&Config::instance(), SIGNAL(captureFormatChanged(QString)), SLOT(onCaptureConfigChanged()));
     connect(&Config::instance(), SIGNAL(captureQualityChanged(int)), SLOT(onCaptureConfigChanged()));
@@ -227,7 +225,7 @@ void MainWindow::stopUnload()
 {
     if (mpPlayer){
         mpPlayer->stop();
-        mpPlayer->unload();
+        //        mpPlayer->unload();
     }
 }
 
@@ -728,8 +726,14 @@ void MainWindow::setupUi()
     connect(mpTimeSlider, SIGNAL(sliderPressed()), SLOT(seek()));
     connect(mpTimeSlider, SIGNAL(onLeave()), SLOT(onTimeSliderLeave()));
     connect(mpTimeSlider, SIGNAL(onHover(int,int)), SLOT(onTimeSliderHover(int,int)));
+
     //connect(mpWebBtn, SIGNAL(clicked()), SLOT(onXunoBrowser()));
     connect(mpFullScreenBtn, SIGNAL(clicked()), SLOT(onFullScreen()));
+
+    connect(&Config::instance(), SIGNAL(userShaderEnabledChanged()), SLOT(onUserShaderChanged()));
+    connect(&Config::instance(), SIGNAL(fragHeaderChanged()), SLOT(onUserShaderChanged()));
+    connect(&Config::instance(), SIGNAL(fragSampleChanged()), SLOT(onUserShaderChanged()));
+    connect(&Config::instance(), SIGNAL(fragPostProcessChanged()), SLOT(onUserShaderChanged()));
 
     QTimer::singleShot(0, this, SLOT(initPlayer()));
 }
@@ -753,7 +757,9 @@ void MainWindow::changeChannel(QAction *action)
         qWarning("close audio failed");
         return;
     }
-    ao->audioFormat().setChannelLayout(cl);
+    AudioFormat af(ao->audioFormat());
+    af.setChannelLayout(cl);
+    ao->setAudioFormat(af);
     if (!ao->open()) {
         qWarning("open audio failed");
         return;
@@ -883,8 +889,19 @@ bool MainWindow::setRenderer(QtAV::VideoRenderer *renderer)
     mpOSD->installTo(mpRenderer);
     mpSubtitle->installTo(mpRenderer);
 
-    //mpRenderer->widget()->hide();
-
+    onUserShaderChanged();
+#define GL_ASS 0
+#if GL_ASS
+    GLSLFilter* glsl = new GLSLFilter(this);
+    glsl->setOutputSize(QSize(4096, 2160));
+    //mpRenderer->installFilter(glsl);
+    if (mpRenderer->opengl()) {
+        connect(mpRenderer->opengl(), &OpenGLVideo::beforeRendering, [this](){
+            OpenGLVideo* glv = mpRenderer->opengl();
+            glv->setSubImages(mpSubtitle->subImages(glv->frameTime(), glv->frameWidth(), glv->frameHeight()));
+        });
+    }
+#endif
     return true;
 }
 
@@ -1142,13 +1159,12 @@ void MainWindow::onStartPlay()
     analyeUsedFPS();
     if (mpImgSeqExtract) mpImgSeqExtract->setEndTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
     reSizeByMovie();
-    QTimer::singleShot(100, this, SLOT(runMpvPlayer()));
 }
 
 void MainWindow::onStopPlay()
 {
     mpPlayer->setPriority(idsFromNames(Config::instance().decoderPriorityNames()));
-    if (mpPlayer->currentRepeat() < mpPlayer->repeat())
+    if (mpPlayer->currentRepeat() >= 0 && mpPlayer->currentRepeat() < mpPlayer->repeat())
         return;
     // use shortcut to replay in EventFilter, the options will not be set, so set here
     mpPlayer->setFrameRate(Config::instance().forceFrameRate());
@@ -1177,12 +1193,18 @@ void MainWindow::onStopPlay()
     unsetCursor();
     if (m_preview)
         m_preview->setFile(QString());
-    runMpvPlayerStop();
 }
 
 void MainWindow::onSpeedChange(qreal speed)
 {
     mpSpeed->setText(QString::fromLatin1("%1").arg(speed, 4, 'f', 2, QLatin1Char('0')));
+}
+
+void MainWindow::setFrameRate()
+{
+    if (!mpPlayer)
+        return;
+    mpPlayer->setFrameRate(Config::instance().forceFrameRate());
 }
 
 void MainWindow::seek(int value)
@@ -1248,12 +1270,6 @@ void MainWindow::resizeEvent(QResizeEvent *e)
 {
     Q_UNUSED(e);
     QWidget::resizeEvent(e);
-    if (mpvPlayerWindow1 && Config::instance().advancedFilterEnabled()) {
-        mpvPlayerWindow1->resize(e->size());
-        //        if (mpRenderer){
-        //            mpRenderer->widget()->move(0,0);
-        //        }
-    }
     /*
     if (mpTitle)
         QLabelSetElideText(mpTitle, QFileInfo(mFile).fileName(), e->size().width());
@@ -1388,6 +1404,7 @@ void MainWindow::wheelEvent(QWheelEvent *e)
 #endif //WHEEL_SPEED
     QPointF p = mpRenderer->widget()->mapFrom(this, e->pos());
     QPointF fp = mpRenderer->mapToFrame(p);
+    //qDebug() <<  p << fp;
     if (fp.x() < 0)
         fp.setX(0);
     if (fp.y() < 0)
@@ -1396,13 +1413,21 @@ void MainWindow::wheelEvent(QWheelEvent *e)
         fp.setX(mpRenderer->videoFrameSize().width());
     if (fp.y() > mpRenderer->videoFrameSize().height())
         fp.setY(mpRenderer->videoFrameSize().height());
-
     QRectF viewport = QRectF(mpRenderer->mapToFrame(QPointF(0, 0)), mpRenderer->mapToFrame(QPointF(mpRenderer->rendererWidth(), mpRenderer->rendererHeight())));
     //qDebug("vo: (%.1f, %.1f)=> frame: (%.1f, %.1f)", p.x(), p.y(), fp.x(), fp.y());
     qreal zoom = 1.0 + deg*3.14/180.0;
     if (!dp.isNull()) {
         zoom = 1.0 + (qreal)dp.y()/100.0;
     }
+    static qreal z = 1.0;
+    z *= zoom;
+    if (z < 1.0)
+        z = 1.0;
+    qreal x0 = fp.x() - fp.x()/z;
+    qreal y0 = fp.y() - fp.y()/z;
+    //qDebug() << "fr: " << QRectF(x0, y0, qreal(mpRenderer->videoFrameSize().width())/z, qreal(mpRenderer->videoFrameSize().height())/z) << fp << z;
+    mpRenderer->setRegionOfInterest(QRectF(x0, y0, qreal(mpRenderer->videoFrameSize().width())/z, qreal(mpRenderer->videoFrameSize().height())/z));
+    return;
     QTransform m;
     m.translate(fp.x(), fp.y());
     m.scale(1.0/zoom, 1.0/zoom);
@@ -1598,6 +1623,13 @@ void MainWindow::toggleRepeat(bool r)
     if (mpPlayer) {
         mpPlayer->setRepeat(mpRepeatLoop->isChecked()?-1:mRepeateMax-1);
         mpTimeSlider->setVisibleVisualLimit(r);
+
+        if (r) {
+            repeatAChanged(mpRepeatA->time());
+            repeatBChanged(mpRepeatB->time());
+        } else {
+            mpPlayer->setTimeRange(0);
+        }
     }
 }
 
@@ -1953,6 +1985,24 @@ void MainWindow::onAbortOnTimeoutChanged()
     mpPlayer->setInterruptOnTimeout(Config::instance().abortOnTimeout());
 }
 
+void MainWindow::onUserShaderChanged()
+{
+    if (!mpRenderer || !mpRenderer->opengl())
+        return;
+#ifndef QT_NO_OPENGL
+    if (Config::instance().userShaderEnabled()) {
+        if (!m_shader)
+            m_shader = new DynamicShaderObject(this);
+        m_shader->setHeader(Config::instance().fragHeader());
+        m_shader->setSample(Config::instance().fragSample());
+        m_shader->setPostProcess(Config::instance().fragPostProcess());
+        mpRenderer->opengl()->setUserShader(m_shader);
+    } else {
+        mpRenderer->opengl()->setUserShader(NULL);
+    }
+#endif
+}
+
 void MainWindow::setup()
 {
     ConfigDialog::display();
@@ -2055,9 +2105,6 @@ void MainWindow::workaroundRendererSize()
     if (!mpRenderer)
         return;
 
-    if (mpvPlayerWindow)
-        return;
-
     QSize s = rect().size();
     //resize(QSize(s.width()-1, s.height()-1));
     //resize(s); //window resize to fullscreen size will create another fullScreenChange event
@@ -2096,23 +2143,11 @@ void MainWindow::reSizeByMovie()
         t.setHeight(st.video_only.height*mPlayerScale);
     }
     if (t.isValid() && (!t.isNull())) {
-
-        if (mpvPlayerWindow) {
-            qDebug()<<"MainWindow::reSizeByMovie"<<t;
-            mpRenderer->widget()->resize(t);
-            mpRenderer->widget()->move(0,0);
-            mpvPlayerWindow->resize(t);
-        }else{
-            resize(t);
-            if (mpGLSLFilter) {
-                mpGLSLFilter->setOutputSize(t);
-            }
-            //installGLSLFilter(t);
+        resize(t);
+        if (mpGLSLFilter) {
+            mpGLSLFilter->setOutputSize(t);
         }
-
-        //        if (Config::instance().advancedFilterEnabled()){
-        //           //mpRenderer->widget()->move(st.video_only.width-1,st.video_only.height-1);
-        //        }
+        //installGLSLFilter(t);
     }
 }
 
@@ -2241,67 +2276,13 @@ void MainWindow::analyeUsedFPS()
         }
 }
 
-void MainWindow::installAdvancedFilter()
-{
-    //return;
-    qDebug()<<"MainWindow::installAdvancedFilter";
-    if (Config::instance().advancedFilterEnabled()){
-
-        mpvPlayerWindow = new QWidget(this);
-        mpvPlayerWindow->setWindowTitle(tr("XunoPlayer MPV view"));
-        //mpvPlayerWindow->setWindowFlags(Qt::Dialog);
-        //mpvPlayerWindow->setWindowFlags(this->windowFlags() & ~Qt::WindowCloseButtonHint & ~Qt::WindowMinMaxButtonsHint & Qt::CustomizeWindowHint);
-        mpvPlayerWindow->setMinimumHeight(125);//785
-        mpvPlayerWindow->setMinimumHeight(55);
-        mpvPlayerWindow->setStyleSheet("background-color:black;");
-        //mpvPlayerWindow->move(0,0);
-
-#ifdef ADVANCEDFILTER_H
-        if (mpAdvancedFilter==0 && mpPlayer){
-            mpAdvancedFilter = new AdvancedFilter(this);
-            connect(mpAdvancedFilter, &AdvancedFilter::onSentFrame,this,&MainWindow::advacedFilterSentFrame);
-            mpAdvancedFilter->setEnabled(true);
-            mpAdvancedFilter->installTo(mpPlayer);
-            mpAdvancedFilter->setPlayer(mpPlayer);
-#ifdef RUNMPVPIPE_H
-            if (!mpvpipe) {
-                mpvpipe=new runmpvpipe();
-                mpvpipe->setWidget(mpvPlayerWindow);
-                connect(mpvpipe,SIGNAL(ready()),this,SLOT(runMpvPlayerRunned()));
-                connect(mpvpipe,SIGNAL(finished(int)),this,SLOT(runMpvPlayerFinished(int)));
-            }
-            mpAdvancedFilter->setMpvPipe(mpvpipe);
-#endif
-        }
-#endif
-
-        if (mpRenderer){
-            QWidget *r = mpRenderer->widget();
-            //release old renderer and add new
-            if (r && mpvPlayerWindow && mpPlayerLayout) {
-                mpvPlayerWindow->resize(r->size());
-                mpPlayerLayout->replaceWidget(r,mpvPlayerWindow);
-                r->setParent(mpvPlayerWindow);
-                r->move(0,0);
-                //r->move(-r->size().width()-1,r->size().height()-1);
-            }
-        }
-        mpvPlayerWindow->show();
-
-        //mpPlayerLayout->addWidget(mpvPlayerWindow);
-        // mpvPlayerWindow->raise();
-
-    }
-
-}
-
 void MainWindow::installShaderXuno()
 {
     if (mpRenderer && mpRenderer->opengl()){
         if (shaderXuno==Q_NULLPTR) shaderXuno=new ShaderFilterXuno();
         if (shaderXuno!=Q_NULLPTR) {
             shaderXuno->setGammaValue(0.f);
-            shaderXuno->setSharpValue(0.f);
+            shaderXuno->setSharpValue(-1.f); //-1..0..1
             //mpRenderer->opengl()->setUserShader(shaderXuno);
         }
     }
@@ -2309,42 +2290,11 @@ void MainWindow::installShaderXuno()
 
 void MainWindow::installSaveGL()
 {
-
     if (mSaveGLXuno==Q_NULLPTR && mpPlayer){
         mSaveGLXuno=new SaveGLXuno(this);
         mSaveGLXuno->setPlayer(mpPlayer);
     }else if (mpRenderer && mpRenderer->opengl()){
         if (mSaveGLXuno==Q_NULLPTR) mSaveGLXuno=new SaveGLXuno(this);
-    }
-
-
-    if (Config::instance().advancedFilterEnabled()){
-
-        mpvPlayerWindow = new QWidget(this);
-        mpvPlayerWindow->setWindowTitle(tr("XunoPlayer MPV view"));
-        //mpvPlayerWindow->setWindowFlags(Qt::Dialog);
-        //mpvPlayerWindow->setWindowFlags(this->windowFlags() & ~Qt::WindowCloseButtonHint & ~Qt::WindowMinMaxButtonsHint & Qt::CustomizeWindowHint);
-        mpvPlayerWindow->setMinimumHeight(125);//785
-        mpvPlayerWindow->setMinimumHeight(11);
-        mpvPlayerWindow->setStyleSheet("background-color:black;");
-        //mpvPlayerWindow->move(0,0);
-
-        if (mpRenderer){
-            QWidget *r = mpRenderer->widget();
-            //release old renderer and add new
-            if (r && mpvPlayerWindow && mpPlayerLayout) {
-                //mpvPlayerWindow->resize(r->size());
-                mpPlayerLayout->replaceWidget(r,mpvPlayerWindow);
-                r->setParent(mpvPlayerWindow);
-                r->move(0,0);
-                //r->move(-r->size().width()-1,r->size().height()-1);
-            }
-        }
-        mpvPlayerWindow->show();
-
-        //mpPlayerLayout->addWidget(mpvPlayerWindow);
-        // mpvPlayerWindow->raise();
-
     }
 }
 
@@ -2359,74 +2309,6 @@ void MainWindow::installGLSLFilter()
         bool state=mpRenderer->installFilter(mpGLSLFilter);
         qDebug()<<"installXunoGLSLFilter state"<<state;
     }
-}
-
-void MainWindow::runMpvPlayer()
-{
-    Statistics st=mpPlayer->statistics();
-    qreal fps=st.video.frame_rate;
-#define useFrameGeometry 1
-#if (useFrameGeometry)
-    int frameW=st.video_only.width;
-    int frameH=st.video_only.height;
-#else
-    int frameW=mpPlayer->renderer()->rendererWidth();
-    int frameH=mpPlayer->renderer()->rendererHeight();
-#endif
-    //    const int bytesPerPixel=4;
-    //    int framebytes=frameW*frameH*bytesPerPixel;
-    //    int serverPort=8888;
-#ifdef RUNMPVPIPE_H
-    if (mpvpipe){
-        mpvpipe->setFameInfo(frameW,frameH,fps);
-        if (mpvpipe->runApp()){
-            //mpvpipe->moveMpvApp();
-        }
-    }
-#endif
-    //    QString mpvparam;//="--vo-defaults=opengl:scale=ewa_lanczossharp:cscale=haasnsoft:dscale=mitchell:target-prim=bt.709:target-trc=srgb:scaler-resizes-only:no-deband:prescale-passes=2:prescale-downscaling-threshold=1.6:prescale=superxbr:superxbr-sharpness=0.7";
-    //    //mpv.com "tcp://localhost:8888" --cache=no --demuxer=rawvideo --demuxer-rawvideo-mp-format=bgra --demuxer-rawvideo-size=1228800 --demuxer-rawvideo-fps=25  --demuxer-rawvideo-w=640 --demuxer-rawvideo-h=480 --no-audio
-    //    mpvparam = QString("tcp://127.0.0.1:%1 --cache=no --demuxer=rawvideo --demuxer-rawvideo-mp-format=bgra --demuxer-rawvideo-size=%2 --demuxer-rawvideo-fps=%3  --demuxer-rawvideo-w=%4 --demuxer-rawvideo-h=%5 --no-audio").arg(serverPort).arg(framebytes).arg(fps).arg(frameW).arg(frameH);
-    //    qDebug()<<"Start mpv.com"<<mpvparam;
-    //    QProcess::startDetached("mpv.com", mpvparam.split(" "),QApplication::applicationDirPath(),&mpvPlayerPorcessId);
-    //    qDebug()<<"mpv.com mpvPlayerPorcessId"<<mpvPlayerPorcessId;
-
-}
-
-void MainWindow::runMpvPlayerStop()
-{
-#ifdef RUNMPVPIPE_H
-    if (mpvpipe){
-        //if (mpvPlayerWindow1) mpvPlayerWindow1->close();
-        mpvpipe->closeApp();
-    }
-#endif
-}
-
-void MainWindow::runMpvPlayerRunned()
-{
-    qDebug()<<"MainWindow::runMpvPlayerRunned";
-}
-
-void MainWindow::runMpvPlayerFinished(int c)
-{
-    qDebug()<<"MainWindow::runMpvPlayerFinished"<<c;
-}
-
-void MainWindow::advacedFilterSentFrame()
-{
-    //qDebug()<<"MainWindow::advacedFilterSentFrame";
-#ifdef RUNMPVPIPE_H
-    if (mpvpipe && !mpvpipe->getMovedApp()) {
-        QWidget *r=nullptr;
-        r=mpvpipe->moveMpvApp();
-        if (r){
-            mpvPlayerWindow1=r;
-            //mpPlayerLayout->replaceWidget(r,mpvPlayerWindow);
-            //r->deleteLater();
-        }
-    }
-#endif
 }
 
 void MainWindow::captureGL()

@@ -48,10 +48,11 @@ const char *ShaderFilterXuno::userShaderHeader(QOpenGLShader::ShaderType type) c
 
 const char *ShaderFilterXuno::userSample() const
 {
-    return GLSL(
+      return GLSL(
                 \nvec4 sample2d(sampler2D tex, vec2 pos, int plane)
                 \n{
                 \n#ifdef USED_FILTERS
+                \n  if (u_filterkernel[4]!=1.){
                 \n    vec3 sum = vec3(0.0);
                 \n    vec4 c;
                 \n    float a;
@@ -63,6 +64,9 @@ const char *ShaderFilterXuno::userSample() const
                 \n    c.rgb=sum.rgb;
                 \n    c.a=a;
                 \n    return c;
+                \n  }else{
+                \n    return texture(tex, pos);
+                \n  }
                 \n#else
                 \n    return texture(tex, pos);
                 \n#endif
@@ -72,9 +76,10 @@ const char *ShaderFilterXuno::userSample() const
 
 const char *ShaderFilterXuno::userPostProcess() const
 {
-    return GLSL(
+      return GLSL(
                 \n#ifdef USED_GAMMA
-                \ngl_FragColor.rgb = pow(gl_FragColor.rgb, 1.0 / vec3(u_gammaRGB));
+                \nif (u_gammaRGB!=1.)
+                \n gl_FragColor.rgb = pow(gl_FragColor.rgb, 1.0 / vec3(u_gammaRGB));
                 \n#endif //USED_GAMMA
             );
 }
@@ -84,16 +89,18 @@ void ShaderFilterXuno::setUserUniformValue(Uniform &u)
     if (u.name==QByteArray("u_gammaRGB")){
         u.set(u_gammaRGB);
     }else if(u.name==QByteArray("u_filterkernel")){
-        GLfloat fs=(GLfloat)filterSharp;
-        GLfloat fsa=(GLfloat)-((fs-(qreal)1.0)/(qreal)4.0);
+        if (filterSharp!=1.){
+            GLfloat fs=(GLfloat)filterSharp;
+            GLfloat fsa=(GLfloat)-((fs-(qreal)1.0)/(qreal)4.0);
 
-        GLfloat filterkernel[9] =  {
-                     0.,fsa ,0.,
-                   fsa, fs ,fsa,
-                     0.,fsa ,0.
-         };
+            GLfloat filterkernel[9] =  {
+                0.,fsa ,0.,
+                fsa, fs ,fsa,
+                0.,fsa ,0.
+            };
 
-        u.set(filterkernel);
+            u.set(filterkernel);
+        }
     }else if(u.name==QByteArray("u_pixeloffsetkernel")){
         //u.set((QVector)pixeloffsetkernel.data());
     }
@@ -102,18 +109,18 @@ void ShaderFilterXuno::setUserUniformValue(Uniform &u)
 bool ShaderFilterXuno::setUserUniformValues()
 {
     //Uniform.set(const T& value, int count);
-    GLfloat fs=(GLfloat)filterSharp;
-    GLfloat fsa=(GLfloat)-((fs-(qreal)1.0)/(qreal)4.0);
+        GLfloat fs=(GLfloat)filterSharp;
+        GLfloat fsa=(GLfloat)-((fs-(qreal)1.0)/(qreal)4.0);
 
-    GLfloat filterkernel[9] =  {
-                 0.,fsa ,0.,
-               fsa, fs ,fsa,
-                 0.,fsa ,0.
-     };
+        GLfloat filterkernel[9] =  {
+            0.,fsa ,0.,
+            fsa, fs ,fsa,
+            0.,fsa ,0.
+        };
 
-    program()->setUniformValue("u_gammaRGB", u_gammaRGB);
-    program()->setUniformValueArray("u_pixeloffsetkernel", pixeloffsetkernel,9);
-    program()->setUniformValueArray("u_filterkernel", filterkernel, 9,1);
+        program()->setUniformValueArray("u_pixeloffsetkernel", pixeloffsetkernel,9);
+        program()->setUniformValueArray("u_filterkernel", filterkernel, 9,1);
+        program()->setUniformValue("u_gammaRGB", u_gammaRGB);
     return true;
 }
 

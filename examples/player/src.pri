@@ -21,14 +21,11 @@ SOURCES += main.cpp \
     config/PropertyEditor.cpp \
     config/AVFormatConfigPage.cpp \
     config/AVFilterConfigPage.cpp \
-    filters/AVFilterSubtitle.cpp \
-    $$PWD/filters/netstreamserver.cpp \
-    $$PWD/filters/netstreamthread.cpp \
-    $$PWD/filters/runmpvpipe.cpp \
-    $$PWD/filters/advancedfilter.cpp \
     $$PWD/filters/ShaderFilterXuno.cpp \
     $$PWD/filters/savegl.cpp \
-    $$PWD/filters/XunoGlslFilter.cpp
+    $$PWD/filters/XunoGlslFilter.cpp \
+    config/ShaderPage.cpp \
+    filters/AVFilterSubtitle.cpp
 
 HEADERS += \
     MainWindow.h \
@@ -54,10 +51,6 @@ HEADERS += \
     config/AVFilterConfigPage.h \
     filters/AVFilterSubtitle.h \
     $$PWD/version.h \
-    $$PWD/filters/netstreamserver.h \
-    $$PWD/filters/netstreamthread.h \
-    $$PWD/filters/runmpvpipe.h \
-    $$PWD/filters/advancedfilter.h \
     $$PWD/filters/ShaderFilterXuno.h \
     $$PWD/filters/savegl.h \
     $$PWD/filters/XunoGlslFilter.h
@@ -74,4 +67,5 @@ HEADERS += \
     config/ImageSequenceConfigPage.h \
     config/configwebmemu.h \
     config/WebConfigPage.h \
-    config/ImageSequenceExtractControl.h
+    config/ImageSequenceExtractControl.h \
+    config/ShaderPage.h

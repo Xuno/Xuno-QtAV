@@ -46,7 +46,6 @@ QString QtAV_Version_String_Long()
     return QString::fromLatin1(QTAV_VERSION_STR_LONG);
 }
 
-
 namespace QtAV {
 
 namespace Internal {

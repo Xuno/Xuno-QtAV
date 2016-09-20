@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV:  Multimedia framework based on Qt and FFmpeg
-    Copyright (C) 2012-2065 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV (from 2014)
 
@@ -18,21 +18,17 @@
     License along with this library; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ******************************************************************************/
-
 #ifndef QTAV_SUBTITLE_H
 #define QTAV_SUBTITLE_H
-
+#include <QtAV/SubImage.h>
 #include <QtCore/QObject>
 #include <QtCore/QStringList>
 #include <QtCore/QUrl>
 #include <QtGui/QImage>
-#include <QtAV/QtAV_Global.h>
-
 /*
  * to avoid read error, subtitle size > 10*1024*1024 will be ignored.
  */
 namespace QtAV {
-
 class Q_AV_EXPORT SubtitleFrame
 {
 public:
@@ -162,6 +158,7 @@ public:
       * \return empty image if no image, or subtitle processor does not support renderering
       */
     QImage getImage(int width, int height, QRect* boundingRect = 0);
+    SubImageSet getSubImages(int width, int height, QRect* boundingRect = 0);
     // used for embedded subtitles.
     /*!
      * \brief processHeader
@@ -182,7 +179,7 @@ public:
     void setFontsDir(const QString& value);
     bool isFontFileForced() const;
     void setFontFileForced(bool value);
-public slots:
+public Q_SLOTS:
     /*!
      * \brief start
      * start to process the whole subtitle content in a thread
@@ -190,7 +187,7 @@ public slots:
     void load();
     void loadAsync();
     void setTimestamp(qreal t);
-signals:
+Q_SIGNALS:
     // TODO: also add to AVPlayer?
     /// empty path if load from raw data
     void loaded(const QString& path = QString());

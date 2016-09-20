@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV Player Demo:  this file is part of QtAV examples
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -27,9 +27,6 @@
 #include "config/configwebmemu.h"
 #include "config/ImageSequenceConfigPage.h"
 #include "config/ImageSequenceExtractControl.h"
-#ifdef OS_WINDOWS
-#include "filters/runmpvpipe.h"
-#endif
 #include "filters/ShaderFilterXuno.h"
 #include "filters/savegl.h"
 #include "filters/XunoGlslFilter.h"
@@ -50,6 +47,7 @@ class LibAVFilterVideo;
 class SubtitleFilter;
 class VideoPreviewWidget;
 class GLSLFilter;
+class DynamicShaderObject;
 }
 QT_BEGIN_NAMESPACE
 class QMenu;
@@ -71,7 +69,6 @@ class OSDFilter;
 class AVFilterSubtitle;
 class Preview;
 class ImageSequenceConfigPage;
-//class AdvancedFilter;
 class ShaderFilterXuno;
 
 
@@ -131,6 +128,7 @@ private slots:
     void onStopPlay();
     void onPaused(bool p);
     void onSpeedChange(qreal speed);
+    void setFrameRate();
     void seek();
     void seek(qint64 msec);
     void seek(QTime time);
@@ -168,6 +166,8 @@ private slots:
     void onBufferValueChanged();
     void onAbortOnTimeoutChanged();
 
+    void onUserShaderChanged();
+
     void donate();
     void setup();
 
@@ -187,12 +187,6 @@ private slots:
     void syncVolumeUi(qreal value);
     void onImageSequenceConfig();
     void onImageSequenceToogledFrameExtractor(bool state);
-    void runMpvPlayer();
-    void runMpvPlayerStop();
-    void runMpvPlayerRunned();
-    void runMpvPlayerFinished(int c);
-    void advacedFilterSentFrame();
-
     void captureGL();
 
 protected:
@@ -215,7 +209,6 @@ private:
     bool isFileImgageSequence();
     bool applyCustomFPS();
     void analyeUsedFPS();
-    void installAdvancedFilter();
     void installShaderXuno();
     void installSaveGL();
     void installGLSLFilter();
@@ -291,22 +284,13 @@ private:
     ImgSeqExtractControl *mpImgSeqExtract=0;
     QString aboutXunoQtAV_PlainText();
     QString aboutXunoQtAV_HTML();
-#ifdef ADVANCEDFILTER_H
-    AdvancedFilter *mpAdvancedFilter;
-#endif
-    qint64 mpvPlayerPorcessId=0;
-#ifdef RUNMPVPIPE_H
-    runmpvpipe *mpvpipe=Q_NULLPTR;
-#else
-    void *mpvpipe=Q_NULLPTR;
-#endif
-    QWidget *mpvPlayerWindow=Q_NULLPTR;
-    QWidget *mpvPlayerWindow1=Q_NULLPTR;
+
     ShaderFilterXuno *shaderXuno=Q_NULLPTR;
     SaveGLXuno *mSaveGLXuno=Q_NULLPTR;
 
     XunoGLSLFilter *mpGLSLFilter=Q_NULLPTR;
 
+    QtAV::DynamicShaderObject *m_shader;
 };
 
 

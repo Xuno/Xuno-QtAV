@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
@@ -20,6 +20,7 @@
 ******************************************************************************/
 
 #include "AVThread.h"
+#include <limits>
 #include "AVThread_p.h"
 #include "QtAV/AVClock.h"
 #include "QtAV/AVDecoder.h"
@@ -41,7 +42,6 @@ AVThreadPrivate::~AVThreadPrivate() {
         next_pause = false;
         cond.wakeAll();
     }
-    ready_cond.wakeAll();
     packets.setBlocking(true); //???
     packets.clear();
     QList<Filter*>::iterator it = filters.begin();
@@ -56,11 +56,15 @@ AVThreadPrivate::~AVThreadPrivate() {
 AVThread::AVThread(QObject *parent) :
     QThread(parent)
 {
+    connect(this, SIGNAL(started()), SLOT(onStarted()), Qt::DirectConnection);
+    connect(this, SIGNAL(finished()), SLOT(onFinished()), Qt::DirectConnection);
 }
 
 AVThread::AVThread(AVThreadPrivate &d, QObject *parent)
     :QThread(parent),DPTR_INIT(&d)
 {
+    connect(this, SIGNAL(started()), SLOT(onStarted()), Qt::DirectConnection);
+    connect(this, SIGNAL(finished()), SLOT(onFinished()), Qt::DirectConnection);
 }
 
 AVThread::~AVThread()
@@ -197,8 +201,6 @@ void AVThread::stop()
     d.packets.setBlocking(false); //stop blocking take()
     d.packets.clear();
     pause(false);
-    QMutexLocker lock(&d.ready_mutex);
-    d.ready = false;
     //terminate();
 }
 
@@ -295,6 +297,17 @@ OutputSet* AVThread::outputSet() const
     return d_func().outputSet;
 }
 
+void AVThread::onStarted()
+{
+    d_func().sem.release();
+}
+
+void AVThread::onFinished()
+{
+    if (d_func().sem.available() > 0)
+        d_func().sem.acquire(d_func().sem.available());
+}
+
 void AVThread::resetState()
 {
     DPTR_D(AVThread);
@@ -305,9 +318,8 @@ void AVThread::resetState()
     d.stop = false;
     d.packets.setBlocking(true);
     d.packets.clear();
-    QMutexLocker lock(&d.ready_mutex);
-    d.ready = true;
-    d.ready_cond.wakeOne();
+    d.wait_err = 0;
+    d.wait_timer.invalidate();
 }
 
 bool AVThread::tryPause(unsigned long timeout)
@@ -341,12 +353,12 @@ void AVThread::setStatistics(Statistics *statistics)
     d.statistics = statistics;
 }
 
-void AVThread::waitForReady()
+bool AVThread::waitForStarted(int msec)
 {
-    QMutexLocker lock(&d_func().ready_mutex);
-    while (!d_func().ready) {
-        d_func().ready_cond.wait(&d_func().ready_mutex);
-    }
+    if (!d_func().sem.tryAcquire(1, msec > 0 ? msec : std::numeric_limits<int>::max()))
+        return false;
+    d_func().sem.release(1); //ensure another waitForStarted() continues
+    return true;
 }
 
 void AVThread::waitAndCheck(ulong value, qreal pts)
@@ -354,8 +366,11 @@ void AVThread::waitAndCheck(ulong value, qreal pts)
     DPTR_D(AVThread);
     if (value <= 0)
         return;
+    value += d.wait_err;
+    d.wait_timer.restart();
     //qDebug("wating for %lu msecs", value);
     ulong us = value * 1000UL;
+    const ulong ms = value;
     static const ulong kWaitSlice = 20 * 1000UL; //20ms
     while (us > kWaitSlice) {
         usleep(kWaitSlice);
@@ -365,13 +380,19 @@ void AVThread::waitAndCheck(ulong value, qreal pts)
             us -= kWaitSlice;
         if (pts > 0)
             us = qMin(us, ulong((double)(qMax<qreal>(0, pts - d.clock->value()))*1000000.0));
-        //qDebug("us: %ul, pts: %f, clock: %f", us, pts, d.clock->value());
+        //qDebug("us: %lu/%lu, pts: %f, clock: %f", us, ms-et.elapsed(), pts, d.clock->value());
         processNextTask();
+        us = qMin<ulong>(us, (ms-d.wait_timer.elapsed())*1000);
     }
-    if (us > 0) {
+    if (us > 0)
         usleep(us);
-        processNextTask();
-    }
+    //qDebug("wait elapsed: %lu %d/%lld", us, ms, et.elapsed());
+    const int de = ((ms-d.wait_timer.elapsed()) - d.wait_err);
+    if (de > -3 && de < 3)
+        d.wait_err += de;
+    else
+        d.wait_err += de > 0 ? 1 : -1;
+    //qDebug("err: %lld", d.wait_err);
 }
 
 } //namespace QtAV

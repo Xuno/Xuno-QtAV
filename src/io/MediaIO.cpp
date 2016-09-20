@@ -1,9 +1,9 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
-    Copyright (C) 2014-2015 Wang Bin <wbsecg1@gmail.com>
+    QtAV:  Multimedia framework based on Qt and FFmpeg
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
     Initial QAVIOContext.cpp code is from Stefan Ladage <sladage@gmail.com>
 
-*   This file is part of QtAV
+*   This file is part of QtAV (from 2014)
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -171,16 +171,32 @@ const QStringList& MediaIO::protocols() const
     return no_protocols;
 }
 
-#define IODATA_BUFFER_SIZE 32768 //
+#define IODATA_BUFFER_SIZE 32768 // TODO: user configurable
+static const int kBufferSizeDefault = 32768;
+
+void MediaIO::setBufferSize(int value)
+{
+    DPTR_D(MediaIO);
+    if (d.buffer_size == value)
+        return;
+    d.buffer_size = value;
+}
+
+int MediaIO::bufferSize() const
+{
+    return d_func().buffer_size;
+}
 
 void* MediaIO::avioContext()
 {
     DPTR_D(MediaIO);
+    if (d.ctx)
+        return d.ctx;
     // buffer will be released in av_probe_input_buffer2=>ffio_rewind_with_probe_data. always is? may be another context
     unsigned char* buf = (unsigned char*)av_malloc(IODATA_BUFFER_SIZE);
     // open for write if 1. SET 0 if open for read otherwise data ptr in av_read(data, ...) does not change
     const int write_flag = (accessMode() == Write) && isWritable();
-    d.ctx = avio_alloc_context(buf, IODATA_BUFFER_SIZE, write_flag, this, &av_read, write_flag ? &av_write : NULL, &av_seek);
+    d.ctx = avio_alloc_context(buf, bufferSize() > 0 ? bufferSize() : kBufferSizeDefault, write_flag, this, &av_read, write_flag ? &av_write : NULL, &av_seek);
     // if seekable==false, containers that estimate duration from pts(or bit rate) will not seek to the last frame when computing duration
     // but it's still seekable if call seek outside(e.g. from demuxer)
     // TODO: isVariableSize: size = -real_size
@@ -193,10 +209,8 @@ void MediaIO::release()
     DPTR_D(MediaIO);
     if (!d.ctx)
         return;
-    d.ctx->opaque = 0; //in avio_close() opaque is URLContext* and will call ffurl_close()
-    //d.ctx->buffer = 0; //already released by ffio_rewind_with_probe_data; may be another context was freed
-    avio_close(d.ctx); //avio_closep defined since ffmpeg1.1
-    d.ctx = 0;
+    // avio_close is called by avformat_close_input. here we only allocate but no open
+    av_freep(&d.ctx->buffer);
+    av_freep(&d.ctx);
 }
-
 } //namespace QtAV

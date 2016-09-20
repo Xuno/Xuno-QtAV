@@ -1,6 +1,6 @@
 /******************************************************************************
     QtAV Player Demo:  this file is part of QtAV examples
-    Copyright (C) 2012-2015 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
 
@@ -44,12 +44,6 @@ protected:
     virtual void applyFromUi();
 private slots:
     // only emit signals. no value stores.
-    void changeDirByUi(const QString& dir);
-    void changeFormatByUi(const QString& fmt);
-    void changeQualityByUi(int q);
-    void changeTypeByUi(bool state);
-    void formatChanged(const QString &fmt);
-    void typeChanged(int type);
     void selectSaveDir();
     void browseCaptureDir();
 

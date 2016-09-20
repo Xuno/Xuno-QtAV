@@ -37,7 +37,7 @@ protected:
     virtual void applyToUi();
     virtual void applyFromUi();
 private:
-    QCheckBox *m_preview_on,*m_floatcontrol, *m_advancedFilter;
+    QCheckBox *m_preview_on,*m_floatcontrol;
     QSpinBox *m_preview_w;
     QSpinBox *m_preview_h;
     QSpinBox *m_notify_interval;

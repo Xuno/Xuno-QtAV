@@ -1,5 +1,5 @@
 /******************************************************************************
-    QtAV:  Media play library based on Qt and FFmpeg
+    QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
 
 *   This file is part of QtAV
@@ -154,7 +154,7 @@ public:
     struct FrameInfo {
         FrameInfo(qreal t = 0, int s = 0) : timestamp(t), data_size(s) {}
         qreal timestamp;
-        int data_size;
+        int data_size; // TODO: size_t
     };
 
     void resetStatus() {
@@ -177,6 +177,7 @@ public:
     qreal vol;
     qreal speed;
     AudioFormat format;
+    AudioFormat requested;
     QByteArray data;
     //AudioFrame audio_frame;
     quint32 nb_buffers;
@@ -220,7 +221,7 @@ void AudioOutputPrivate::playInitialData()
             ? 0x80 : 0;
     for (quint32 i = 0; i < nb_buffers; ++i) {
         backend->write(QByteArray(buffer_samples*format.bytesPerSample(), c)); // fill silence byte, not always 0. AudioFormat.silenceByte
-        frame_infos.push_back(FrameInfo(0, buffer_samples*format.bytesPerSample()));
+        frame_infos.push_back(FrameInfo(0, 1*format.bytesPerSample())); // initial data can be small (1 instead of buffer_samples)
     }
     backend->play();
 }
@@ -257,8 +258,6 @@ AudioOutput::AudioOutput(QObject* parent)
     , AVOutput(*new AudioOutputPrivate())
 {
     qDebug() << "Registered audio backends: " << AudioOutput::backendsAvailable(); // call this to register
-    d_func().format.setSampleFormat(AudioFormat::SampleFormat_Signed16);
-    d_func().format.setChannelLayout(AudioFormat::ChannelLayout_Stereo);
     setBackends(AudioOutputBackend::defaultPriority()); //ensure a backend is available
 }
 
@@ -278,6 +277,8 @@ QStringList AudioOutput::backendsAvailable()
     while ((i = AudioOutputBackend::next(i)) != NULL) {
         all.append(AudioOutputBackend::name(*i));
     }
+    all = AudioOutputBackend::defaultPriority() << all;
+    all.removeDuplicates();
     return all;
 }
 
@@ -315,7 +316,7 @@ void AudioOutput::setBackends(const QStringList &backendNames)
         connect(d.backend, SIGNAL(muteReported(bool)), SLOT(reportMute(bool)));
     }
 
-    emit backendsChanged();
+    Q_EMIT backendsChanged();
 }
 
 QStringList AudioOutput::backends() const
@@ -355,6 +356,7 @@ bool AudioOutput::open()
     QMutexLocker lock(&d.mutex);
     Q_UNUSED(lock);
     d.available = false;
+    d.paused = false;
     d.resetStatus();
     if (!d.backend)
         return false;
@@ -378,6 +380,7 @@ bool AudioOutput::close()
     QMutexLocker lock(&d.mutex);
     Q_UNUSED(lock);
     d.available = false;
+    d.paused = false;
     d.resetStatus();
     if (!d.backend)
         return false;
@@ -396,14 +399,27 @@ bool AudioOutput::play(const QByteArray &data, qreal pts)
     DPTR_D(AudioOutput);
     if (!d.backend)
         return false;
-    receiveData(data, pts);
+    if (!receiveData(data, pts))
+        return false;
     return d.backend->play();
+}
+
+void AudioOutput::pause(bool value)
+{
+    DPTR_D(AudioOutput);
+    d.paused = value;
+    // backend pause? Without backend pause, the buffered data will be played
+}
+
+bool AudioOutput::isPaused() const
+{
+    return d_func().paused;
 }
 
 bool AudioOutput::receiveData(const QByteArray &data, qreal pts)
 {
     DPTR_D(AudioOutput);
-    if (d.paused)
+    if (isPaused())
         return false;
     d.data = data;
     if (isMute() && d.sw_mute) {
@@ -434,46 +450,64 @@ bool AudioOutput::receiveData(const QByteArray &data, qreal pts)
     return d.backend->write(d.data);
 }
 
-void AudioOutput::setAudioFormat(const AudioFormat& format)
+AudioFormat AudioOutput::setAudioFormat(const AudioFormat& format)
 {
     DPTR_D(AudioOutput);
     // no support check because that may require an open device(AL) while this function is called before ao.open()
     if (d.format == format)
-        return;
+        return format;
+    d.requested = format;
+    if (!d.backend) {
+        d.format = AudioFormat();
+        d.scale_samples = NULL;
+        return AudioFormat();
+    }
+    if (d.backend->isSupported(format)) {
+        d.format = format;
+        d.updateSampleScaleFunc();
+        return format;
+    }
+    AudioFormat af(format);
+    // set channel layout first so that isSupported(AudioFormat) will not always false
+    if (!d.backend->isSupported(format.channelLayout()))
+        af.setChannelLayout(AudioFormat::ChannelLayout_Stereo); // assume stereo is supported
+    bool check_up = af.bytesPerSample() == 1;
+    while (!d.backend->isSupported(af) && !d.backend->isSupported(af.sampleFormat())) {
+        if (af.isPlanar()) {
+            af.setSampleFormat(ToPacked(af.sampleFormat()));
+            continue;
+        }
+        if (af.isFloat()) {
+            if (af.bytesPerSample() == 8)
+                af.setSampleFormat(AudioFormat::SampleFormat_Float);
+            else
+                af.setSampleFormat(AudioFormat::SampleFormat_Signed32);
+        } else {
+            af.setSampleFormat(AudioFormat::make(af.bytesPerSample()/2, false, (af.bytesPerSample() == 2) | af.isUnsigned() /* U8, no S8 */, false));
+        }
+        if (af.bytesPerSample() < 1) {
+            if (!check_up) {
+                qWarning("No sample format found");
+                break;
+            }
+            af.setSampleFormat(AudioFormat::SampleFormat_Float);
+            check_up = false;
+            continue;
+        }
+    }
+    d.format = af;
     d.updateSampleScaleFunc();
-    d.format = format;
+    return af;
 }
 
-AudioFormat& AudioOutput::audioFormat()
+const AudioFormat& AudioOutput::requestedFormat() const
 {
-    return d_func().format;
+    return d_func().requested;
 }
 
 const AudioFormat& AudioOutput::audioFormat() const
 {
     return d_func().format;
-}
-
-void AudioOutput::setSampleRate(int rate)
-{
-    d_func().format.setSampleRate(rate);
-}
-
-int AudioOutput::sampleRate() const
-{
-    return d_func().format.sampleRate();
-}
-
-// TODO: check isSupported
-void AudioOutput::setChannels(int channels)
-{
-    DPTR_D(AudioOutput);
-    d.format.setChannels(channels);
-}
-
-int AudioOutput::channels() const
-{
-    return d_func().format.channels();
 }
 
 void AudioOutput::setVolume(qreal value)
@@ -525,38 +559,6 @@ bool AudioOutput::isSupported(const AudioFormat &format) const
     if (!d.backend)
         return false;
     return d.backend->isSupported(format);
-}
-
-bool AudioOutput::isSupported(AudioFormat::SampleFormat sampleFormat) const
-{
-    DPTR_D(const AudioOutput);
-    if (!d.backend)
-        return false;
-    return d.backend->isSupported(sampleFormat);
-}
-
-bool AudioOutput::isSupported(AudioFormat::ChannelLayout channelLayout) const
-{
-    DPTR_D(const AudioOutput);
-    if (!d.backend)
-        return false;
-    return d.backend->isSupported(channelLayout);
-}
-
-AudioFormat::SampleFormat AudioOutput::preferredSampleFormat() const
-{
-    DPTR_D(const AudioOutput);
-    if (!d.backend)
-        return AudioFormat::SampleFormat_Signed16;
-    return d.backend->preferredSampleFormat();
-}
-
-AudioFormat::ChannelLayout AudioOutput::preferredChannelLayout() const
-{
-    DPTR_D(const AudioOutput);
-    if (!d.backend)
-        return AudioFormat::ChannelLayout_Stereo;
-    return d.backend->preferredChannelLayout();
 }
 
 int AudioOutput::bufferSize() const
@@ -639,16 +641,16 @@ bool AudioOutput::waitForNextBuffer()
         qint64 last_wait = 0LL;
         while (d.processed_remain - processed < next || d.processed_remain < d.data.size()) { //implies next > 0
             const qint64 us = d.format.durationForBytes(next - (d.processed_remain - processed));
-            QMutexLocker lock(&d.mutex);
-            Q_UNUSED(lock);
-            d.cond.wait(&d.mutex, us/1000LL);
+            d.uwait(us);
             d.processed_remain = d.backend->getWritableBytes();
             if (d.processed_remain < 0)
                 return false;
+#if AO_USE_TIMER
             if (!d.timer.isValid()) {
                 qWarning("invalid timer. closed in another thread");
                 return false;
             }
+#endif
             if (us >= last_wait
 #if AO_USE_TIMER
                     && d.timer.elapsed() > 1000

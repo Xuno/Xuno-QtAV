@@ -264,7 +264,7 @@ void VideoCapture::setCaptureDir(const QString &value)
 
 QString VideoCapture::captureDir() const
 {
- return dir;
+    return dir;
 }
 
 /*

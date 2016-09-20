@@ -419,6 +419,7 @@ void SaveGLXuno::saveFromRender()
         int w=0;
         int h=0;
         int bpp=4;
+        m_player->renderer()->enableGetPixels(true);
         bool readypixels=m_player->renderer()->getPixels(pixels, w, h, bpp);
         if (readypixels && pixels && w>0 && h>0){
             if (1){
@@ -437,6 +438,7 @@ void SaveGLXuno::saveFromRender()
                 }
             }
         }
+        m_player->renderer()->enableGetPixels(false);
     }
 }
 

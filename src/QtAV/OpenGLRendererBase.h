@@ -47,9 +47,11 @@ class Q_AV_EXPORT OpenGLRendererBase : public VideoRenderer
 public:
     virtual ~OpenGLRendererBase();
     bool isSupported(VideoFormat::PixelFormat pixfmt) const Q_DECL_OVERRIDE;
+    OpenGLVideo* opengl() const Q_DECL_OVERRIDE;
+    //Xuno addons	
     void enableGetPixels(bool s);
     bool getPixels(uchar *&pixels, int &w, int &h, int &bpp);
-    OpenGLVideo* opengl() const Q_DECL_OVERRIDE;
+    //Xuno addons
 protected:
     virtual bool receiveFrame(const VideoFrame& frame) Q_DECL_OVERRIDE;
     //called in paintEvent before drawFrame() when required
@@ -69,12 +71,13 @@ private:
     bool onSetContrast(qreal c) Q_DECL_OVERRIDE;
     bool onSetHue(qreal h) Q_DECL_OVERRIDE;
     bool onSetSaturation(qreal s) Q_DECL_OVERRIDE;
-    bool isRenderRAWImage=true;
+    //Xuno addons	
+    bool isRenderRAWImage=false;
     uchar *m_RAWImagePixels=Q_NULLPTR;
     int m_RAWImageWidth=0;
     int m_RAWImageHeiht=0;
     int m_RAWImageBPP=4;
-
+    //Xuno addons	
 protected:
     OpenGLRendererBase(OpenGLRendererBasePrivate &d);
 };
