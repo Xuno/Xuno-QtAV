@@ -43,3 +43,13 @@ target.path = $$[QT_INSTALL_BINS]
 include($$PROJECTROOT/deploy.pri)
 
 RESOURCES += res/player.qrc
+
+contains(QMAKE_HOST.arch, x86_64):{
+    message("Host is 64bit")
+}else{
+    message("Host not 64bit")
+}
+DEFINES+= ARCH=\"$$QMAKE_HOST.os\"_\"$$QMAKE_HOST.arch\"
+message("DEFINES: "$$DEFINES)
+
+
