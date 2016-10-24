@@ -49,6 +49,8 @@
 #include <QToolTip>
 #include <QKeyEvent>
 #include <QWheelEvent>
+#include <QStyleFactory>
+
 #include "ClickableMenu.h"
 #include "Slider.h"
 #include "StatisticsView.h"
@@ -120,7 +122,12 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
     XUNOpresetUrl=XUNOserverUrl+QString::fromLatin1("/getpreset.php?");
+    #if defined(Q_OS_MACX) && QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+        QApplication::setStyle(QStyleFactory::create("Fusion"));
+    #endif
+
     setWindowIcon(QIcon(QString::fromLatin1(":/Xuno-QtAV.ico")));
+
     mpOSD = new OSDFilter(this);
     mpSubtitle = new SubtitleFilter(this);
     mpChannelAction = 0;
