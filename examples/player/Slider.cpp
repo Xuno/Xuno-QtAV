@@ -125,6 +125,12 @@ void Slider::setVisualMaxLimit(int max)
     //qDebug()<<"Slider::setVisualMaxLimit"<<visualLimitsMax;
 }
 
+void Slider::clearLimits()
+{
+    visualLimitsMax=0;
+    visualLimitsMin=0;
+}
+
 void Slider::addLimitBar()
 {
     line = new QFrame(this);
