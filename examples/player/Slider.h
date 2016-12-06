@@ -39,6 +39,7 @@ public:
     void addVisualLimits(int min=0, int max=0);
     void setVisualMinLimit(int min);
     void setVisualMaxLimit(int max);
+    void clearLimits();
     void updateLimitBar();
     void setVisibleVisualLimit(bool s);
 

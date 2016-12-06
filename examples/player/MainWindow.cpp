@@ -122,9 +122,9 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
     XUNOpresetUrl=XUNOserverUrl+QString::fromLatin1("/getpreset.php?");
-    #if defined(Q_OS_MACX) && QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-        QApplication::setStyle(QStyleFactory::create("Fusion"));
-    #endif
+#if defined(Q_OS_MACX) && QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QApplication::setStyle(QStyleFactory::create("Fusion"));
+#endif
 
     setWindowIcon(QIcon(QString::fromLatin1(":/Xuno-QtAV.ico")));
 
@@ -1136,6 +1136,7 @@ void MainWindow::onStartPlay()
     setWindowTitle(mTitle);
 
     mpPlayPauseBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/pause.svg")));
+    mpTimeSlider->clearLimits();
     mpTimeSlider->setMinimum(mpPlayer->mediaStartPosition());
     mpTimeSlider->setMaximum(mpPlayer->mediaStopPosition());
     setPlayerPosFromRepeat();
@@ -1147,12 +1148,24 @@ void MainWindow::onStartPlay()
     QTimer::singleShot(3000, this, SLOT(tryHideControlBar()));
     ScreenSaver::instance().disable();
     initAudioTrackMenu();
+
+    mpRepeatA->clearMinimumTime();
+    mpRepeatA->clearMaximumTime();
+    mpRepeatB->clearMinimumTime();
+    mpRepeatB->clearMaximumTime();
+
     mpRepeatA->setMinimumTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStartPosition()));
     mpRepeatA->setMaximumTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
     mpRepeatB->setMinimumTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStartPosition()));
     mpRepeatB->setMaximumTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
-    mpRepeatA->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->startPosition()));
-    mpRepeatB->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->stopPosition()));
+    if (mpRepeatAction->isChecked()) {
+        mpRepeatA->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->startPosition()));
+        mpRepeatB->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->stopPosition()));
+    }else{
+        mpRepeatA->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStartPosition()));
+        mpRepeatB->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
+
+    }
     mCursorTimer = startTimer(3000);
     PlayListItem item = mpHistory->itemAt(0);
     item.setUrl(mFile);
