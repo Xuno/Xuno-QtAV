@@ -176,7 +176,7 @@ void MainWindow::initPlayer()
     //mpSubtitle->installTo(mpPlayer); //filter on frame
     mpSubtitle->setPlayer(mpPlayer);
     //mpPlayer->setAudioOutput(AudioOutputFactory::create(AudioOutputId_OpenAL));
-    installGLSLFilter();
+    //installGLSLFilter();
     //installSaveGL();
 
     EventFilter *ef = new EventFilter(mpPlayer);

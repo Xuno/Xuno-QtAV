@@ -2,6 +2,8 @@
 #include <QDebug>
 #include <QImage>
 
+namespace QtAV {
+
 
 XunoGLSLFilter::XunoGLSLFilter(QObject *parent):
     QtAV::GLSLFilter(parent)
@@ -22,6 +24,7 @@ void XunoGLSLFilter::setShader(QtAV::VideoShader *ush)
 
 void XunoGLSLFilter::beforeRendering()
 {
+    return;
     //qDebug()<<"XunoGLSLFilter::beforeRendering";
     colorTransform();
     if (fbo() && fbo()->isValid() && needSave){
@@ -42,6 +45,7 @@ void XunoGLSLFilter::beforeRendering()
 
 void XunoGLSLFilter::afterRendering()
 {
+     return;
     //qDebug()<<"XunoGLSLFilter::afterRendering()";
     if (fbo() && fbo()->isValid()) {
         if (needSave){
@@ -60,7 +64,7 @@ void XunoGLSLFilter::afterRendering()
             }
             needSave=false;
         }
-        if (1){
+        if (0){
             superscale();
         }
     }
@@ -152,7 +156,7 @@ void XunoGLSLFilter::superscale()
 
 
     //if (initSize.isEmpty()){
-        initSize=outputSize();
+    initSize=outputSize();
     //}
 
     qDebug()<<"superscale" << initSize;
@@ -422,7 +426,7 @@ void XunoGLSLFilter::initTextures()
     qDebug()<<"hasOpenGLFramebufferBlit()"<<QOpenGLFramebufferObject::hasOpenGLFramebufferBlit();
 
     // Load cube.png image
-//QImage image=QImage(":/savefbo_pass_0_1920x1080-empty-shader.bmp");//RAW_Yamaha_960x540.bmp
+    //QImage image=QImage(":/savefbo_pass_0_1920x1080-empty-shader.bmp");//RAW_Yamaha_960x540.bmp
     QImage image=QImage("/home/lex/temp/RAW_Yamaha_960x540.bmp");
 
     //QImage image=fbo()->toImage(false);
@@ -528,3 +532,64 @@ void XunoGLSLFilter::initFrameBufers()
     initFrameBufer(1);
 }
 
+
+
+void XunoGLSLFilter::process(Statistics *statistics, VideoFrame *frame)
+{
+    Q_UNUSED(statistics);
+    Q_UNUSED(frame);
+    if (!isEnabled())
+        return;
+    int t = mTime.elapsed()/100;
+    VideoFilterContext *ctx = static_cast<VideoFilterContext*>(context());
+    if (mCanRot) {
+        mMat.rotate(2, 0, 1, -0.1);
+        ctx->transform = mMat.toTransform();
+    }
+    if (mText.isEmpty()) {
+        if (mImage.isNull())
+            return;
+        if (mCanRot)
+            ctx->drawImage(QPointF(-mImage.width()/2, ctx->rect.y()), mImage, QRectF(0, 0, mImage.width(), mImage.height()));
+        else
+            ctx->drawImage(ctx->rect.topLeft(), mImage, QRectF(0, 0, mImage.width(), mImage.height()));
+        return;
+    }
+    if (mWave) {
+        static int sin_tbl[16] = {
+            0, 38, 71, 92, 100, 92, 71, 38, 0, -38, -71, -92, -100, -92, -71, -38
+        };
+
+        QFontMetrics fm(ctx->font);
+        int h = fm.height();
+        int x = ctx->rect.x();
+        int y = ctx->rect.y() + h + fm.descent();
+        for (int i = 0; i < mText.size(); ++i) {
+            int i16 = (t+i) & 15;
+            ctx->pen.setColor(QColor::fromHsv((15-i16)*16, 255, 255));
+            if (mCanRot)
+                ctx->drawPlainText(QPointF(x-fm.width(mText)/2-ctx->rect.x(), y-sin_tbl[i16]*h/400), mText.mid(i, 1));
+            else
+                ctx->drawPlainText(QPointF(x, y-sin_tbl[i16]*h/400), mText.mid(i, 1));
+            x += fm.width(mText[i]);
+        }
+    } else {
+        qreal c = fabs(sin((float)t));
+        c += mStartValue;
+        c /= 2.0;
+        QLinearGradient g(0, 0, 100, 32);
+        g.setSpread(QGradient::ReflectSpread);
+        g.setColorAt(0, QColor::fromHsvF(c, 1, 1, 1));
+        g.setColorAt(1, QColor::fromHsvF(c > 0.5?c-0.5:c+0.5, 1, 1, 1));
+        ctx->pen.setBrush(QBrush(g));
+        ctx->drawRichText(ctx->rect, mText);
+        return;
+        if (mCanRot) {
+            QFontMetrics fm(ctx->font);
+            ctx->drawPlainText(QRectF(-fm.width(mText)/2, ctx->rect.y(), ctx->rect.width(), ctx->rect.height()), Qt::TextWordWrap, mText);
+        } else {
+            ctx->drawPlainText(ctx->rect, Qt::TextWordWrap, mText);
+        }
+    }
+}
+}

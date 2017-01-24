@@ -26,7 +26,7 @@
 QT_BEGIN_NAMESPACE
 class QOpenGLFramebufferObject;
 QT_END_NAMESPACE
-
+namespace QtAV {
 
 class XunoGLSLFilter : public QtAV::GLSLFilter
 {
@@ -52,6 +52,9 @@ public:
     bool initShaders2(int pass);
     void initFrameBufers();
     void initFrameBufer(int id);
+
+    void process(Statistics *statistics, VideoFrame *frame);
+
 protected slots:
     void beforeRendering();
     void afterRendering();
@@ -74,7 +77,16 @@ private:
     QOpenGLTexture *texture=Q_NULLPTR;
     int frame=0;
 
+    bool mCanRot;
+    bool mWave;
+    QTime mTime;
+    qreal mStartValue;
+    QString mText;
+    QMatrix4x4 mMat;
+    QImage mImage;
+
 
 };
+}
 
 #endif // XUNOGLSLFILTER_H
