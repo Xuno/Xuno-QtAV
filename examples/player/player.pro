@@ -1,6 +1,7 @@
 TARGET = Player
 TEMPLATE = app
 contains(QT_CONFIG, opengl): QT += opengl
+QT += gui
 QT += sql svg
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 greaterThan(QT_MAJOR_VERSION, 4): QT += webenginewidgets
@@ -42,7 +43,8 @@ tv.files = res/tv.ini
 target.path = $$[QT_INSTALL_BINS]
 include($$PROJECTROOT/deploy.pri)
 
-RESOURCES += res/player.qrc
+RESOURCES += res/player.qrc \
+    res/shaders.qrc
 
 contains(QMAKE_HOST.arch, x86_64):{
     message("Host is 64bit")

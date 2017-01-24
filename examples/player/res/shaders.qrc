@@ -1,1 +1,26 @@
-<RCC/>
+<RCC>
+    <qresource prefix="/">
+        <file>shaders/empty-shader-f.glsl</file>
+        <file>shaders/fshader.glsl</file>
+        <file>shaders/fshader2.glsl</file>
+        <file>shaders/fsuperxbr.glsl</file>
+        <file>shaders/shader-blur-f.glsl</file>
+        <file>shaders/shader-mpvxbr-f.glsl</file>
+        <file>shaders/shader-mpvxbr-v.glsl</file>
+        <file>shaders/super-xbr-fast-pass0-f.glsl</file>
+        <file>shaders/super-xbr-fast-pass0-v.glsl</file>
+        <file>shaders/super-xbr-fast-pass0.glsl</file>
+        <file>shaders/super-xbr-fast-pass1-f.glsl</file>
+        <file>shaders/super-xbr-fast-pass1-v.glsl</file>
+        <file>shaders/super-xbr-fast-pass1.glsl</file>
+        <file>shaders/super-xbr-fast-pass2.glsl</file>
+        <file>shaders/super-xbr-params.inc</file>
+        <file>shaders/super-xbr-pass0.glsl</file>
+        <file>shaders/super-xbr-pass1.glsl</file>
+        <file>shaders/super-xbr-pass2.glsl</file>
+        <file>shaders/SuperXbr.hlsl</file>
+        <file>shaders/SuperXbrParams.inc</file>
+        <file>shaders/vshader.glsl</file>
+        <file>shaders/vsuperxbr.glsl</file>
+    </qresource>
+</RCC>
