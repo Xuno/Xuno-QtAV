@@ -6,7 +6,7 @@ QT += sql svg
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 greaterThan(QT_MAJOR_VERSION, 4): QT += webenginewidgets
 TRANSLATIONS = res/player_zh_CN.ts
-VERSION = $$QTAV_VERSION
+!static:VERSION = $$QTAV_VERSION # vc: will create exp and lib, result in static build error
 
 PROJECTROOT = $$PWD/../..
 include($$PROJECTROOT/src/libQtAV.pri)
