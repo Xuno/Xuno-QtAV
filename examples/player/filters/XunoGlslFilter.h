@@ -16,6 +16,15 @@
 #include <QtGui/QOpenGLFramebufferObject>
 #endif
 
+#include <QtGui/qopengl.h>
+#include <QtGui/QOpenGLFunctions>
+#include <QtGui/QOpenGLExtraFunctions>
+#include <QtCore/QStandardPaths>
+#include <QtGui/QOpenGLFramebufferObject>
+#include <QOpenGLShaderProgram>
+#include <QOpenGLTexture>
+#include "geometryengine.h"
+
 
 QT_BEGIN_NAMESPACE
 class QOpenGLFramebufferObject;
@@ -49,7 +58,26 @@ private:
     QtAV::AVPlayer *m_player=Q_NULLPTR;
     qreal brightness=0,contrast=0,hue=0,saturation=0;
 
+    QSize initSize;
+    QVector <QOpenGLShaderProgram *> programs;
+    QVector <QOpenGLFramebufferObject *> m_fbo;
+    int pass=0;
+    int maxPass=0;
+    QVector <int> scales;
+    GeometryEngine *geometries;
+    QStringList shader_files;
+    QString shader_files_prefix,shader_files_include;
+    QOpenGLTexture *texture=Q_NULLPTR;
+    int frame=0;
 
+    void superscale();
+    void initFrameBufers();
+    void initFrameBufer(int id);
+    bool initShaders2(int pass);
+    void initTextures();
+    int addFBO(int scale, bool rotate);
+    int addProgram();
+    bool initShaders(int pass);
 };
 
 #endif // XUNOGLSLFILTER_H
