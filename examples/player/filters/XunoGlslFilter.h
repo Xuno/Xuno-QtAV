@@ -1,5 +1,6 @@
 #ifndef XUNOGLSLFILTER_H
 #define XUNOGLSLFILTER_H
+
 #include <QtAV>
 #include <QtAV/GLSLFilter.h>
 #include <QtAV/OpenGLVideo.h>
@@ -78,6 +79,7 @@ private:
     int addFBO(int scale, bool rotate);
     int addProgram();
     bool initShaders(int pass);
+    bool initShaders_simple(int pass);
 };
 
 #endif // XUNOGLSLFILTER_H

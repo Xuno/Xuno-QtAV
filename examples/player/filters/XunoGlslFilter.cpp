@@ -21,7 +21,7 @@ void XunoGLSLFilter::setShader(QtAV::VideoShader *ush)
 
 void XunoGLSLFilter::beforeRendering()
 {
-    //qDebug()<<"XunoGLSLFilter::beforeRendering";
+    qDebug()<<"XunoGLSLFilter::beforeRendering";
     colorTransform();
     if (fbo() && fbo()->isValid()){
         QOpenGLFunctions *f=opengl()->openGLContext()->functions();
@@ -35,12 +35,12 @@ void XunoGLSLFilter::beforeRendering()
             f->glBindTexture(target,0);
         }
     }
- }
+}
 
 
 void XunoGLSLFilter::afterRendering()
 {
-    //qDebug()<<"XunoGLSLFilter::afterRendering()";
+    qDebug()<<"XunoGLSLFilter::afterRendering()";
     if (fbo() && fbo()->isValid() ) {
         if (needSave){
             QString name=defineFileName();
@@ -142,12 +142,18 @@ QString XunoGLSLFilter::defineFileName()
 }
 
 //------------superscale----------------
+
+
+#define PROGRAM_VERTEX_ATTRIBUTE 0
+#define PROGRAM_TEXCOORD_ATTRIBUTE 1
+
 void XunoGLSLFilter::superscale()
 {
     //QOpenGLFramebufferObject *fbo;
     //QSize size;
     //OpenGLVideo glv;
 
+    QOpenGLFunctions *f=opengl()->openGLContext()->functions();
 
     //if (initSize.isEmpty()){
     initSize=outputSize();
@@ -166,10 +172,10 @@ void XunoGLSLFilter::superscale()
 
     //! [2]
     // Enable depth buffer
-    glEnable(GL_DEPTH_TEST);
+    f->glEnable(GL_DEPTH_TEST);
 
     // Enable back face culling
-    glEnable(GL_CULL_FACE);
+    f->glEnable(GL_CULL_FACE);
     //! [2]
 
     geometries = new GeometryEngine;
@@ -192,11 +198,11 @@ void XunoGLSLFilter::superscale()
 
     maxPass=shader_files.size()-1;
 
-    maxPass=1+0;//last blur
+    maxPass=3+0;//last blur
     //scales per pass relative to previos fbo, note: source first texture always scale=1.0
     //scales<<2<<1<<1<<1;
     //scales<<1<<2<<1<<1<<2<<1<<1;
-    scales<<2<<1<<1;
+    scales<<2<<1<<1<<1<<1;
 
 
     QMatrix4x4 matrix;
@@ -204,6 +210,9 @@ void XunoGLSLFilter::superscale()
 
     //---------------------------------------------
     GLint fbotextid=texture->textureId();
+
+    f->glUseProgram(0);
+    f->glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     qDebug()<<"Texture id start"<<fbotextid<<"texure size:"<<texture->width()<<"x"<<texture->height();
 
@@ -213,7 +222,7 @@ void XunoGLSLFilter::superscale()
         bool rotate=false;//(pass>0);
 
         qDebug()<<"Programs:"<<addProgram();
-        if (initShaders(pass) && !scales.isEmpty()){
+        if (initShaders_simple(pass) && !scales.isEmpty()){
             int fboID=addFBO(scales.at(pass),/*rotate*/0);
 
             QOpenGLShaderProgram *program=Q_NULLPTR;
@@ -222,9 +231,12 @@ void XunoGLSLFilter::superscale()
             }
 
             m_fbo[fboID]->bind();
+            //            GLenum FBOstatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+            bool FBOstatus = m_fbo[fboID]->isValid();
+            qDebug()<<"glCheckFramebufferStatus:"<<FBOstatus<<glGetError();
+
             glViewport(0,0,m_fbo[fboID]->width(),m_fbo[fboID]->height());
             // Use texture unit 0 which contains cube.png
-
 
             program->bind();
             program->setUniformValue("Texture0",  0);
@@ -255,19 +267,68 @@ void XunoGLSLFilter::superscale()
 
             program->setUniformValue("mvp_matrix", matrix);
 
-            {
+
+
+            if (0){
+
+                QOpenGLBuffer buffer1(QOpenGLBuffer::VertexBuffer);
+                buffer1.create();
+
+                float vertices[] = {
+                    -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, // Top-left
+                    0.5f,  0.5f, 0.0f, 1.0f, 0.0f, // Top-right
+                    0.5f, -0.5f, 0.0f, 0.0f, 1.0f, // Bottom-right
+                    -0.5f, -0.5f, 1.0f, 1.0f, 1.0f  // Bottom-left
+                };
+
+                buffer1.bind();
+                buffer1.allocate(vertices,sizeof(float)*5*4);
+                // buffer1.release();
+
+
+                QOpenGLBuffer buffer2(QOpenGLBuffer::IndexBuffer);
+
+                GLuint elements[] = {
+                    0, 1, 2,
+                    2, 3, 0
+                };
+
+                buffer2.bind();
+                buffer2.allocate(elements,sizeof(GLuint)*6);
+                //buffer2.release();
+
+
+                QOpenGLShaderProgram* shaderProgram_ = new QOpenGLShaderProgram;
+                shaderProgram_->addShaderFromSourceFile(QOpenGLShader::Vertex,":/shaders/simple_ver.glsl");
+                shaderProgram_->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/simple_frag.glsl");
+                bool ok = shaderProgram_->link();
+                ok = shaderProgram_->bind();
+
+                shaderProgram_->setAttributeBuffer("vertex", GL_FLOAT, 0, 3, 0);
+                shaderProgram_->enableAttributeArray("vertex");
+
+                f-> glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+
+
+            }
+
+            if (1) {
                 glActiveTexture(GL_TEXTURE0);
 
                 if (pass==0){
-                    texture->bind();
-                }else{
+                    glEnable(GL_TEXTURE_2D);
+                    //texture->bind();
                     glBindTexture(GL_TEXTURE_2D, fbotextid);
-                    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);//GL_NEAREST GL_LINEAR
-                    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+                }else{
+                    f->glBindTexture(GL_TEXTURE_2D, fbotextid);
+                    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);//GL_NEAREST GL_LINEAR
+                    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
                 }
 
-                glClearColor(1.0,0.0,0.0,1.0);//RED
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+                f->glClearColor(1.0,0.0,0.0,1.0);//RED
+                f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 // Draw cube geometry
                 geometries->drawCubeGeometry(program);
@@ -275,9 +336,8 @@ void XunoGLSLFilter::superscale()
                 if (pass==0){
                     texture->release();
                 }else{
-                    glBindTexture(GL_TEXTURE_2D, 0);
+                    f->glBindTexture(GL_TEXTURE_2D, 0);
                 }
-
 
             }
             program->release();
@@ -292,8 +352,8 @@ void XunoGLSLFilter::superscale()
         }else{
             qDebug()<<"initShaders error (pass)"<<pass;
         }
-
     }
+
 
 
     //clear
@@ -310,6 +370,7 @@ void XunoGLSLFilter::superscale()
 
 
 
+
 bool XunoGLSLFilter::initShaders(int pass)
 {
     QOpenGLShaderProgram *program=Q_NULLPTR;
@@ -320,6 +381,7 @@ bool XunoGLSLFilter::initShaders(int pass)
         qDebug()<<"program not present";
         return false;
     }
+
 
     qDebug()<<"initShaders pass"<<pass;
 
@@ -382,6 +444,38 @@ bool XunoGLSLFilter::initShaders(int pass)
     return false;
 }
 
+bool XunoGLSLFilter::initShaders_simple(int pass)
+{
+    QOpenGLShaderProgram *program=Q_NULLPTR;
+    if (pass<=programs.size()){
+        program=programs[pass];
+    }
+    if (program==Q_NULLPTR) {
+        qDebug()<<"program not present";
+        return false;
+    }
+
+    qDebug()<<"initShaders_simple pass"<<pass;
+
+    if (!program->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/simple_ver.glsl")){
+        return false;
+    }
+    // Compile vertex shader
+    if (!program->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/simple_frag.glsl")){
+        return false;
+    }
+
+    if (!program->link()) {
+        qDebug()<<program->log();
+        qDebug()<<program->shaders().at(0)->sourceCode();
+        return false;
+    }
+
+
+    return true;
+
+}
+
 int XunoGLSLFilter::addProgram()
 {
     QOpenGLShaderProgram *pr= new QOpenGLShaderProgram(this);
@@ -422,9 +516,9 @@ void XunoGLSLFilter::initTextures()
 
     // Load cube.png image
     //QImage image=QImage(":/savefbo_pass_0_1920x1080-empty-shader.bmp");//RAW_Yamaha_960x540.bmp
-    QImage image=QImage("/home/lex/temp/RAW_Yamaha_960x540.bmp");
+    //QImage image=QImage("/home/lex/temp/RAW_Yamaha_960x540.bmp");
 
-    //QImage image=fbo()->toImage(false);
+    QImage image=fbo()->toImage(false);
     //this->resize(image.size());
 
     qDebug()<<"After Resize";
@@ -445,6 +539,8 @@ void XunoGLSLFilter::initTextures()
     // Wrap texture coordinates by repeating
     // f.ex. texture coordinate (1.1, 1.2) is same as (0.1, 0.2)
     texture->setWrapMode(QOpenGLTexture::Repeat);
+
+    image.save("/home/lex/temp/savefbo_manual_initTextures.bmp");
 
 }
 

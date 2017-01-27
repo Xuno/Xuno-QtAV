@@ -52,4 +52,9 @@ contains(QMAKE_HOST.arch, x86_64):{
 DEFINES+= ARCH=\"$$QMAKE_HOST.os\"_\"$$QMAKE_HOST.arch\"
 message("DEFINES: "$$DEFINES)
 
+DISTFILES += \
+    res/shaders/simple_vec.glsl \
+    res/shaders/simple_ver.glsl \
+    res/shaders/simple_frag.glsl
+
 

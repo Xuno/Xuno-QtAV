@@ -11,5 +11,7 @@
         <file>shaders/super-xbr-pass0.glsl</file>
         <file>shaders/super-xbr-pass1.glsl</file>
         <file>shaders/super-xbr-pass2.glsl</file>
+        <file>shaders/simple_frag.glsl</file>
+        <file>shaders/simple_ver.glsl</file>
     </qresource>
 </RCC>
