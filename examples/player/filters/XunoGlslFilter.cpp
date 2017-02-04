@@ -41,6 +41,7 @@ void XunoGLSLFilter::beforeRendering()
 void XunoGLSLFilter::afterRendering()
 {
     qDebug()<<"XunoGLSLFilter::afterRendering()";
+    lastSuperscaleTexureId=0;
     if (fbo() && fbo()->isValid() ) {
         if (needSave){
             QString name=defineFileName();
@@ -61,6 +62,12 @@ void XunoGLSLFilter::afterRendering()
             superscale();
         }
     }
+}
+
+GLuint XunoGLSLFilter::frameTexture() const
+{
+    qDebug()<<"XunoGLSLFilter::frameTexture()"<<lastSuperscaleTexureId;
+    return lastSuperscaleTexureId;
 }
 
 void XunoGLSLFilter::colorTransform(bool runOnce)
@@ -152,6 +159,15 @@ void XunoGLSLFilter::superscale()
     //QOpenGLFramebufferObject *fbo;
     //QSize size;
     //OpenGLVideo glv;
+
+
+    //clear
+    while (m_fbo.size()) {
+        delete m_fbo.takeLast();
+    }
+    while (programs.size()) {
+        delete programs.takeLast();
+    }
 
 
     QOpenGLFunctions *f=opengl()->openGLContext()->functions();
@@ -296,20 +312,22 @@ void XunoGLSLFilter::superscale()
             m_fbo[fboID]->toImage().save(filename);
 
             fbotextid=m_fbo[fboID]->texture();
-            qDebug()<<"Texture id"<<fbotextid<<"texure size:"<<texture->width()<<"x"<<texture->height();
+            qDebug()<<"Texture id"<<fbotextid<<"texure size:"<<m_fbo[fboID]->width()<<"x"<<m_fbo[fboID]->height();
 
         }else{
             qDebug()<<"initShaders error (pass)"<<pass;
         }
     }
 
+    if (fbotextid) lastSuperscaleTexureId=fbotextid;
+
     //clear
-    while (m_fbo.size()) {
-        delete m_fbo.takeLast();
-    }
-    while (programs.size()) {
-        delete programs.takeLast();
-    }
+//    while (m_fbo.size()) {
+//        delete m_fbo.takeLast();
+//    }
+//    while (programs.size()) {
+//        delete programs.takeLast();
+//    }
 }
 
 
@@ -402,6 +420,8 @@ bool XunoGLSLFilter::initShaders_simple(int pass)
     }
 
     qDebug()<<"initShaders_simple pass"<<pass;
+
+    program->removeAllShaders();
 
     if (!program->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/simple_ver.glsl")){
         return false;

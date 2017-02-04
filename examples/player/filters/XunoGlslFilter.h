@@ -71,6 +71,9 @@ private:
     QOpenGLTexture *texture=Q_NULLPTR;
     int frame=0;
 
+    virtual GLuint frameTexture() const;
+    GLuint lastSuperscaleTexureId=0;
+
     void superscale();
     void initFrameBufers();
     void initFrameBufer(int id);

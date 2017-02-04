@@ -24,6 +24,7 @@
 
 #include <QtAV/QtAV_Global.h>
 #include <QtAV/Filter.h>
+#include "opengl/OpenGLHelper.h"
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
 #undef QOpenGLFramebufferObject
@@ -65,6 +66,7 @@ Q_SIGNALS:
     void outputSizeChanged(const QSize& size);
 protected:
     GLSLFilter(GLSLFilterPrivate& d, QObject *parent = 0);
+    virtual GLuint frameTexture() const;
     /*!
      * \brief process
      * Draw video frame into fbo and apply the user shader from opengl()->userShader();
