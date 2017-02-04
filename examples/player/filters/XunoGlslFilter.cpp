@@ -279,6 +279,11 @@ void XunoGLSLFilter::superscale()
                 matrix.rotate(180*sign,0.,0.,1.);
             }
 
+            // rotate last pass for back to QtAV fbo
+            if (pass==maxPass){
+                matrix.scale(1, -1);
+            }
+
             program->setUniformValue("mvp_matrix", matrix);
 
             if (1) {
