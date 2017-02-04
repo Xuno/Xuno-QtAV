@@ -280,9 +280,9 @@ void XunoGLSLFilter::superscale()
             }
 
             // rotate last pass for back to QtAV fbo
-            if (pass==maxPass){
-                matrix.scale(1, -1);
-            }
+            // if (pass==maxPass){
+            //    matrix.scale(1, -1);
+            // }
 
             program->setUniformValue("mvp_matrix", matrix);
 
@@ -500,7 +500,7 @@ void XunoGLSLFilter::initTextures()
         texture=Q_NULLPTR;
     }
 
-    texture = new QOpenGLTexture(image.mirrored());
+    texture = new QOpenGLTexture(image);//.mirrored()
 
     // Set nearest filtering mode for texture minification
     texture->setMinificationFilter(QOpenGLTexture::Nearest);
