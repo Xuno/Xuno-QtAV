@@ -54,7 +54,8 @@ GLSLFilter::GLSLFilter(GLSLFilterPrivate &d, QObject *parent)
 
 GLuint GLSLFilter::frameTexture() const
 {
-    return 0;
+    DPTR_D(const GLSLFilter);
+    return d.fbo->texture();
 }
 
 OpenGLVideo* GLSLFilter::opengl() const
@@ -142,10 +143,7 @@ void GLSLFilter::process(Statistics *statistics, VideoFrame *frame)
             return t;
         }
     };
-    GLuint extfboTextureID=frameTexture();
-    GLuint ftextureid=(extfboTextureID)?extfboTextureID:d.fbo->texture();
-
-    GLTextureInterop *interop = new GLTextureInterop(ftextureid);
+    GLTextureInterop *interop = new GLTextureInterop(frameTexture());
     f.setMetaData(QStringLiteral("surface_interop"), QVariant::fromValue(VideoSurfaceInteropPtr((interop))));
     *frame = f;
 }
