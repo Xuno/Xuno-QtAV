@@ -21,7 +21,7 @@ void XunoGLSLFilter::setShader(QtAV::VideoShader *ush)
 
 void XunoGLSLFilter::beforeRendering()
 {
-    qDebug()<<"XunoGLSLFilter::beforeRendering";
+    //qDebug()<<"XunoGLSLFilter::beforeRendering";
     colorTransform();
     if (fbo() && fbo()->isValid()){
         QOpenGLFunctions *f=opengl()->openGLContext()->functions();
@@ -40,7 +40,7 @@ void XunoGLSLFilter::beforeRendering()
 
 void XunoGLSLFilter::afterRendering()
 {
-    qDebug()<<"XunoGLSLFilter::afterRendering()";
+    //qDebug()<<"XunoGLSLFilter::afterRendering()";
     lastSuperscaleTexureId=0;
     if (fbo() && fbo()->isValid() ) {
         if (needSave){
@@ -66,8 +66,8 @@ void XunoGLSLFilter::afterRendering()
 
 GLuint XunoGLSLFilter::frameTexture() const
 {
-    qDebug()<<"XunoGLSLFilter::frameTexture()"<<lastSuperscaleTexureId;
-    return lastSuperscaleTexureId;
+    //qDebug()<<"XunoGLSLFilter::frameTexture()"<<lastSuperscaleTexureId;
+    return lastSuperscaleTexureId?lastSuperscaleTexureId:fbo()->texture();
 }
 
 void XunoGLSLFilter::colorTransform(bool runOnce)
@@ -223,7 +223,7 @@ void XunoGLSLFilter::superscale()
 
     maxPass=shader_files.size()-1;
 
-    maxPass=1+0;//last blur
+    maxPass=4+0;//last blur
     //scales per pass relative to previos fbo, note: source first texture always scale=1.0
     //scales<<2<<1<<1<<1;
     //scales<<1<<2<<1<<1<<2<<1<<1;
@@ -312,9 +312,9 @@ void XunoGLSLFilter::superscale()
             }
             program->release();
             m_fbo[fboID]->release();
-            QString filename=QString("/home/lex/temp/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
-            qDebug()<<"Saving:"<<filename;
-            m_fbo[fboID]->toImage().save(filename);
+//            QString filename=QString("/home/lex/temp/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
+//            qDebug()<<"Saving:"<<filename;
+//            m_fbo[fboID]->toImage().save(filename);
 
             fbotextid=m_fbo[fboID]->texture();
             qDebug()<<"Texture id"<<fbotextid<<"texure size:"<<m_fbo[fboID]->width()<<"x"<<m_fbo[fboID]->height();
