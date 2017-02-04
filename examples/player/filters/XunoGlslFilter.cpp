@@ -223,7 +223,7 @@ void XunoGLSLFilter::superscale()
 
     maxPass=shader_files.size()-1;
 
-    maxPass=4+0;//last blur
+    maxPass=1+0;//last blur
     //scales per pass relative to previos fbo, note: source first texture always scale=1.0
     //scales<<2<<1<<1<<1;
     //scales<<1<<2<<1<<1<<2<<1<<1;
