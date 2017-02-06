@@ -26,7 +26,7 @@ void XunoGLSLFilter::beforeRendering()
     if (fbo() && fbo()->isValid()){
         QOpenGLFunctions *f=opengl()->openGLContext()->functions();
         if (f && fbo()->textures().size()){
-            GLint target=GL_TEXTURE_2D;
+            GLenum target=GL_TEXTURE_2D;
             f->glBindTexture(target,fbo()->texture());
             f->glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -232,7 +232,7 @@ void XunoGLSLFilter::superscale()
 
 
     //---------------------------------------------
-    GLint fbotextid=texture->textureId();
+    GLuint fbotextid=texture->textureId();
 
     //f->glUseProgram(0);
     //f->glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -255,7 +255,7 @@ void XunoGLSLFilter::superscale()
 
             m_fbo[fboID]->bind();
 
-            glViewport(0,0,m_fbo[fboID]->width(),m_fbo[fboID]->height());
+            f->glViewport(0,0,m_fbo[fboID]->width(),m_fbo[fboID]->height());
             // Use texture unit 0 which contains cube.png
 
             program->bind();
@@ -287,7 +287,7 @@ void XunoGLSLFilter::superscale()
             program->setUniformValue("mvp_matrix", matrix);
 
             if (1) {
-                glActiveTexture(GL_TEXTURE0);
+                f->glActiveTexture(GL_TEXTURE0);
 
                 if (pass==0){
                     texture->bind();

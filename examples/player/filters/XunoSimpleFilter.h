@@ -53,7 +53,7 @@ private:
     bool mCanRot;
     bool mWave;
     QTime mTime;
-    qreal mStartValue;
+    float mStartValue;
     QString mText;
     QMatrix4x4 mMat;
     QImage mImage;

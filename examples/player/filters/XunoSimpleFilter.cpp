@@ -73,14 +73,14 @@ void XunoSimpleFilter::prepare()
         ctx->font.setBold(true);
         if (!mCanRot)
             return;
-        mMat.translate(ctx->rect.center().x(), 0, 0);
+        mMat.translate(float(ctx->rect.center().x()), 0.f, 0.f);
     } else if (!mImage.isNull()) {
         if (!mCanRot)
             return;
-        mMat.translate(ctx->rect.x() + mImage.width()/2, 0, 0);
+        mMat.translate(float(ctx->rect.x() + mImage.width()/2), 0.f, 0.f);
     }
     if (mCanRot) {
-        mMat.rotate(mStartValue*360, 0, 1, -0.1);
+        mMat.rotate(mStartValue*360.f, 0.f, 1.f, -0.1f);
     }
 }
 
@@ -99,7 +99,7 @@ void XunoSimpleFilter::process(Statistics *statistics, VideoFrame *frame)
     int t = mTime.elapsed()/100;
     VideoFilterContext *ctx = static_cast<VideoFilterContext*>(context());
     if (mCanRot) {
-        mMat.rotate(2, 0, 1, -0.1);
+        mMat.rotate(2.f, 0.f, 1.f, -0.1f);
         ctx->transform = mMat.toTransform();
     }
     if (mText.isEmpty()) {
