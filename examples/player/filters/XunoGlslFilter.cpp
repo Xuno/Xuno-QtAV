@@ -1,6 +1,7 @@
 #include "XunoGlslFilter.h"
 #include <QDebug>
 #include <QImage>
+#include <QOpenGLPaintDevice>
 
 XunoGLSLFilter::XunoGLSLFilter(QObject *parent):
     QtAV::GLSLFilter(parent)
@@ -177,7 +178,7 @@ void XunoGLSLFilter::superscale()
     initSize=outputSize();
     //}
 
-    qDebug()<<"superscale" << initSize;
+    //qDebug()<<"superscale" << initSize;
     //setOutputSize(initSize*2);
     //qDebug()<<"superscale x2" << outputSize();
 
@@ -233,19 +234,21 @@ void XunoGLSLFilter::superscale()
 
     //---------------------------------------------
     GLuint fbotextid=texture->textureId();
+    GLuint prevfbotextid=0;
 
     //f->glUseProgram(0);
     //f->glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    qDebug()<<"Texture id start"<<fbotextid<<"texure size:"<<texture->width()<<"x"<<texture->height();
+    //qDebug()<<"Texture id start"<<fbotextid<<"texure size:"<<texture->width()<<"x"<<texture->height();
 
     for (pass=0;pass<=maxPass;pass++){
 
 
         bool rotate=false;//(pass>0);
 
-        qDebug()<<"Programs:"<<addProgram();
-        if (initShaders_simple(pass) && !scales.isEmpty()){
+        //qDebug()<<"Programs:"<<
+                  addProgram();
+        if (initShaders(pass) && !scales.isEmpty()){
             int fboID=addFBO(scales.at(pass),/*rotate*/0);
 
             QOpenGLShaderProgram *program=Q_NULLPTR;
@@ -260,11 +263,12 @@ void XunoGLSLFilter::superscale()
 
             program->bind();
             program->setUniformValue("Texture0",  0);
+            program->setUniformValue("PassPrev2Texture",  1); //todo: ???
 
             //program->setUniformValue("pass", fboID);
 
             //program->setUniformValue("OutputSize",QVector2D(m_fbo[fboID]->width(),m_fbo[fboID]->height()));
-            //program->setUniformValue("TextureSize",QVector2D(m_fbo[fboID]->width(),m_fbo[fboID]->height()));
+            program->setUniformValue("TextureSize",QVector2D(m_fbo[fboID]->width(),m_fbo[fboID]->height()));
 
             QVector2D textureSize=QVector2D (float(m_fbo[fboID]->width()),float(m_fbo[fboID]->height()));
 
@@ -279,20 +283,20 @@ void XunoGLSLFilter::superscale()
                 matrix.rotate(180*sign,0.,0.,1.);
             }
 
-            // rotate last pass for back to QtAV fbo
-            // if (pass==maxPass){
-            //    matrix.scale(1, -1);
-            // }
-
-            program->setUniformValue("mvp_matrix", matrix);
+            program->setUniformValue("MVPMatrix", matrix);
 
             if (1) {
-                f->glActiveTexture(GL_TEXTURE0);
-
                 if (pass==0){
+                    f->glActiveTexture(GL_TEXTURE0);
                     texture->bind();
                 }else{
+                    f->glActiveTexture(GL_TEXTURE0);
                     f->glBindTexture(GL_TEXTURE_2D, fbotextid);
+                    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);//GL_NEAREST GL_LINEAR
+                    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+
+                    f->glActiveTexture(GL_TEXTURE1);
+                    f->glBindTexture(GL_TEXTURE_2D, prevfbotextid);
                     f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);//GL_NEAREST GL_LINEAR
                     f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
                 }
@@ -312,12 +316,17 @@ void XunoGLSLFilter::superscale()
             }
             program->release();
             m_fbo[fboID]->release();
-//            QString filename=QString("/home/lex/temp/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
-//            qDebug()<<"Saving:"<<filename;
-//            m_fbo[fboID]->toImage().save(filename);
+#if (unix)
+            QString filename=QString("/home/lex/temp/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
+#else
+            QString filename=QString("e:/temp/shader/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
+#endif
+            //qDebug()<<"Saving:"<<filename;
+            //m_fbo[fboID]->toImage(false).save(filename);
 
+            prevfbotextid=fbotextid;
             fbotextid=m_fbo[fboID]->texture();
-            qDebug()<<"Texture id"<<fbotextid<<"texure size:"<<m_fbo[fboID]->width()<<"x"<<m_fbo[fboID]->height();
+            //qDebug()<<"Texture id"<<fbotextid<<"texure size:"<<m_fbo[fboID]->width()<<"x"<<m_fbo[fboID]->height();
 
         }else{
             qDebug()<<"initShaders error (pass)"<<pass;
@@ -352,7 +361,7 @@ bool XunoGLSLFilter::initShaders(int pass)
     }
 
 
-    qDebug()<<"initShaders pass"<<pass;
+    //qDebug()<<"initShaders pass"<<pass;
 
     QByteArray sourceShader,sourceShaderInclude;
 
@@ -483,7 +492,7 @@ int XunoGLSLFilter::addFBO(int scale, bool rotate)
 void XunoGLSLFilter::initTextures()
 {
 
-    qDebug()<<"hasOpenGLFramebufferBlit()"<<QOpenGLFramebufferObject::hasOpenGLFramebufferBlit();
+    //qDebug()<<"hasOpenGLFramebufferBlit()"<<QOpenGLFramebufferObject::hasOpenGLFramebufferBlit();
 
     // Load cube.png image
     //QImage image=QImage(":/savefbo_pass_0_1920x1080-empty-shader.bmp");//RAW_Yamaha_960x540.bmp
@@ -492,10 +501,10 @@ void XunoGLSLFilter::initTextures()
     QImage image=fbo()->toImage(false);
     //this->resize(image.size());
 
-    qDebug()<<"After Resize";
+    //qDebug()<<"After Resize";
 
     if (texture!=Q_NULLPTR){
-        //texture->release(texture->textureId(),QOpenGLTexture::ResetTextureUnit);
+        texture->release(texture->textureId(),QOpenGLTexture::ResetTextureUnit);
         delete texture;
         texture=Q_NULLPTR;
     }

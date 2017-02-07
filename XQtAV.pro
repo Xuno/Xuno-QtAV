@@ -1,2 +1,2 @@
 include(QtAV.pro)
-PACKAGE_NAME= Xuno-QtAV
+PACKAGE_NAME=Xuno-QtAV
