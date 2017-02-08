@@ -31,7 +31,6 @@ QT_BEGIN_NAMESPACE
 class QOpenGLFramebufferObject;
 QT_END_NAMESPACE
 
-
 class XunoGLSLFilter : public QtAV::GLSLFilter
 {
 public:
@@ -84,5 +83,4 @@ private:
     bool initShaders(int pass);
     bool initShaders_simple(int pass);
 };
-
 #endif // XUNOGLSLFILTER_H

@@ -73,7 +73,7 @@ void main()
 #if __VERSION__ >= 130
 #define COMPAT_VARYING in
 #define COMPAT_TEXTURE texture
-out vec4 FragColor;
+out vec4 gl_FragColor;
 #else
 #define COMPAT_VARYING varying
 #define FragColor gl_FragColor
@@ -141,7 +141,7 @@ vec4 _TMP7;
 vec2 _TMP2;
 vec2 _TMP1;
 vec4 _TMP0;
-uniform sampler2D texture0;
+uniform sampler2D Texture0;
 prev _PASSPREV21;
 input_dummy _IN1;
 vec2 _x0067;
@@ -234,7 +234,7 @@ void main()
     _dir = _fp - vec2( 5.00000000E-01, 5.00000000E-01);
     if (_dir.x*_dir.y > 0.00000000E+00) { 
         if (_fp.x > 5.00000000E-01) { 
-            _TMP0 = COMPAT_TEXTURE(texture0, TEX0.xy);
+            _TMP0 = COMPAT_TEXTURE(Texture0, TEX0.xy);
         } else {
             _TMP0 = COMPAT_TEXTURE(PassPrev2Texture, TEX0.xy);
         } 
@@ -252,29 +252,29 @@ void main()
         _TMP2 = vec2(5.00000000E-01/TextureSize.x, 0.00000000E+00);
     } 
     _c0081 = (TEX0.xy - 2.00000000E+00*_TMP1) - _TMP2;
-    _TMP7 = COMPAT_TEXTURE(texture0, _c0081);
+    _TMP7 = COMPAT_TEXTURE(Texture0, _c0081);
     _c0083 = (TEX0.xy - _TMP1) - 2.00000000E+00*_TMP2;
     _TMP8 = COMPAT_TEXTURE(PassPrev2Texture, _c0083);
     _c0085 = (TEX0.xy - 2.00000000E+00*_TMP1) + _TMP2;
-    _TMP9 = COMPAT_TEXTURE(texture0, _c0085);
+    _TMP9 = COMPAT_TEXTURE(Texture0, _c0085);
     _c0087 = TEX0.xy - _TMP1;
     _TMP10 = COMPAT_TEXTURE(PassPrev2Texture, _c0087);
     _c0089 = TEX0.xy - _TMP2;
-    _TMP11 = COMPAT_TEXTURE(texture0, _c0089);
+    _TMP11 = COMPAT_TEXTURE(Texture0, _c0089);
     _c0091 = (TEX0.xy - _TMP1) + 2.00000000E+00*_TMP2;
     _TMP12 = COMPAT_TEXTURE(PassPrev2Texture, _c0091);
     _c0093 = TEX0.xy + _TMP2;
-    _TMP13 = COMPAT_TEXTURE(texture0, _c0093);
+    _TMP13 = COMPAT_TEXTURE(Texture0, _c0093);
     _c0095 = TEX0.xy + _TMP1;
     _TMP14 = COMPAT_TEXTURE(PassPrev2Texture, _c0095);
     _c0097 = (TEX0.xy + _TMP1) - 2.00000000E+00*_TMP2;
     _TMP15 = COMPAT_TEXTURE(PassPrev2Texture, _c0097);
     _c0099 = (TEX0.xy + 2.00000000E+00*_TMP1) - _TMP2;
-    _TMP16 = COMPAT_TEXTURE(texture0, _c0099);
+    _TMP16 = COMPAT_TEXTURE(Texture0, _c0099);
     _c0101 = TEX0.xy + _TMP1 + 2.00000000E+00*_TMP2;
     _TMP17 = COMPAT_TEXTURE(PassPrev2Texture, _c0101);
     _c0103 = TEX0.xy + 2.00000000E+00*_TMP1 + _TMP2;
-    _TMP18 = COMPAT_TEXTURE(texture0, _c0103);
+    _TMP18 = COMPAT_TEXTURE(Texture0, _c0103);
     _TMP104 = dot(_TMP7.xyz, vec3( 2.12599993E-01, 7.15200007E-01, 7.22000003E-02));
     _TMP108 = dot(_TMP8.xyz, vec3( 2.12599993E-01, 7.15200007E-01, 7.22000003E-02));
     _TMP112 = dot(_TMP9.xyz, vec3( 2.12599993E-01, 7.15200007E-01, 7.22000003E-02));

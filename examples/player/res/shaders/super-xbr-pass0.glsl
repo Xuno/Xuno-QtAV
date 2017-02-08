@@ -100,7 +100,7 @@ void main()
 #if __VERSION__ >= 130
 #define COMPAT_VARYING in
 #define COMPAT_TEXTURE texture
-out vec4 FragColor;
+out vec4 gl_FragColor;
 #else
 #define COMPAT_VARYING varying
 #define FragColor gl_FragColor
@@ -172,7 +172,7 @@ vec4 _TMP3;
 vec4 _TMP2;
 vec4 _TMP1;
 vec4 _TMP0;
-uniform sampler2D texture0;
+uniform sampler2D Texture0;
 float _TMP94;
 float _TMP98;
 float _TMP102;
@@ -309,22 +309,22 @@ void main()
     vec3 _color1;
     vec3 _TMP58[4];
     vec3 _TMP59[4];
-    _TMP0 = COMPAT_TEXTURE(texture0, TEX1.xy);
-    _TMP1 = COMPAT_TEXTURE(texture0, TEX1.zy);
-    _TMP2 = COMPAT_TEXTURE(texture0, TEX1.xw);
-    _TMP3 = COMPAT_TEXTURE(texture0, TEX1.zw);
-    _TMP4 = COMPAT_TEXTURE(texture0, TEX2.xy);
-    _TMP5 = COMPAT_TEXTURE(texture0, TEX2.zy);
-    _TMP6 = COMPAT_TEXTURE(texture0, TEX2.xw);
-    _TMP7 = COMPAT_TEXTURE(texture0, TEX2.zw);
-    _TMP8 = COMPAT_TEXTURE(texture0, TEX3.xy);
-    _TMP9 = COMPAT_TEXTURE(texture0, TEX3.zy);
-    _TMP10 = COMPAT_TEXTURE(texture0, TEX3.xw);
-    _TMP11 = COMPAT_TEXTURE(texture0, TEX3.zw);
-    _TMP12 = COMPAT_TEXTURE(texture0, TEX4.xy);
-    _TMP13 = COMPAT_TEXTURE(texture0, TEX4.zy);
-    _TMP14 = COMPAT_TEXTURE(texture0, TEX4.xw);
-    _TMP15 = COMPAT_TEXTURE(texture0, TEX4.zw);
+    _TMP0 = COMPAT_TEXTURE(Texture0, TEX1.xy);
+    _TMP1 = COMPAT_TEXTURE(Texture0, TEX1.zy);
+    _TMP2 = COMPAT_TEXTURE(Texture0, TEX1.xw);
+    _TMP3 = COMPAT_TEXTURE(Texture0, TEX1.zw);
+    _TMP4 = COMPAT_TEXTURE(Texture0, TEX2.xy);
+    _TMP5 = COMPAT_TEXTURE(Texture0, TEX2.zy);
+    _TMP6 = COMPAT_TEXTURE(Texture0, TEX2.xw);
+    _TMP7 = COMPAT_TEXTURE(Texture0, TEX2.zw);
+    _TMP8 = COMPAT_TEXTURE(Texture0, TEX3.xy);
+    _TMP9 = COMPAT_TEXTURE(Texture0, TEX3.zy);
+    _TMP10 = COMPAT_TEXTURE(Texture0, TEX3.xw);
+    _TMP11 = COMPAT_TEXTURE(Texture0, TEX3.zw);
+    _TMP12 = COMPAT_TEXTURE(Texture0, TEX4.xy);
+    _TMP13 = COMPAT_TEXTURE(Texture0, TEX4.zy);
+    _TMP14 = COMPAT_TEXTURE(Texture0, TEX4.xw);
+    _TMP15 = COMPAT_TEXTURE(Texture0, TEX4.zw);
     _TMP94 = dot(_TMP4.xyz, vec3( 2.12599993E-01, 7.15200007E-01, 7.22000003E-02));
     _TMP98 = dot(_TMP5.xyz, vec3( 2.12599993E-01, 7.15200007E-01, 7.22000003E-02));
     _TMP102 = dot(_TMP8.xyz, vec3( 2.12599993E-01, 7.15200007E-01, 7.22000003E-02));

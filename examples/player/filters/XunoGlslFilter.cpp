@@ -220,11 +220,12 @@ void XunoGLSLFilter::superscale()
 
     shader_files<<"super-xbr-pass0.glsl";
     shader_files<<"super-xbr-pass1.glsl";
-    //shader_files<<"custom-jinc2-sharper.glsl";
+    shader_files<<"super-xbr-pass2.glsl";
+    shader_files<<"custom-jinc2-sharper.glsl";
 
     maxPass=shader_files.size()-1;
 
-    maxPass=1+0;//last blur
+    maxPass=2+1;//last blur
     //scales per pass relative to previos fbo, note: source first texture always scale=1.0
     //scales<<2<<1<<1<<1;
     //scales<<1<<2<<1<<1<<2<<1<<1;
@@ -239,14 +240,14 @@ void XunoGLSLFilter::superscale()
     //f->glUseProgram(0);
     //f->glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    //qDebug()<<"Texture id start"<<fbotextid<<"texure size:"<<texture->width()<<"x"<<texture->height();
+    qDebug()<<"Texture id start"<<fbotextid<<"texure size:"<<texture->width()<<"x"<<texture->height();
 
     for (pass=0;pass<=maxPass;pass++){
 
 
         bool rotate=false;//(pass>0);
 
-        //qDebug()<<"Programs:"<<
+        qDebug()<<"Programs:"<< \
                   addProgram();
         if (initShaders(pass) && !scales.isEmpty()){
             int fboID=addFBO(scales.at(pass),/*rotate*/0);
@@ -262,8 +263,16 @@ void XunoGLSLFilter::superscale()
             // Use texture unit 0 which contains cube.png
 
             program->bind();
-            program->setUniformValue("Texture0",  0);
-            program->setUniformValue("PassPrev2Texture",  1); //todo: ???
+
+            if (program->uniformLocation("Texture0")!=-1) {
+                qDebug()<<"Texture0 is";
+                program->setUniformValue("Texture0",  0);
+            }
+            if (program->uniformLocation("PassPrev2Texture")!=-1) {
+                qDebug()<<"PassPrev2Texture is";
+                program->setUniformValue("PassPrev2Texture",  1);
+            }
+
 
             //program->setUniformValue("pass", fboID);
 
@@ -321,8 +330,8 @@ void XunoGLSLFilter::superscale()
 #else
             QString filename=QString("e:/temp/shader/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
 #endif
-            //qDebug()<<"Saving:"<<filename;
-            //m_fbo[fboID]->toImage(false).save(filename);
+            qDebug()<<"Saving:"<<filename;
+            m_fbo[fboID]->toImage(false).save(filename);
 
             prevfbotextid=fbotextid;
             fbotextid=m_fbo[fboID]->texture();
