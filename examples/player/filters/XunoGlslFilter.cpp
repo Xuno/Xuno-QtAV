@@ -216,16 +216,19 @@ void XunoGLSLFilter::superscale()
     //    shader_files<<"shaders/super-xbr/super-xbr-fast-pass2.glsl";
     //    shader_files<<"shaders/super-xbr/custom-jinc2-sharper.glsl";
 
-    shader_files_include="super-xbr-params.inc";
+    //shader_files_include="super-xbr-params.inc";
+    shader_files_include="";
 
-    shader_files<<"super-xbr-pass0.glsl";
-    shader_files<<"super-xbr-pass1.glsl";
-    shader_files<<"super-xbr-pass2.glsl";
-    shader_files<<"custom-jinc2-sharper.glsl";
+//    shader_files<<"super-xbr-pass0.glsl";
+//    shader_files<<"super-xbr-pass1.glsl";
+//    shader_files<<"super-xbr-pass2.glsl";
+//    shader_files<<"custom-jinc2-sharper.glsl";
+
+    shader_files<<"superxbr-native-pass0.glsl";
 
     maxPass=shader_files.size()-1;
 
-    maxPass=2+1;//last blur
+    //maxPass=2+1;//last blur
     //scales per pass relative to previos fbo, note: source first texture always scale=1.0
     //scales<<2<<1<<1<<1;
     //scales<<1<<2<<1<<1<<2<<1<<1;
@@ -273,6 +276,11 @@ void XunoGLSLFilter::superscale()
                 program->setUniformValue("PassPrev2Texture",  1);
             }
 
+            if (program->uniformLocation("texture0")!=-1) {
+                qDebug()<<"texture0 is";
+                program->setUniformValue("texture0",  0);
+            }
+
 
             //program->setUniformValue("pass", fboID);
 
@@ -283,6 +291,22 @@ void XunoGLSLFilter::superscale()
 
             program->setUniformValue("texture_size",textureSize);
             program->setUniformValue("pixel_size",QVector2D(1.0f,1.0f)/textureSize);
+
+            if (program->uniformLocation("texture_size0")!=-1) {
+                qDebug()<<"texture_size0 is";
+                program->setUniformValue("texture_size0", textureSize);
+            }
+
+            if (program->uniformLocation("pixel_size0")!=-1) {
+                qDebug()<<"pixel_size0 is";
+                program->setUniformValue("pixel_size0", QVector2D(1.0f,1.0f)/textureSize);
+            }
+
+            if (program->uniformLocation("texture_rot0")!=-1) {
+                qDebug()<<"texture_rot0 is";
+                program->setUniformValue("texture_rot0", QVector2D(0.0f,0.0f));
+            }
+
 
             QMatrix4x4 matrix;
             matrix.setToIdentity();

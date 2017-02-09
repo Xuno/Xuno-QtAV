@@ -14,5 +14,7 @@
         <file>shaders/simple_frag.glsl</file>
         <file>shaders/simple_ver.glsl</file>
         <file>shaders/custom-jinc2-sharper.glsl</file>
+        <file>hooks/superxbr-native.hook</file>
+        <file>shaders/superxbr-native-pass0.glsl</file>
     </qresource>
 </RCC>
