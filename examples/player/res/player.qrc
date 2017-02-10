@@ -17,5 +17,7 @@
         <file>hooks/superxbr-native.hook</file>
         <file>shaders/superxbr-native-pass0.glsl</file>
         <file>shaders/superxbr-naitive-vertex.glsl</file>
+        <file>shaders/superxbr-native-pass1.glsl</file>
+        <file>shaders/superxbr-native-pass2.glsl</file>
     </qresource>
 </RCC>
