@@ -183,6 +183,7 @@ void MainWindow::initPlayer()
 
     EventFilter *ef = new EventFilter(mpPlayer);
     qApp->installEventFilter(ef);
+    ef->setXunoGLSLFilter(mpGLSLFilter);
     connect(ef, SIGNAL(helpRequested()), SLOT(help()));
     connect(ef, SIGNAL(showNextOSD()), SLOT(showNextOSD()));
     onCaptureConfigChanged();

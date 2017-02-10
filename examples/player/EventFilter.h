@@ -27,6 +27,7 @@
  */
 #include <QtCore/QObject>
 #include <QtCore/QPoint>
+#include "filters/XunoGlslFilter.h"
 
 QT_BEGIN_NAMESPACE
 class QMenu;
@@ -42,6 +43,8 @@ class EventFilter : public QObject
 public:
     explicit EventFilter(QtAV::AVPlayer *player);
     virtual ~EventFilter();
+
+    void setXunoGLSLFilter(XunoGLSLFilter *value);
 
 signals:
     void helpRequested();
@@ -60,6 +63,7 @@ protected:
 
 private:
     QMenu *menu;
+    XunoGLSLFilter *xunoGLSLFilter=Q_NULLPTR;
 };
 
 

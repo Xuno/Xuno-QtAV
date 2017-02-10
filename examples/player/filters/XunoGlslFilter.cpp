@@ -12,6 +12,41 @@ XunoGLSLFilter::XunoGLSLFilter(QObject *parent):
         connect(opengl(), &QtAV::OpenGLVideo::beforeRendering, this, &XunoGLSLFilter::beforeRendering, Qt::DirectConnection);
         connect(opengl(), &QtAV::OpenGLVideo::afterRendering, this, &XunoGLSLFilter::afterRendering, Qt::DirectConnection);
     }
+
+    shader_files_prefix=":/shaders/";
+    //shader_files_prefix="/home/lex/project-C/github/SuperXbr-GL/depend/common-shaders/xbr/";
+
+    //    shader_files_include="shaders/super-xbr/super-xbr-params.inc";
+
+    //    shader_files<<"shaders/super-xbr/super-xbr-fast-pass0.glsl";
+    //    shader_files<<"shaders/super-xbr/super-xbr-fast-pass1.glsl";
+    //    shader_files<<"shaders/super-xbr/super-xbr-fast-pass2.glsl";
+    //    shader_files<<"shaders/super-xbr/custom-jinc2-sharper.glsl";
+
+    //shader_files_include="super-xbr-params.inc";
+
+    shader_files_include="";
+    if (shader_vertex_files.isEmpty()){
+        shader_vertex_files<<"superxbr-naitive-vertex.glsl";
+    }
+
+    //    shader_files<<"super-xbr-pass0.glsl";
+    //    shader_files<<"super-xbr-pass1.glsl";
+    //    shader_files<<"super-xbr-pass2.glsl";
+    //    shader_files<<"custom-jinc2-sharper.glsl";
+
+    if (shader_files.isEmpty()){
+        shader_files<<"superxbr-native-pass0.glsl";
+        shader_files<<"superxbr-native-pass1.glsl";
+        //shader_files<<"superxbr-native-pass2.glsl";
+    }
+
+    maxPass=shader_files.size()-1;
+
+    if (scales.isEmpty()){
+        scales<<2<<1<<1<<1<<1;
+    }
+
 }
 
 void XunoGLSLFilter::setShader(QtAV::VideoShader *ush)
@@ -24,6 +59,7 @@ void XunoGLSLFilter::beforeRendering()
 {
     //qDebug()<<"XunoGLSLFilter::beforeRendering";
     colorTransform();
+    return;
     if (fbo() && fbo()->isValid()){
         QOpenGLFunctions *f=opengl()->openGLContext()->functions();
         if (f && fbo()->textures().size()){
@@ -42,6 +78,7 @@ void XunoGLSLFilter::beforeRendering()
 void XunoGLSLFilter::afterRendering()
 {
     //qDebug()<<"XunoGLSLFilter::afterRendering()";
+    //return;
     lastSuperscaleTexureId=0;
     if (fbo() && fbo()->isValid() ) {
         if (needSave){
@@ -59,10 +96,25 @@ void XunoGLSLFilter::afterRendering()
             }
             needSave=false;
         }
-        if (1){
+        if (needSuperScale){
             superscale();
+//            QOpenGLFunctions *f=opengl()->openGLContext()->functions();
+//            if (f && fbo()->textures().size()){
+//                GLenum target=GL_TEXTURE_2D;
+//                f->glBindTexture(target,frameTexture());
+//                f->glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//                f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//                f->glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+//                f->glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+//                f->glBindTexture(target,0);
+//            }
         }
     }
+}
+
+bool XunoGLSLFilter::getNeedSuperScale() const
+{
+    return needSuperScale;
 }
 
 GLuint XunoGLSLFilter::frameTexture() const
@@ -121,6 +173,11 @@ void XunoGLSLFilter::setNeedSave(bool value)
     needSave = value;
 }
 
+void XunoGLSLFilter::setNeedSuperScale(bool value)
+{
+    needSuperScale = value;
+}
+
 QString XunoGLSLFilter::defineFileName()
 {
     QString dir;
@@ -152,28 +209,22 @@ QString XunoGLSLFilter::defineFileName()
 //------------superscale----------------
 
 
-#define PROGRAM_VERTEX_ATTRIBUTE 0
-#define PROGRAM_TEXCOORD_ATTRIBUTE 1
-
 void XunoGLSLFilter::superscale()
 {
-    //QOpenGLFramebufferObject *fbo;
-    //QSize size;
-    //OpenGLVideo glv;
-
+    if ( geometries==Q_NULLPTR) geometries = new GeometryEngine;
 
     //clear
     while (m_fbo.size()) {
         delete m_fbo.takeLast();
     }
-    //m_fbo.squeeze();
+
     while (programs.size()) {
         delete programs.takeLast();
     }
-    //programs.squeeze();
 
     QOpenGLFunctions *f=opengl()->openGLContext()->functions();
 
+    if (!f) return;
 
     //if (initSize.isEmpty()){
     initSize=outputSize();
@@ -186,80 +237,24 @@ void XunoGLSLFilter::superscale()
 
     initTextures();
 
-    //initFrameBufer();
-
     frame++;
 
-    //! [2]
     // Enable depth buffer
     f->glEnable(GL_DEPTH_TEST);
-
-
 
     // Enable back face culling // QtAV move freeze with it.
     //f->glEnable(GL_CULL_FACE);
 
 
-
-    //! [2]
-
-
-    geometries = new GeometryEngine;
-
-
-    shader_files_prefix=":/shaders/";
-    //shader_files_prefix="/home/lex/project-C/github/SuperXbr-GL/depend/common-shaders/xbr/";
-
-    //    shader_files_include="shaders/super-xbr/super-xbr-params.inc";
-
-    //    shader_files<<"shaders/super-xbr/super-xbr-fast-pass0.glsl";
-    //    shader_files<<"shaders/super-xbr/super-xbr-fast-pass1.glsl";
-    //    shader_files<<"shaders/super-xbr/super-xbr-fast-pass2.glsl";
-    //    shader_files<<"shaders/super-xbr/custom-jinc2-sharper.glsl";
-
-    //shader_files_include="super-xbr-params.inc";
-
-    shader_files_include="";
-    if (shader_vertex_files.isEmpty()){
-        shader_vertex_files<<"superxbr-naitive-vertex.glsl";
-    }
-
-    //    shader_files<<"super-xbr-pass0.glsl";
-    //    shader_files<<"super-xbr-pass1.glsl";
-    //    shader_files<<"super-xbr-pass2.glsl";
-    //    shader_files<<"custom-jinc2-sharper.glsl";
-
-    if (shader_files.isEmpty()){
-        shader_files<<"superxbr-native-pass0.glsl";
-        shader_files<<"superxbr-native-pass1.glsl";
-        shader_files<<"superxbr-native-pass2.glsl";
-    }
-
-    maxPass=shader_files.size()-1;
-
-    //maxPass=2+1;//last blur
-    //scales per pass relative to previos fbo, note: source first texture always scale=1.0
-    //scales<<2<<1<<1<<1;
-    //scales<<1<<2<<1<<1<<2<<1<<1;
-
-    if (scales.isEmpty()){
-        scales<<2<<1<<1<<1<<1;
-    }
-
     //---------------------------------------------
     GLuint fbotextid=texture->textureId();
     GLuint prevfbotextid=0;
-
-    //f->glUseProgram(0);
-    //f->glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     //qDebug()<<"Texture id start"<<fbotextid<<"texure size:"<<texture->width()<<"x"<<texture->height();
 
     for (pass=0;pass<=maxPass;pass++){
 
-
         bool rotate=false;//(pass>0);
-
         //qDebug()<<"Programs:"<<
         addProgram();
         if (initShaders_xbr(pass) && !scales.isEmpty()){
@@ -277,46 +272,22 @@ void XunoGLSLFilter::superscale()
 
             program->bind();
 
-            if (program->uniformLocation("Texture0")!=-1) {
-                qDebug()<<"Texture0 is";
-                program->setUniformValue("Texture0",  0);
-            }
-            if (program->uniformLocation("PassPrev2Texture")!=-1) {
-                qDebug()<<"PassPrev2Texture is";
-                program->setUniformValue("PassPrev2Texture",  1);
-            }
+            //qDebug()<<"texture0 is";
+            program->setUniformValue("texture0",  0);
 
-            if (program->uniformLocation("texture0")!=-1) {
-                //qDebug()<<"texture0 is";
-                program->setUniformValue("texture0",  0);
-            }
-
-
-            //program->setUniformValue("pass", fboID);
-
-            //program->setUniformValue("OutputSize",QVector2D(m_fbo[fboID]->width(),m_fbo[fboID]->height()));
-            program->setUniformValue("TextureSize",QVector2D(m_fbo[fboID]->width(),m_fbo[fboID]->height()));
 
             QVector2D textureSize=QVector2D (float(m_fbo[fboID]->width()),float(m_fbo[fboID]->height()));
 
-            program->setUniformValue("texture_size",textureSize);
-            program->setUniformValue("pixel_size",QVector2D(1.0f,1.0f)/textureSize);
+            //qDebug()<<"texture_size0 is";
+            program->setUniformValue("texture_size0", textureSize);
 
-            if (program->uniformLocation("texture_size0")!=-1) {
-                //qDebug()<<"texture_size0 is";
-                program->setUniformValue("texture_size0", textureSize);
-            }
 
-            if (program->uniformLocation("pixel_size0")!=-1) {
-                //qDebug()<<"pixel_size0 is";
-                program->setUniformValue("pixel_size0", QVector2D(1.0f,1.0f)/textureSize);
-            }
+            //qDebug()<<"pixel_size0 is";
+            program->setUniformValue("pixel_size0", QVector2D(1.0f,1.0f)/textureSize);
 
-            if (program->uniformLocation("texture_rot0")!=-1) {
-                //qDebug()<<"texture_rot0 is";
-                program->setUniformValue("texture_rot0", QVector2D(0.0f,0.0f));
-            }
 
+            //qDebug()<<"texture_rot0 is";
+            program->setUniformValue("texture_rot0", QVector2D(0.0f,0.0f));
 
             QMatrix4x4 matrix;
             matrix.setToIdentity();
@@ -337,11 +308,6 @@ void XunoGLSLFilter::superscale()
                     f->glBindTexture(GL_TEXTURE_2D, fbotextid);
                     f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);//GL_NEAREST GL_LINEAR
                     f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
-
-                    //                    f->glActiveTexture(GL_TEXTURE1);
-                    //                    f->glBindTexture(GL_TEXTURE_2D, prevfbotextid);
-                    //                    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);//GL_NEAREST GL_LINEAR
-                    //                    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
                 }
 
                 f->glClearColor(1.0,0.0,0.0,1.0);//RED
@@ -355,14 +321,13 @@ void XunoGLSLFilter::superscale()
                 }else{
                     f->glBindTexture(GL_TEXTURE_2D, 0);
                 }
-
             }
             program->release();
             m_fbo[fboID]->release();
 #if (unix)
-            QString filename=QString("/home/lex/temp/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
+//            QString filename=QString("/home/lex/temp/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
 #else
-            QString filename=QString("e:/temp/shader/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
+//            QString filename=QString("e:/temp/shader/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
 #endif
             // qDebug()<<"Saving:"<<filename;
             // m_fbo[fboID]->toImage(false).save(filename);
@@ -370,26 +335,13 @@ void XunoGLSLFilter::superscale()
             prevfbotextid=fbotextid;
             fbotextid=m_fbo[fboID]->texture();
             //qDebug()<<"Texture id"<<fbotextid<<"texure size:"<<m_fbo[fboID]->width()<<"x"<<m_fbo[fboID]->height();
-
         }else{
             qDebug()<<"initShaders error (pass)"<<pass;
         }
     }
 
     if (fbotextid) lastSuperscaleTexureId=fbotextid;
-
-    //clear
-    //    while (m_fbo.size()) {
-    //        delete m_fbo.takeLast();
-    //    }
-    //    while (programs.size()) {
-    //        delete programs.takeLast();
-    //    }
 }
-
-
-
-
 
 
 bool XunoGLSLFilter::initShaders(int pass)

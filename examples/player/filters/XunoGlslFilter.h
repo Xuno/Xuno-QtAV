@@ -37,6 +37,7 @@ public:
     XunoGLSLFilter(QObject* parent = 0);
     void setShader(QtAV::VideoShader *ush);
     void setNeedSave(bool value);
+    void setNeedSuperScale(bool value);
     void setSavePath(const QString &value);
     void setPlayer(QtAV::AVPlayer *player);
     void setBrightness(const qreal &value);
@@ -46,6 +47,7 @@ public:
     void colorTransform(bool runOnce=true);
     QString defineFileName();
 
+    bool getNeedSuperScale() const;
 
 protected slots:
     void beforeRendering();
@@ -53,7 +55,7 @@ protected slots:
 
 private:
     QtAV::VideoShader *user_shader=Q_NULLPTR;
-    bool needSave=false,colorTransformChanged=true;
+    bool needSave=false,colorTransformChanged=true,needSuperScale=false;
     QString savePath;
     QtAV::AVPlayer *m_player=Q_NULLPTR;
     qreal brightness=0,contrast=0,hue=0,saturation=0;
@@ -64,7 +66,7 @@ private:
     int pass=0;
     int maxPass=0;
     QVector <int> scales;
-    GeometryEngine *geometries;
+    GeometryEngine *geometries=Q_NULLPTR;
     QStringList shader_files,shader_vertex_files;
     QString shader_files_prefix,shader_files_include;
     QOpenGLTexture *texture=Q_NULLPTR;

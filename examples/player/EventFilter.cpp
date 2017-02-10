@@ -105,6 +105,7 @@ void EventFilter::help()
                        "<p>") + tr("C: capture video") + QString::fromLatin1("</p>"
                        "<p>") + tr("Up/Down: volume +/-\n") + QString::fromLatin1("</p>"
                        "<p>") + tr("Ctrl+Up/Down: speed +/-\n") + QString::fromLatin1("</p>"
+                       "<p>") + tr("X: SuperScale on/off\n") + QString::fromLatin1("</p>"
                        "<p>") + tr("-&gt;/&lt;-: seek forward/backward\n");
     QMessageBox::about(0, tr("Help"), help);
 }
@@ -265,6 +266,14 @@ bool EventFilter::eventFilter(QObject *watched, QEvent *event)
             qDebug("orientation: %d", renderer->orientation());
         }
             break;
+        case Qt::Key_X: {
+            if (xunoGLSLFilter!=Q_NULLPTR){
+                bool state=!xunoGLSLFilter->getNeedSuperScale();
+                xunoGLSLFilter->setNeedSuperScale(state);
+                qDebug("toggle superscale: %d", state);
+            }
+        }
+            break;
         case Qt::Key_T: {
             QWidget *w = qApp->activeWindow();
             if (!w)
@@ -331,6 +340,11 @@ void EventFilter::showMenu(const QPoint &p)
         menu->addSeparator();
     }
     menu->exec(p);
+}
+
+void EventFilter::setXunoGLSLFilter(XunoGLSLFilter *value)
+{
+    xunoGLSLFilter = value;
 }
 
 WindowEventFilter::WindowEventFilter(QWidget *window)
