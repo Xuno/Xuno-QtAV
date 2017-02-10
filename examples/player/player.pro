@@ -55,6 +55,7 @@ message("DEFINES: "$$DEFINES)
 DISTFILES += \
     res/shaders/simple_vec.glsl \
     res/shaders/simple_ver.glsl \
-    res/shaders/simple_frag.glsl
+    res/shaders/simple_frag.glsl \
+    res/shaders/superxbr-naitive-vertex.glsl
 
 

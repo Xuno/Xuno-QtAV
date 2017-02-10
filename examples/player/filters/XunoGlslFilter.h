@@ -65,7 +65,7 @@ private:
     int maxPass=0;
     QVector <int> scales;
     GeometryEngine *geometries;
-    QStringList shader_files;
+    QStringList shader_files,shader_vertex_files;
     QString shader_files_prefix,shader_files_include;
     QOpenGLTexture *texture=Q_NULLPTR;
     int frame=0;
@@ -82,5 +82,6 @@ private:
     int addProgram();
     bool initShaders(int pass);
     bool initShaders_simple(int pass);
+    bool initShaders_xbr(int pass);
 };
 #endif // XUNOGLSLFILTER_H

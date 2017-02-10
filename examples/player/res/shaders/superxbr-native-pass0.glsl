@@ -1,18 +1,4 @@
-#if defined(VERTEX)
-
-in highp vec4 VertexCoord;
-in mediump vec2 TexCoord;
-out mediump vec2 texcoord0;
-uniform mediump mat4 MVPMatrix;
-void main(void)
-{
-    gl_Position = MVPMatrix * VertexCoord;
-    texcoord0 = TexCoord;
-}
-
-#elif defined(FRAGMENT)
-
-
+#version 130
 //Create FBO: 3342x2086 (3342x2086)  #2
 //recompiling a shader program:
 //header:
@@ -35,16 +21,16 @@ void main(void)
 uniform sampler2D MAIN_raw;
 
 //texture pos from vertex (texcoord0)
-in mediump vec2 MAIN_pos;
+in vec2 MAIN_pos;
 
 //texture size (texture_size0)
-uniform mediump vec2 MAIN_size;
+uniform vec2 MAIN_size;
 
 //texture rotation (texture_rot0)
-uniform mediump mat2 MAIN_rot;
+uniform mat2 MAIN_rot;
 
 //pixel size (pixel_size0)
-uniform mediump vec2 MAIN_pt;
+uniform vec2 MAIN_pt;
 
 
 vec4 superxbr() {
@@ -135,7 +121,3 @@ void main(void)
   gl_FragColor = hook();
   //gl_FragColor = texture(texture0, texcoord0);
 }
-
-
-
-#endif

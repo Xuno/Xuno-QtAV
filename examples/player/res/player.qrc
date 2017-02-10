@@ -16,5 +16,6 @@
         <file>shaders/custom-jinc2-sharper.glsl</file>
         <file>hooks/superxbr-native.hook</file>
         <file>shaders/superxbr-native-pass0.glsl</file>
+        <file>shaders/superxbr-naitive-vertex.glsl</file>
     </qresource>
 </RCC>

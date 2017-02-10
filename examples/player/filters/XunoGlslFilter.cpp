@@ -217,7 +217,9 @@ void XunoGLSLFilter::superscale()
     //    shader_files<<"shaders/super-xbr/custom-jinc2-sharper.glsl";
 
     //shader_files_include="super-xbr-params.inc";
+
     shader_files_include="";
+    shader_vertex_files<<"superxbr-naitive-vertex.glsl";
 
 //    shader_files<<"super-xbr-pass0.glsl";
 //    shader_files<<"super-xbr-pass1.glsl";
@@ -252,7 +254,7 @@ void XunoGLSLFilter::superscale()
 
         qDebug()<<"Programs:"<< \
                   addProgram();
-        if (initShaders(pass) && !scales.isEmpty()){
+        if (initShaders_xbr(pass) && !scales.isEmpty()){
             int fboID=addFBO(scales.at(pass),/*rotate*/0);
 
             QOpenGLShaderProgram *program=Q_NULLPTR;
@@ -488,6 +490,49 @@ bool XunoGLSLFilter::initShaders_simple(int pass)
     return true;
 
 }
+
+
+bool XunoGLSLFilter::initShaders_xbr(int pass)
+{
+    QOpenGLShaderProgram *program=Q_NULLPTR;
+    if (pass<=programs.size()){
+        program=programs[pass];
+    }
+    if (program==Q_NULLPTR) {
+        qDebug()<<"program not present";
+        return false;
+    }
+
+    //qDebug()<<"initShaders pass"<<pass;
+
+
+    if (shader_files.size()){
+        QString filename;
+        filename=QString(shader_files_prefix).append(shader_vertex_files.at(0));
+        //qDebug()<<Shader;
+        // Compile vertex shader
+        if (!program->addShaderFromSourceFile(QOpenGLShader::Vertex, filename)){
+            return false;
+        }
+        filename=QString(shader_files_prefix).append(shader_files.at(pass));
+        //qDebug()<<Shader;
+        // Compile vertex shader
+        if (!program->addShaderFromSourceFile(QOpenGLShader::Fragment, filename)){
+            return false;
+        }
+
+        if (!program->link()) {
+            qDebug()<<program->log();
+            qDebug()<<program->shaders().at(0)->sourceCode();
+            return false;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
 
 int XunoGLSLFilter::addProgram()
 {
