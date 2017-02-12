@@ -551,10 +551,10 @@ void XunoGLSLFilter::initTextures()
     texture = new QOpenGLTexture(image);//.mirrored()
 
     // Set nearest filtering mode for texture minification
-    texture->setMinificationFilter(QOpenGLTexture::Nearest);
+    texture->setMinificationFilter(QOpenGLTexture::Linear);
 
     // Set bilinear filtering mode for texture magnification
-    texture->setMagnificationFilter(QOpenGLTexture::Nearest);//Linear Nearest
+    texture->setMagnificationFilter(QOpenGLTexture::Linear);//Linear Nearest
 
     // Wrap texture coordinates by repeating
     // f.ex. texture coordinate (1.1, 1.2) is same as (0.1, 0.2)
