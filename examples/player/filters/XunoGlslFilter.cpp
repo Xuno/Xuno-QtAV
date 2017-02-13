@@ -57,18 +57,20 @@ void XunoGLSLFilter::setShader(QtAV::VideoShader *ush)
 
 void XunoGLSLFilter::beforeRendering()
 {
-    //qDebug()<<"XunoGLSLFilter::beforeRendering";
+    //qDebug()<<"XunoGLSLFilter::beforeRendering"<<fbo()->size()<<outputSize();
     colorTransform();
-    return;
+//    return;
     if (fbo() && fbo()->isValid()){
+
         QOpenGLFunctions *f=opengl()->openGLContext()->functions();
         if (f && fbo()->textures().size()){
             GLenum target=GL_TEXTURE_2D;
             f->glBindTexture(target,fbo()->texture());
+            //f->glGenerateMipmap(target);
             f->glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            f->glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            f->glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            //f->glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            //f->glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             f->glBindTexture(target,0);
         }
     }
@@ -98,16 +100,17 @@ void XunoGLSLFilter::afterRendering()
         }
         if (needSuperScale){
             superscale();
-//            QOpenGLFunctions *f=opengl()->openGLContext()->functions();
-//            if (f && fbo()->textures().size()){
-//                GLenum target=GL_TEXTURE_2D;
-//                f->glBindTexture(target,frameTexture());
-//                f->glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-//                f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        }
+        QOpenGLFunctions *f=opengl()->openGLContext()->functions();
+        if (f && fbo()->textures().size()){
+            GLenum target=GL_TEXTURE_2D;
+            f->glBindTexture(target,frameTexture());
+            //f->glGenerateMipmap(target);
+            f->glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 //                f->glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 //                f->glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-//                f->glBindTexture(target,0);
-//            }
+            f->glBindTexture(target,0);
         }
     }
 }
@@ -211,6 +214,10 @@ QString XunoGLSLFilter::defineFileName()
 
 void XunoGLSLFilter::superscale()
 {
+
+    //limit of upper size for frame size more than 1920 pix
+    if (fbo()->size().width()>1920 || fbo()->size().height()>1920) return;
+
     if ( geometries==Q_NULLPTR) geometries = new GeometryEngine;
 
     //clear
@@ -551,7 +558,7 @@ void XunoGLSLFilter::initTextures()
     texture = new QOpenGLTexture(image);//.mirrored()
 
     // Set nearest filtering mode for texture minification
-    texture->setMinificationFilter(QOpenGLTexture::Linear);
+    texture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
 
     // Set bilinear filtering mode for texture magnification
     texture->setMagnificationFilter(QOpenGLTexture::Linear);//Linear Nearest

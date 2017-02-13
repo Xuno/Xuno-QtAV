@@ -55,7 +55,7 @@ protected slots:
 
 private:
     QtAV::VideoShader *user_shader=Q_NULLPTR;
-    bool needSave=false,colorTransformChanged=true,needSuperScale=false;
+    bool needSave=false,colorTransformChanged=true,needSuperScale=true;
     QString savePath;
     QtAV::AVPlayer *m_player=Q_NULLPTR;
     qreal brightness=0,contrast=0,hue=0,saturation=0;
