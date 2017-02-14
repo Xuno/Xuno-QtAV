@@ -18,7 +18,9 @@ public:
     void setSharpValue(float v);
     void setGammaValue(float v);
     void setCustomProgram(QOpenGLShaderProgram *value);
-    QString compile();
+    bool compile();
+    bool setUserUniformValues();
+    qreal getFilterSharp() const;
 
 private:
     const char* userShaderHeader(QOpenGLShader::ShaderType type) const;
@@ -28,7 +30,6 @@ private:
     QOpenGLShaderProgram* customProgram=Q_NULLPTR;
 
     void setUserUniformValue(Uniform &u);
-    bool setUserUniformValues();
 
     GLfloat u_gammaRGB=1.;
     qreal filterSharp=1.;
