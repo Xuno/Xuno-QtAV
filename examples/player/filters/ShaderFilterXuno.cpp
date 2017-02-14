@@ -122,6 +122,16 @@ void ShaderFilterXuno::setUserUniformValue(Uniform &u)
     }
 }
 
+GLfloat ShaderFilterXuno::getGammaRGB() const
+{
+    return u_gammaRGB;
+}
+
+bool ShaderFilterXuno::needToRun()
+{
+    return (u_gammaRGB!=1. || filterSharp!=1.);
+}
+
 qreal ShaderFilterXuno::getFilterSharp() const
 {
     return filterSharp;

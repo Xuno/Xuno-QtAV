@@ -21,6 +21,8 @@ public:
     bool compile();
     bool setUserUniformValues();
     qreal getFilterSharp() const;
+    GLfloat getGammaRGB() const;
+    bool needToRun();
 
 private:
     const char* userShaderHeader(QOpenGLShader::ShaderType type) const;

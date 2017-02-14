@@ -359,6 +359,13 @@ void XunoGLSLFilter::superscale()
 GLuint XunoGLSLFilter::sharpShader(GLuint pfbotextid)
 {
     //qDebug()<<"XunoGLSLFilter::sharpShader";
+    ShaderFilterXuno *m_sharpShader = static_cast <ShaderFilterXuno*> (user_shader);
+    if (!m_sharpShader) return 0;
+    if (!m_sharpShader->needToRun()) {
+        //qDebug()<<"m_sharpShader skipped";
+        return 0;
+    }
+
     addProgram();
     QOpenGLShaderProgram *program=Q_NULLPTR;
     if (pass<=programs.size()){
@@ -385,8 +392,6 @@ GLuint XunoGLSLFilter::sharpShader(GLuint pfbotextid)
 
     //qDebug()<<"XunoGLSLFilter::sharpShader.userShaderHeader: ";
 
-    ShaderFilterXuno *m_sharpShader = static_cast <ShaderFilterXuno*> (user_shader);
-    if (!m_sharpShader) return 0;
     m_sharpShader->setCustomProgram(program);
     m_sharpShader->compile();
     //qDebug()<<"getFilterSharp:"<<m_sharpShader->getFilterSharp();
