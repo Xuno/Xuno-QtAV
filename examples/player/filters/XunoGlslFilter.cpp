@@ -52,12 +52,12 @@ XunoGLSLFilter::XunoGLSLFilter(QObject *parent):
 void XunoGLSLFilter::setShader(QtAV::VideoShader *ush)
 {
     user_shader=ush;
-    opengl()->setUserShader(user_shader);
+    //opengl()->setUserShader(user_shader);
 }
 
 void XunoGLSLFilter::beforeRendering()
 {
-    //qDebug()<<"XunoGLSLFilter::beforeRendering"<<fbo()->size()<<outputSize();
+    qDebug()<<"XunoGLSLFilter::beforeRendering"<<fbo()->size();
     colorTransform();
 //    return;
     if (fbo() && fbo()->isValid()){
@@ -79,10 +79,11 @@ void XunoGLSLFilter::beforeRendering()
 
 void XunoGLSLFilter::afterRendering()
 {
-    //qDebug()<<"XunoGLSLFilter::afterRendering()";
+    qDebug()<<"XunoGLSLFilter::afterRendering()";
     //return;
     lastSuperscaleTexureId=0;
     if (fbo() && fbo()->isValid() ) {
+        //need save image after rendering
         if (needSave){
             QString name=defineFileName();
             if (name.isEmpty()) name=savePath.append(QString("SaveFBOafterRendering-%1.tif").arg(QDateTime().currentMSecsSinceEpoch()));
@@ -98,6 +99,8 @@ void XunoGLSLFilter::afterRendering()
             }
             needSave=false;
         }
+
+        //need superscale image after rendering and replace fbo for show by opengl
         if (needSuperScale){
             superscale();
         }
@@ -347,7 +350,93 @@ void XunoGLSLFilter::superscale()
         }
     }
 
+    GLuint sfbotextid=sharpShader(prevfbotextid);
+    if (sfbotextid) fbotextid=sfbotextid;
+
     if (fbotextid) lastSuperscaleTexureId=fbotextid;
+}
+
+GLuint XunoGLSLFilter::sharpShader(GLuint pfbotextid)
+{
+    qDebug()<<"XunoGLSLFilter::sharpShader";
+    addProgram();
+    QOpenGLShaderProgram *program=Q_NULLPTR;
+    if (pass<=programs.size()){
+        program=programs[pass];
+    }
+    QOpenGLFunctions *f=opengl()->openGLContext()->functions();
+    if (!f) return 0;
+    if (!program) return 0;
+
+
+    ShaderFilterXuno *m_sharpShader = static_cast <ShaderFilterXuno*> (user_shader);
+    if (!m_sharpShader) return 0;
+
+    m_sharpShader->setCustomProgram(program);
+
+    GLuint fboID=(GLuint)addFBO(1,false);
+
+    program->removeAllShaders();
+
+    if (shader_files.size()){
+        QString filename;
+        filename=QString(shader_files_prefix).append(shader_vertex_files.at(0));
+        //qDebug()<<Shader;
+        // Compile vertex shader
+        if (!program->addShaderFromSourceFile(QOpenGLShader::Vertex, filename)){
+            return 0;
+        }
+    }
+
+    //qDebug()<<"XunoGLSLFilter::sharpShader.userShaderHeader: ";
+
+    m_sharpShader->compile();
+
+    if (!program->isLinked()) return 0;
+
+    //qDebug()<<"texture0 is";
+    program->setUniformValue("texture0",  0);
+
+    QVector2D textureSize=QVector2D (float(m_fbo[fboID]->width()),float(m_fbo[fboID]->height()));
+
+    //qDebug()<<"texture_size0 is";
+    program->setUniformValue("u_textureSize", textureSize);
+
+    //qDebug()<<"pixel_size0 is";
+    program->setUniformValue("u_texelSize", QVector2D(1.0f,1.0f)/textureSize);
+
+    //qDebug()<<"texture_rot0 is";
+    program->setUniformValue("texture_rot0", QVector2D(0.0f,0.0f));
+
+    QMatrix4x4 matrix;
+    matrix.setToIdentity();
+
+    program->setUniformValue("MVPMatrix", matrix);
+
+    m_fbo[fboID]->bind();
+    f->glViewport(0,0,m_fbo[fboID]->width(),m_fbo[fboID]->height());
+
+
+    program->bind();
+
+    f->glActiveTexture(GL_TEXTURE0);
+    f->glBindTexture(GL_TEXTURE_2D, pfbotextid);
+    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);//GL_NEAREST GL_LINEAR
+    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+
+    f->glClearColor(0.0,1.0,0.0,1.0);//GREEN
+    f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    geometries->drawCubeGeometry(program);
+
+    f->glBindTexture(GL_TEXTURE_2D, 0);
+
+    program->release();
+    m_fbo[fboID]->release();
+
+    //delete m_sharpShader;
+
+    return fboID;
 }
 
 

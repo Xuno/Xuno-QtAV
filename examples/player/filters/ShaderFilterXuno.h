@@ -17,11 +17,15 @@ public:
     ShaderFilterXuno();
     void setSharpValue(float v);
     void setGammaValue(float v);
+    void setCustomProgram(QOpenGLShaderProgram *value);
+    QString compile();
 
 private:
     const char* userShaderHeader(QOpenGLShader::ShaderType type) const;
     const char* userPostProcess() const;
     const char* userSample() const;
+    QOpenGLShaderProgram* program();
+    QOpenGLShaderProgram* customProgram=Q_NULLPTR;
 
     void setUserUniformValue(Uniform &u);
     bool setUserUniformValues();

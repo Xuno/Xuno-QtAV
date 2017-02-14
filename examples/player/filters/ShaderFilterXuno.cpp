@@ -71,12 +71,57 @@ const char *ShaderFilterXuno::userSample() const
                 \n    return texture(tex, pos);
                 \n#endif
                 \n}
-                );
+                  );
+}
+
+QOpenGLShaderProgram *ShaderFilterXuno::program()
+{
+    if (customProgram!=Q_NULLPTR){
+      return  customProgram;
+    }else{
+      return QtAV::VideoShader::program();
+    }
+}
+
+void ShaderFilterXuno::setCustomProgram(QOpenGLShaderProgram *value)
+{
+    customProgram = value;
+}
+
+QString ShaderFilterXuno::compile()
+{
+    QString ret;
+    ret.append("uniform sampler2D texture0;\n"
+               "uniform vec2 u_texelSize;\n"
+               "uniform vec2 u_pixelSize;\n"
+               "in vec2 texc;\n");
+    ret.append(userShaderHeader(QOpenGLShader::Fragment));
+    ret.append(userSample());
+    ret.append("\nvoid main() {\n"
+               "gl_FragColor = sample2d(texture0, texc, 0);\n");
+    ret.append(userPostProcess());
+    ret.append("\n}\n");
+
+    if (program()==Q_NULLPTR) {
+        return QString();
+    }
+
+    program()->addShaderFromSourceCode(QOpenGLShader::Fragment, ret);
+
+    if (!program()->link()) {
+        qDebug()<<program()->log();
+        qDebug()<<program()->shaders().at(0)->sourceCode();
+        return "build error";
+    }
+
+    bool res=setUserUniformValues();
+    if (!res) return QString();
+    return "";
 }
 
 const char *ShaderFilterXuno::userPostProcess() const
 {
-      return GLSL(
+    return GLSL(
                 \n#ifdef USED_GAMMA
                 \nif (u_gammaRGB!=1.)
                 \n gl_FragColor.rgb = pow(gl_FragColor.rgb, 1.0 / vec3(u_gammaRGB));
@@ -108,6 +153,7 @@ void ShaderFilterXuno::setUserUniformValue(Uniform &u)
 
 bool ShaderFilterXuno::setUserUniformValues()
 {
+    qDebug()<<"ShaderFilterXuno :: setUserUniformValues";
     //Uniform.set(const T& value, int count);
         GLfloat fs=(GLfloat)filterSharp;
         GLfloat fsa=(GLfloat)-((fs-(qreal)1.0)/(qreal)4.0);

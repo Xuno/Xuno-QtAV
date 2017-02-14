@@ -25,6 +25,8 @@
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
 #include "geometryengine.h"
+#include "ShaderFilterXuno.h"
+
 
 
 QT_BEGIN_NAMESPACE
@@ -85,5 +87,6 @@ private:
     bool initShaders(int pass);
     bool initShaders_simple(int pass);
     bool initShaders_xbr(int pass);
+    GLuint sharpShader(GLuint pfbotextid);
 };
 #endif // XUNOGLSLFILTER_H
