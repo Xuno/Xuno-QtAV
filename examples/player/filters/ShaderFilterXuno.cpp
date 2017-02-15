@@ -159,11 +159,11 @@ bool ShaderFilterXuno::setUserUniformValues()
 bool ShaderFilterXuno::compile()
 {
     QString ret;
-    ret.append("uniform sampler2D texture0;\n"
-               "in vec2 texcoord0;"
+    ret.append("#version 130\n\n"
+               "uniform sampler2D texture0;\n"
+               "varying vec2 texcoord0;\n"
                "uniform vec2 u_texelSize;\n"
-               "uniform vec2 u_pixelSize;\n"
-               "\n");
+               "uniform vec2 u_pixelSize;\n");
     ret.append(userShaderHeader(QOpenGLShader::Fragment));
     ret.append(userSample());
     ret.append("\nvoid main() {\n"
@@ -182,6 +182,7 @@ bool ShaderFilterXuno::compile()
         qDebug()<<"ShaderFilterXuno::compile() :  build error";
         qDebug()<<program()->log();
         qDebug()<<program()->shaders().at(0)->sourceCode();
+        qDebug()<<program()->shaders().at(1)->sourceCode();
         return false;
     }
 return true;

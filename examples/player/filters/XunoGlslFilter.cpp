@@ -125,8 +125,8 @@ void XunoGLSLFilter::afterRendering()
             //f->glGenerateMipmap(target);
             f->glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-//                f->glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-//                f->glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+//                f->glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+//                f->glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
             f->glBindTexture(target,0);
         }
     }
@@ -322,6 +322,8 @@ void XunoGLSLFilter::superscale()
                     f->glBindTexture(GL_TEXTURE_2D, fbotextid);
                     f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);//GL_NEAREST GL_LINEAR
                     f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+                    //f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);//GL_CLAMP_TO_EDGE
+                    //f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
                 }
 
                 f->glClearColor(1.0,0.0,0.0,1.0);//RED
