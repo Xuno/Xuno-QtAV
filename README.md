@@ -1,7 +1,6 @@
 # [QtAV](http://www.qtav.org)  [![Build Status](https://travis-ci.org/wang-bin/QtAV.svg)](https://travis-ci.org/wang-bin/QtAV) [![Appveyor](https://ci.appveyor.com/api/projects/status/github/wang-bin/qtav?svg=true&passingText=windows%20-%20OK)](https://ci.appveyor.com/project/wang-bin/qtav)
 
-Xuno-QtAV is fork of QtAV a multimedia playback library based on Qt and FFmpeg. It can help you to write a player
-with less effort than ever before.
+Xuno-QtAV is fork of QtAV a multimedia playback library based on Qt and FFmpeg with enhanced user functions, superscaling and dynamic video filter support.
 
 QtAV has been added to FFmpeg projects page [http://ffmpeg.org/projects.html](http://ffmpeg.org/projects.html)
 
