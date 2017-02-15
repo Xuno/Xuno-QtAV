@@ -6,5 +6,18 @@
         <file>tv.ini</file>
         <file>help.html</file>
         <file>help-zh_CN.html</file>
+        <file>images/qt-logo.png</file>
+        <file>shaders/super-xbr-params.inc</file>
+        <file>shaders/super-xbr-pass0.glsl</file>
+        <file>shaders/super-xbr-pass1.glsl</file>
+        <file>shaders/super-xbr-pass2.glsl</file>
+        <file>shaders/simple_frag.glsl</file>
+        <file>shaders/simple_ver.glsl</file>
+        <file>shaders/custom-jinc2-sharper.glsl</file>
+        <file>hooks/superxbr-native.hook</file>
+        <file>shaders/superxbr-native-pass0.glsl</file>
+        <file>shaders/superxbr-naitive-vertex.glsl</file>
+        <file>shaders/superxbr-native-pass1.glsl</file>
+        <file>shaders/superxbr-native-pass2.glsl</file>
     </qresource>
 </RCC>

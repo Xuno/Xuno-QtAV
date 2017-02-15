@@ -128,6 +128,7 @@ Run `player -h`
 - -> / <-: seek forward / backward
 - Crtl+Wheel: zoom in/out
 - Drag and drop a media file to player
+- X : superscale on/off, by defalut on
 
 
 Screenshots

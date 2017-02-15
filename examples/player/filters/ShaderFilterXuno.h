@@ -17,14 +17,21 @@ public:
     ShaderFilterXuno();
     void setSharpValue(float v);
     void setGammaValue(float v);
+    void setCustomProgram(QOpenGLShaderProgram *value);
+    bool compile();
+    bool setUserUniformValues();
+    qreal getFilterSharp() const;
+    GLfloat getGammaRGB() const;
+    bool needToRun();
 
 private:
     const char* userShaderHeader(QOpenGLShader::ShaderType type) const;
     const char* userPostProcess() const;
     const char* userSample() const;
+    QOpenGLShaderProgram* program();
+    QOpenGLShaderProgram* customProgram=Q_NULLPTR;
 
     void setUserUniformValue(Uniform &u);
-    bool setUserUniformValues();
 
     GLfloat u_gammaRGB=1.;
     qreal filterSharp=1.;

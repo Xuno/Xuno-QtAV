@@ -22,7 +22,7 @@
 #include "QtAV/GLSLFilter.h"
 #include "QtAV/private/Filter_p.h"
 #include "QtAV/VideoFrame.h"
-#include "opengl/OpenGLHelper.h"
+//#include "opengl/OpenGLHelper.h"
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
 #include <QtGui/QOpenGLFramebufferObject>
 #else
@@ -51,6 +51,12 @@ GLSLFilter::GLSLFilter(QObject *parent)
 GLSLFilter::GLSLFilter(GLSLFilterPrivate &d, QObject *parent)
     : VideoFilter(d, parent)
 {}
+
+GLuint GLSLFilter::frameTexture() const
+{
+    DPTR_D(const GLSLFilter);
+    return d.fbo->texture();
+}
 
 OpenGLVideo* GLSLFilter::opengl() const
 {
@@ -137,7 +143,7 @@ void GLSLFilter::process(Statistics *statistics, VideoFrame *frame)
             return t;
         }
     };
-    GLTextureInterop *interop = new GLTextureInterop(d.fbo->texture());
+    GLTextureInterop *interop = new GLTextureInterop(frameTexture());
     f.setMetaData(QStringLiteral("surface_interop"), QVariant::fromValue(VideoSurfaceInteropPtr((interop))));
     *frame = f;
 }

@@ -30,6 +30,7 @@
 #include "filters/ShaderFilterXuno.h"
 #include "filters/savegl.h"
 #include "filters/XunoGlslFilter.h"
+#include "filters/XunoSimpleFilter.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -212,6 +213,7 @@ private:
     void installShaderXuno();
     void installSaveGL();
     void installGLSLFilter();
+    void installSimpleFilter();
 
 
 

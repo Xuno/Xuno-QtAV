@@ -176,11 +176,14 @@ void MainWindow::initPlayer()
     //mpSubtitle->installTo(mpPlayer); //filter on frame
     mpSubtitle->setPlayer(mpPlayer);
     //mpPlayer->setAudioOutput(AudioOutputFactory::create(AudioOutputId_OpenAL));
-    installGLSLFilter();
+    installGLSLFilter(); //**
     //installSaveGL();
+
+    //installSimpleFilter();
 
     EventFilter *ef = new EventFilter(mpPlayer);
     qApp->installEventFilter(ef);
+    ef->setXunoGLSLFilter(mpGLSLFilter);
     connect(ef, SIGNAL(helpRequested()), SLOT(help()));
     connect(ef, SIGNAL(showNextOSD()), SLOT(showNextOSD()));
     onCaptureConfigChanged();
@@ -2330,6 +2333,44 @@ void MainWindow::installGLSLFilter()
         qDebug()<<"installXunoGLSLFilter state"<<state;
     }
 }
+
+void MainWindow::installSimpleFilter()
+{
+    qDebug()<<"installSimpleFilter";
+    if (mpRenderer && mpRenderer->opengl() ){
+
+        XunoSimpleFilter *filter = new XunoSimpleFilter(mpRenderer->widget());
+        filter->setText(QString::fromLatin1("Filter on Renderer"));
+        VideoFilterContext *ctx = static_cast<VideoFilterContext*>(filter->context());
+        ctx->rect = QRect(200, 150, 400, 60);
+        ctx->opacity = 0.7;
+        filter->enableRotate(false);
+        filter->prepare();
+        mpRenderer->installFilter(filter);
+
+        filter = new XunoSimpleFilter(mpRenderer->widget());
+        filter->setText(QString());
+        filter->setImage(QImage(QString::fromLatin1(":/images/qt-logo.png")));
+        ctx = static_cast<VideoFilterContext*>(filter->context());
+        ctx->rect = QRect(400, 80, 200, 200);
+        ctx->opacity = 0.618;
+        filter->enableRotate(true);
+        filter->enableWaveEffect(false);
+        filter->prepare();
+        mpRenderer->installFilter(filter);
+
+        filter = new XunoSimpleFilter(mpPlayer);
+        filter->setText(QString::fromLatin1("<h1 style='color:#ffff00'>HTML Filter on<span style='color:#ff0000'>Video Frame</span></h2>"));
+        filter->enableWaveEffect(false);
+        filter->enableRotate(true);
+        ctx = static_cast<VideoFilterContext*>(filter->context());
+        ctx->rect = QRect(200, 100, 400, 60);
+        filter->prepare();
+        bool state= mpPlayer->installFilter(filter);
+        qDebug()<<"installSimpleFilter state"<<state;
+    }
+}
+
 
 void MainWindow::captureGL()
 {
