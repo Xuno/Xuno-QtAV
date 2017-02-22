@@ -378,6 +378,12 @@ void MainWindow::setupUi()
     //mpFullScreenBtn->setMaximumSize(a+kMaxButtonIconMargin+2, a+kMaxButtonIconMargin);
     mpFullScreenBtn->setToolTip(tr("Full Screen"));
 
+    mpScaleX2Btn = new QToolButton();
+    mpScaleX2Btn->setText(tr("x2"));
+    //mpFullScreenBtn->setIcon(QPixmap(QString::fromLatin1(":/theme/dark/fullscreen.svg")));
+    mpScaleX2Btn->setToolTip(tr("Scale X2"));
+    mpScaleX2Btn->setStyleSheet(QString::fromLatin1("color:grey;"));
+
     mpMenuBtn = new QToolButton();
     mpMenuBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/menu.svg")));
     //mpMenuBtn->setAutoRaise(true);
@@ -695,6 +701,7 @@ void MainWindow::setupUi()
     //controlLayout->addWidget(mpSetupBtn);
     //controlLayout->addWidget(mpMenuBtn);
     controlLayout->addWidget(mpFullScreenBtn);
+    controlLayout->addWidget(mpScaleX2Btn);
     space = new QSpacerItem(mpPlayPauseBtn->width(), mpPlayPauseBtn->height(), QSizePolicy::Expanding);
     controlLayout->addSpacerItem(space);
     controlLayout->addWidget(mpEnd);
@@ -739,6 +746,9 @@ void MainWindow::setupUi()
 
     //connect(mpWebBtn, SIGNAL(clicked()), SLOT(onXunoBrowser()));
     connect(mpFullScreenBtn, SIGNAL(clicked()), SLOT(onFullScreen()));
+
+    connect(mpScaleX2Btn, SIGNAL(clicked()), SLOT(onScaleX2Btn()));
+
 
     connect(&Config::instance(), SIGNAL(userShaderEnabledChanged()), SLOT(onUserShaderChanged()));
     connect(&Config::instance(), SIGNAL(fragHeaderChanged()), SLOT(onUserShaderChanged()));
@@ -1293,6 +1303,11 @@ void MainWindow::resizeEvent(QResizeEvent *e)
 {
     Q_UNUSED(e);
     QWidget::resizeEvent(e);
+    qDebug()<<"MainWindow::resizeEvent";
+    calcToUseSuperResolution();
+//    if (mpRenderer) {
+//        qDebug()<<"MainWindow::resizeEvent size:"<<mpRenderer->videoFrameSize()<<mpRenderer->rendererSize()<<mpRenderer->widget()->size();
+//    }
     /*
     if (mpTitle)
         QLabelSetElideText(mpTitle, QFileInfo(mFile).fileName(), e->size().width());
@@ -1467,8 +1482,43 @@ QString MainWindow::aboutXunoQtAV_PlainText()
 QString MainWindow::aboutXunoQtAV_HTML()
 {
     static QString about = "<h3>XunoPlayer " XUNO_QTAV_VERSION_STR_LONG "</h3>\n"
-                                                                        "<p>" + QObject::tr("Fork project (Xuno-QtAV) of QtAV \n") + QTAV_VERSION_STR "</p>";
+                           "<p>" + QObject::tr("Fork project (Xuno-QtAV) of QtAV \n") + QTAV_VERSION_STR "</p>";
     return about;
+}
+
+void MainWindow::calcToUseSuperResolution()
+{
+    if (mpRenderer && mpPlayer) {
+        Statistics st=mpPlayer->statistics();
+        QSize framesize,rendersize;
+
+        if (st.video_only.width>0 && st.video_only.height>0){
+            framesize.setWidth(st.video_only.width);
+            framesize.setHeight(st.video_only.height);
+        }else{
+            framesize=mpRenderer->videoFrameSize();
+        }
+        rendersize=mpRenderer->widget()->size();
+        qDebug()<<"MainWindow::calcToUseSuperResolution size:"<<framesize<<mpRenderer->widget()->size();
+        qreal sscaleWidth=qreal(rendersize.width())/qreal(framesize.width());
+        qreal sscaleHeight=qreal(rendersize.height())/qreal(framesize.height());
+        //qDebug()<<"MainWindow::calcToUseSuperResolution opengl()->video_size"<<mpRenderer
+        qreal scale=(sscaleWidth+sscaleHeight)/2;
+        qDebug()<<"MainWindow::calcToUseSuperResolution Scale"<<sscaleWidth<<sscaleHeight<<"M:"<<scale;
+
+        needToUseSuperResolutionLastLinearFiltering=true;
+
+        if (scale<1.){
+            needToUseSuperResolution=false;
+        }else if(scale>=1.){
+            needToUseSuperResolution=true;
+        }
+        if (scale==2.){
+            needToUseSuperResolutionLastLinearFiltering=false;
+        }
+        qDebug()<<"needToUseSuperResolution"<<needToUseSuperResolution;
+        qDebug()<<"needToUseSuperResolutionLastLinearFiltering"<<needToUseSuperResolutionLastLinearFiltering;
+    }
 }
 
 void MainWindow::about()
@@ -1700,6 +1750,10 @@ void MainWindow::tryHideControlBar()
     if (!detachedControl) mpControl->hide();
     if (mpControl->isHidden()) mpTimeSlider->hide();
     workaroundRendererSize();
+    if (mpRenderer) {
+        qDebug()<<"tryHideControlBar size:"<<mpRenderer->videoFrameSize()<<mpRenderer->rendererSize()<<mpRenderer->widget()->size();
+    }
+    calcToUseSuperResolution();
 }
 
 void MainWindow::tryShowControlBar()
@@ -1713,6 +1767,12 @@ void MainWindow::tryShowControlBar()
         detachedControl->show();
     else
         mpControl->show();
+
+    if (mpRenderer) {
+        qDebug()<<"MainWindow::tryShowControlBar size:"<<mpRenderer->videoFrameSize()<<mpRenderer->rendererSize()<<mpRenderer->widget()->size();
+    }
+    calcToUseSuperResolution();
+
 }
 
 void MainWindow::showInfo()
@@ -2172,6 +2232,7 @@ void MainWindow::reSizeByMovie()
         }
         //installGLSLFilter(t);
     }
+    calcToUseSuperResolution();
 }
 
 void MainWindow::onClickXunoBrowser(QUrl url){
@@ -2369,6 +2430,14 @@ void MainWindow::installSimpleFilter()
         bool state= mpPlayer->installFilter(filter);
         qDebug()<<"installSimpleFilter state"<<state;
     }
+}
+
+void MainWindow::onScaleX2Btn()
+{
+    qDebug()<<"MainWindow: onScaleX2Btn";
+    setPlayerScale(2);
+    reSizeByMovie();
+
 }
 
 
