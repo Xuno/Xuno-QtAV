@@ -27,7 +27,8 @@ SOURCES += main.cpp \
     config/ShaderPage.cpp \
     filters/AVFilterSubtitle.cpp \
     $$PWD/filters/XunoSimpleFilter.cpp \
-    $$PWD/filters/geometryengine.cpp
+    $$PWD/filters/geometryengine.cpp \
+    $$PWD/eventrenderer.cpp
 
 HEADERS += \
     MainWindow.h \
@@ -57,7 +58,8 @@ HEADERS += \
     $$PWD/filters/savegl.h \
     $$PWD/filters/XunoGlslFilter.h \
     $$PWD/filters/XunoSimpleFilter.h \
-    $$PWD/filters/geometryengine.h
+    $$PWD/filters/geometryengine.h \
+    $$PWD/eventrenderer.h
 
 SOURCES +=  \
     XunoBrowser.cpp \

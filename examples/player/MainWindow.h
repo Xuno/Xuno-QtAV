@@ -89,6 +89,7 @@ public:
     void setRepeatLoop(const bool loop);
     void setFileName(const QString fname);
     void setExtractTask(const QString fname);
+    void calcToUseSuperResolution();
 
     QString XUNO_QtAV_Version_String();
     QString XUNO_QtAV_Version_String_Long();
@@ -299,7 +300,6 @@ private:
 
     bool needToUseSuperResolution=false;
     bool needToUseSuperResolutionLastLinearFiltering=false;
-    void calcToUseSuperResolution();
 };
 
 

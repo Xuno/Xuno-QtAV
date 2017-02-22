@@ -19,6 +19,7 @@
 ******************************************************************************/
 #include "MainWindow.h"
 #include "EventFilter.h"
+#include "eventrenderer.h"
 #include <QtAV>
 #include <QtAV/GLSLFilter.h>
 #include <QtAVWidgets>
@@ -99,6 +100,9 @@ void QLabelSetElideText(QLabel *label, QString text, int W = 0)
     QString clippedText = metrix.elidedText(text, Qt::ElideRight, width);
     label->setText(clippedText);
 }
+
+
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QWidget(parent)
@@ -184,6 +188,12 @@ void MainWindow::initPlayer()
     EventFilter *ef = new EventFilter(mpPlayer);
     qApp->installEventFilter(ef);
     ef->setXunoGLSLFilter(mpGLSLFilter);
+
+    if (mpRenderer && mpRenderer->widget()) {
+        EventRenderer *evR = new EventRenderer(this);
+        mpRenderer->widget()->installEventFilter(evR);
+    }
+
     connect(ef, SIGNAL(helpRequested()), SLOT(help()));
     connect(ef, SIGNAL(showNextOSD()), SLOT(showNextOSD()));
     onCaptureConfigChanged();
@@ -1305,8 +1315,8 @@ void MainWindow::resizeEvent(QResizeEvent *e)
 {
     Q_UNUSED(e);
     QWidget::resizeEvent(e);
-    qDebug()<<"MainWindow::resizeEvent";
-    calcToUseSuperResolution();
+    //qDebug()<<"MainWindow::resizeEvent";
+    //calcToUseSuperResolution();
 //    if (mpRenderer) {
 //        qDebug()<<"MainWindow::resizeEvent size:"<<mpRenderer->videoFrameSize()<<mpRenderer->rendererSize()<<mpRenderer->widget()->size();
 //    }
@@ -1490,6 +1500,7 @@ QString MainWindow::aboutXunoQtAV_HTML()
 
 void MainWindow::calcToUseSuperResolution()
 {
+   // qDebug()<<"MainWindow::calcToUseSuperResolution";
     if (mpRenderer && mpPlayer) {
         Statistics st=mpPlayer->statistics();
         QSize framesize,rendersize;
@@ -1500,17 +1511,24 @@ void MainWindow::calcToUseSuperResolution()
         }else{
             framesize=mpRenderer->videoFrameSize();
         }
-        rendersize=mpRenderer->videoRect().size();//widget()->size();
+        rendersize=mpRenderer->videoRect().size()-QSize(1,1);//widget()->size();
 
-        if (framesize.isEmpty()) return;
-        if (rendersize.isEmpty()) return;
+        if (framesize.isEmpty()) {
+            //qDebug()<<"MainWindow::calcToUseSuperResolution framesize.isEmpty";
+            return;
+        }
+        if (rendersize.isEmpty()) {
+//            qDebug()<<"MainWindow::calcToUseSuperResolution rendersize.isEmpty()"<<mpRenderer->videoRect().size();
+//            return;
+            rendersize=framesize;
+        }
 
-        qDebug()<<"MainWindow::calcToUseSuperResolution size:"<<framesize<<rendersize;
+        qDebug()<<"MainWindow::calcToUseSuperResolution size: framesize:"<<framesize<<"rendersize:"<<rendersize;
         qreal sscaleWidth=qreal(rendersize.width())/qreal(framesize.width());
         qreal sscaleHeight=qreal(rendersize.height())/qreal(framesize.height());
         //qDebug()<<"MainWindow::calcToUseSuperResolution opengl()->video_size"<<mpRenderer
         qreal scale=(sscaleWidth+sscaleHeight)/2;
-        qDebug()<<"MainWindow::calcToUseSuperResolution Scale"<<sscaleWidth<<sscaleHeight<<"M:"<<scale;
+        qDebug()<<"MainWindow::calcToUseSuperResolution Scale WxH:"<<sscaleWidth<<sscaleHeight<<"Middle:"<<scale;
 
         needToUseSuperResolutionLastLinearFiltering=true;
 
@@ -1519,9 +1537,9 @@ void MainWindow::calcToUseSuperResolution()
         }else if(scale>=1.){
             needToUseSuperResolution=true;
         }
-        if (scale==2.){
-            needToUseSuperResolutionLastLinearFiltering=false;
-        }
+//        if (scale==2.){
+//            needToUseSuperResolutionLastLinearFiltering=false;
+//        }
 
         //limit of upper size for frame size more than 1920 pix
         if (framesize.width()>1920 || framesize.height()>1920) {
@@ -1774,7 +1792,7 @@ void MainWindow::tryHideControlBar()
 //    if (mpRenderer) {
 //        qDebug()<<"tryHideControlBar size:"<<mpRenderer->videoFrameSize()<<mpRenderer->rendererSize()<<mpRenderer->widget()->size();
 //    }
-    calcToUseSuperResolution();
+    //calcToUseSuperResolution();
 }
 
 void MainWindow::tryShowControlBar()
@@ -1792,7 +1810,7 @@ void MainWindow::tryShowControlBar()
 //    if (mpRenderer) {
 //        qDebug()<<"MainWindow::tryShowControlBar size:"<<mpRenderer->videoFrameSize()<<mpRenderer->rendererSize()<<mpRenderer->widget()->size();
 //    }
-    calcToUseSuperResolution();
+    //calcToUseSuperResolution();
 
 }
 
@@ -2253,7 +2271,8 @@ void MainWindow::reSizeByMovie()
         }
         //installGLSLFilter(t);
     }
-    calcToUseSuperResolution();
+    //qDebug()<<"reSizeByMovie before calcToUseSuperResolution";
+    //calcToUseSuperResolution();
 }
 
 void MainWindow::onClickXunoBrowser(QUrl url){
@@ -2485,4 +2504,6 @@ QString  MainWindow::XUNO_QtAV_Version_String_Long()
 {
     return XUNO_QTAV_VERSION_STR_LONG;
 }
+
+
 
