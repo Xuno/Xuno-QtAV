@@ -82,6 +82,7 @@ void XunoGLSLFilter::afterRendering()
     //qDebug()<<"XunoGLSLFilter::afterRendering()";
     //return;
     lastSuperscaleTexureId=0;
+    pass=0;
     if (fbo() && fbo()->isValid() ) {
         //need save image after rendering
         if (needSave){
@@ -117,19 +118,31 @@ void XunoGLSLFilter::afterRendering()
         GLuint sfbotextid=sharpShader(frameTexture());
         if (sfbotextid) lastSuperscaleTexureId=sfbotextid;
 
-
-        QOpenGLFunctions *f=opengl()->openGLContext()->functions();
-        if (f && fbo()->textures().size()){
-            GLenum target=GL_TEXTURE_2D;
-            f->glBindTexture(target,frameTexture());
-            //f->glGenerateMipmap(target);
-            f->glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-//                f->glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-//                f->glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-            f->glBindTexture(target,0);
+        //need last linear filtering image
+        if (needSuperScaleLastLinearFiltering){
+            QOpenGLFunctions *f=opengl()->openGLContext()->functions();
+            if (f && fbo()->textures().size()){
+                GLenum target=GL_TEXTURE_2D;
+                f->glBindTexture(target,frameTexture());
+                //f->glGenerateMipmap(target);
+                f->glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                f->glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                f->glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                f->glBindTexture(target,0);
+            }
         }
     }
+}
+
+bool XunoGLSLFilter::getNeedSuperScaleLastLinearFiltering() const
+{
+    return needSuperScaleLastLinearFiltering;
+}
+
+void XunoGLSLFilter::setNeedSuperScaleLastLinearFiltering(bool value)
+{
+    needSuperScaleLastLinearFiltering = value;
 }
 
 bool XunoGLSLFilter::getNeedSuperScale() const
@@ -140,7 +153,7 @@ bool XunoGLSLFilter::getNeedSuperScale() const
 GLuint XunoGLSLFilter::frameTexture() const
 {
     //qDebug()<<"XunoGLSLFilter::frameTexture()"<<lastSuperscaleTexureId;
-    return lastSuperscaleTexureId?lastSuperscaleTexureId:fbo()->texture();
+    return (lastSuperscaleTexureId>0) ? lastSuperscaleTexureId : fbo()->texture();
 }
 
 void XunoGLSLFilter::colorTransform(bool runOnce)
@@ -232,9 +245,6 @@ QString XunoGLSLFilter::defineFileName()
 void XunoGLSLFilter::superscale()
 {
 
-    //limit of upper size for frame size more than 1920 pix
-    if (fbo()->size().width()>1920 || fbo()->size().height()>1920) return;
-
     if ( geometries==Q_NULLPTR) geometries = new GeometryEngine;
 
     QOpenGLFunctions *f=opengl()->openGLContext()->functions();
@@ -250,7 +260,7 @@ void XunoGLSLFilter::superscale()
     //qDebug()<<"superscale x2" << outputSize();
 
 
-    initTextures();
+    //initTextures();
 
     frame++;
 
@@ -262,7 +272,8 @@ void XunoGLSLFilter::superscale()
 
 
     //---------------------------------------------
-    GLuint fbotextid=texture->textureId();
+    //GLuint fbotextid=texture->textureId();
+    GLuint fbotextid=fbo()->texture(); //used last fbo of player as source frame
 
     //qDebug()<<"Texture id start"<<fbotextid<<"texure size:"<<texture->width()<<"x"<<texture->height();
 
@@ -276,7 +287,7 @@ void XunoGLSLFilter::superscale()
 
             QOpenGLShaderProgram *program=Q_NULLPTR;
             if (pass<=programs.size()){
-                program=programs[pass];
+                program=programs.at(pass);
             }
 
             m_fbo[fboID]->bind();
@@ -313,18 +324,18 @@ void XunoGLSLFilter::superscale()
 
             program->setUniformValue("MVPMatrix", matrix);
 
-            if (1) {
-                if (pass==0){
-                    f->glActiveTexture(GL_TEXTURE0);
-                    texture->bind();
-                }else{
-                    f->glActiveTexture(GL_TEXTURE0);
-                    f->glBindTexture(GL_TEXTURE_2D, fbotextid);
-                    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);//GL_NEAREST GL_LINEAR
-                    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
-                    //f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);//GL_CLAMP_TO_EDGE
-                    //f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-                }
+            //if (1) {
+                //if (0){  //pass==0
+                //    f->glActiveTexture(GL_TEXTURE0);
+                //    texture->bind();
+                //}else{
+                f->glActiveTexture(GL_TEXTURE0);
+                f->glBindTexture(GL_TEXTURE_2D, fbotextid);
+                f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);//GL_NEAREST GL_LINEAR
+                f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+                //f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);//GL_CLAMP_TO_EDGE
+                //f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+                //}
 
                 f->glClearColor(1.0,0.0,0.0,1.0);//RED
                 f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -332,12 +343,14 @@ void XunoGLSLFilter::superscale()
                 // Draw cube geometry
                 geometries->drawCubeGeometry(program);
 
-                if (pass==0){
-                    texture->release();
-                }else{
-                    f->glBindTexture(GL_TEXTURE_2D, 0);
-                }
-            }
+//                if (0){//pass==0
+//                    texture->release();
+//                }else{
+
+                f->glBindTexture(GL_TEXTURE_2D, 0);
+
+//                }
+//            }
             program->release();
             m_fbo[fboID]->release();
 #if (unix)
@@ -362,20 +375,33 @@ GLuint XunoGLSLFilter::sharpShader(GLuint pfbotextid)
 {
     //qDebug()<<"XunoGLSLFilter::sharpShader";
     ShaderFilterXuno *m_sharpShader = static_cast <ShaderFilterXuno*> (user_shader);
-    if (!m_sharpShader) return 0;
+    if (!m_sharpShader)  {
+        //qDebug()<<"m_sharpShader skipped 0";
+        return 0;
+    }
     if (!m_sharpShader->needToRun()) {
-        //qDebug()<<"m_sharpShader skipped";
+        //qDebug()<<"m_sharpShader skipped 1";
         return 0;
     }
 
-    addProgram();
+    int prid=-1;
+    prid=addProgram();
     QOpenGLShaderProgram *program=Q_NULLPTR;
-    if (pass<=programs.size()){
-        program=programs[pass];
+    if (prid!=1){
+        program=programs.at(prid);
+    }else{
+        qDebug()<<"programs not is"<<prid;
+        return 0;
     }
     QOpenGLFunctions *f=opengl()->openGLContext()->functions();
-    if (!f) return 0;
-    if (!program) return 0;
+    if (!f) {
+        qDebug()<<"m_sharpShader skipped 2";
+        return 0;
+    }
+    if (program==Q_NULLPTR) {
+        qDebug()<<"m_sharpShader skipped 3, prid"<<prid;
+        return 0;
+    }
 
 
     int fboID=addFBO(1,false);
@@ -606,7 +632,7 @@ bool XunoGLSLFilter::initShaders_xbr(int pass)
 
 int XunoGLSLFilter::addProgram()
 {
-    QOpenGLShaderProgram *pr= new QOpenGLShaderProgram(this);
+    QOpenGLShaderProgram *pr=new QOpenGLShaderProgram(this);
     programs.append(pr);
     return programs.size()-1;
 }
@@ -616,11 +642,13 @@ int XunoGLSLFilter::addFBO(int scale, bool rotate)
     int texture_width=0, texture_height=0;
     int prev_id=m_fbo.size()-1;
     if (prev_id<0){
-        texture_width=texture->width();
-        texture_height=texture->height();
+        texture_width=fbo()->size().width();//texture->width();
+        texture_height=fbo()->size().height();//texture->height();
+        //qDebug()<<"addFBO first"<<texture_width<<texture_height;
     }else{
         texture_width=m_fbo[prev_id]->width();
         texture_height=m_fbo[prev_id]->height();
+        //qDebug()<<"addFBO next"<<prev_id<<texture_width<<texture_height;
     }
     texture_width*=scale;
     texture_height*=scale;
@@ -631,8 +659,8 @@ int XunoGLSLFilter::addFBO(int scale, bool rotate)
         texture_height=t;
     }
 
-    QOpenGLFramebufferObject* fbo = new QOpenGLFramebufferObject(texture_width,texture_height,GL_TEXTURE_2D);
-    m_fbo.append(fbo);
+    QOpenGLFramebufferObject* cfbo = new QOpenGLFramebufferObject(texture_width,texture_height,GL_TEXTURE_2D);
+    m_fbo.append(cfbo);
     return m_fbo.size()-1;
 
 }
