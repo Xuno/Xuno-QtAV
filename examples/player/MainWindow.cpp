@@ -383,6 +383,8 @@ void MainWindow::setupUi()
     //mpFullScreenBtn->setIcon(QPixmap(QString::fromLatin1(":/theme/dark/fullscreen.svg")));
     mpScaleX2Btn->setToolTip(tr("Scale X2"));
     mpScaleX2Btn->setStyleSheet(QString::fromLatin1("color:grey;"));
+    mpScaleX2Btn->setMaximumHeight(mpInfoBtn->sizeHint().height());
+    mpScaleX2Btn->setMinimumHeight(mpInfoBtn->sizeHint().height());
 
     mpMenuBtn = new QToolButton();
     mpMenuBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/menu.svg")));
@@ -1500,6 +1502,9 @@ void MainWindow::calcToUseSuperResolution()
         }
         rendersize=mpRenderer->videoRect().size();//widget()->size();
 
+        if (framesize.isEmpty()) return;
+        if (rendersize.isEmpty()) return;
+
         qDebug()<<"MainWindow::calcToUseSuperResolution size:"<<framesize<<rendersize;
         qreal sscaleWidth=qreal(rendersize.width())/qreal(framesize.width());
         qreal sscaleHeight=qreal(rendersize.height())/qreal(framesize.height());
@@ -1517,8 +1522,23 @@ void MainWindow::calcToUseSuperResolution()
         if (scale==2.){
             needToUseSuperResolutionLastLinearFiltering=false;
         }
+
+        //limit of upper size for frame size more than 1920 pix
+        if (framesize.width()>1920 || framesize.height()>1920) {
+            qDebug()<<"superscale skipped >1920"<<framesize;
+            needToUseSuperResolution=false;
+        }
+
         qDebug()<<"needToUseSuperResolution"<<needToUseSuperResolution;
         qDebug()<<"needToUseSuperResolutionLastLinearFiltering"<<needToUseSuperResolutionLastLinearFiltering;
+
+
+        if (mpGLSLFilter!=Q_NULLPTR){
+            mpGLSLFilter->setNeedSuperScale(needToUseSuperResolution);
+            mpGLSLFilter->setNeedSuperScaleLastLinearFiltering(needToUseSuperResolutionLastLinearFiltering);
+        }
+
+
     }
 }
 
@@ -1751,9 +1771,9 @@ void MainWindow::tryHideControlBar()
     if (!detachedControl) mpControl->hide();
     if (mpControl->isHidden()) mpTimeSlider->hide();
     workaroundRendererSize();
-    if (mpRenderer) {
-        qDebug()<<"tryHideControlBar size:"<<mpRenderer->videoFrameSize()<<mpRenderer->rendererSize()<<mpRenderer->widget()->size();
-    }
+//    if (mpRenderer) {
+//        qDebug()<<"tryHideControlBar size:"<<mpRenderer->videoFrameSize()<<mpRenderer->rendererSize()<<mpRenderer->widget()->size();
+//    }
     calcToUseSuperResolution();
 }
 
@@ -1769,9 +1789,9 @@ void MainWindow::tryShowControlBar()
     else
         mpControl->show();
 
-    if (mpRenderer) {
-        qDebug()<<"MainWindow::tryShowControlBar size:"<<mpRenderer->videoFrameSize()<<mpRenderer->rendererSize()<<mpRenderer->widget()->size();
-    }
+//    if (mpRenderer) {
+//        qDebug()<<"MainWindow::tryShowControlBar size:"<<mpRenderer->videoFrameSize()<<mpRenderer->rendererSize()<<mpRenderer->widget()->size();
+//    }
     calcToUseSuperResolution();
 
 }
@@ -2436,7 +2456,11 @@ void MainWindow::installSimpleFilter()
 void MainWindow::onScaleX2Btn()
 {
     qDebug()<<"MainWindow: onScaleX2Btn";
-    setPlayerScale(2);
+    qreal scale=(mPlayerScale==2.)?1.:2.;
+    int nextscale=(scale==2.)?1:2;
+    setPlayerScale(scale);
+    mpScaleX2Btn->setText(QString("x%1").arg(nextscale));
+    mpScaleX2Btn->setToolTip(QString("Scale X%1").arg(nextscale));
     reSizeByMovie();
 
 }
