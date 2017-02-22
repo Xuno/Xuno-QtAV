@@ -1498,8 +1498,9 @@ void MainWindow::calcToUseSuperResolution()
         }else{
             framesize=mpRenderer->videoFrameSize();
         }
-        rendersize=mpRenderer->widget()->size();
-        qDebug()<<"MainWindow::calcToUseSuperResolution size:"<<framesize<<mpRenderer->widget()->size();
+        rendersize=mpRenderer->videoRect().size();//widget()->size();
+
+        qDebug()<<"MainWindow::calcToUseSuperResolution size:"<<framesize<<rendersize;
         qreal sscaleWidth=qreal(rendersize.width())/qreal(framesize.width());
         qreal sscaleHeight=qreal(rendersize.height())/qreal(framesize.height());
         //qDebug()<<"MainWindow::calcToUseSuperResolution opengl()->video_size"<<mpRenderer
