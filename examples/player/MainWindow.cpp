@@ -388,9 +388,16 @@ void MainWindow::setupUi()
     //mpFullScreenBtn->setMaximumSize(a+kMaxButtonIconMargin+2, a+kMaxButtonIconMargin);
     mpFullScreenBtn->setToolTip(tr("Full Screen"));
 
+    mpScaleX15Btn = new QToolButton();
+    mpScaleX15Btn->setText(tr("x1.5"));
+    mpScaleX15Btn->setToolTip(tr("Scale X1.5"));
+    mpScaleX15Btn->setStyleSheet(QString::fromLatin1("color:grey;"));
+    mpScaleX15Btn->setMaximumHeight(mpInfoBtn->sizeHint().height());
+    mpScaleX15Btn->setMinimumHeight(mpInfoBtn->sizeHint().height());
+
+
     mpScaleX2Btn = new QToolButton();
     mpScaleX2Btn->setText(tr("x2"));
-    //mpFullScreenBtn->setIcon(QPixmap(QString::fromLatin1(":/theme/dark/fullscreen.svg")));
     mpScaleX2Btn->setToolTip(tr("Scale X2"));
     mpScaleX2Btn->setStyleSheet(QString::fromLatin1("color:grey;"));
     mpScaleX2Btn->setMaximumHeight(mpInfoBtn->sizeHint().height());
@@ -713,6 +720,7 @@ void MainWindow::setupUi()
     //controlLayout->addWidget(mpSetupBtn);
     //controlLayout->addWidget(mpMenuBtn);
     controlLayout->addWidget(mpFullScreenBtn);
+    controlLayout->addWidget(mpScaleX15Btn);
     controlLayout->addWidget(mpScaleX2Btn);
     space = new QSpacerItem(mpPlayPauseBtn->width(), mpPlayPauseBtn->height(), QSizePolicy::Expanding);
     controlLayout->addSpacerItem(space);
@@ -760,6 +768,7 @@ void MainWindow::setupUi()
     connect(mpFullScreenBtn, SIGNAL(clicked()), SLOT(onFullScreen()));
 
     connect(mpScaleX2Btn, SIGNAL(clicked()), SLOT(onScaleX2Btn()));
+    connect(mpScaleX15Btn, SIGNAL(clicked()), SLOT(onScaleX15Btn()));
 
 
     connect(&Config::instance(), SIGNAL(userShaderEnabledChanged()), SLOT(onUserShaderChanged()));
@@ -2482,7 +2491,17 @@ void MainWindow::onScaleX2Btn()
     mpScaleX2Btn->setText(QString("x%1").arg(nextscale));
     mpScaleX2Btn->setToolTip(QString("Scale X%1").arg(nextscale));
     reSizeByMovie();
+}
 
+void MainWindow::onScaleX15Btn()
+{
+    qDebug()<<"MainWindow: onScaleX15Btn";
+    qreal scale=(mPlayerScale==1.5)?1.0:1.5;
+    qreal nextscale=(scale==1.5)?1.0:1.5;
+    setPlayerScale(scale);
+    mpScaleX15Btn->setText(QString("x%1").arg(nextscale));
+    mpScaleX15Btn->setToolTip(QString("Scale X%1").arg(nextscale));
+    reSizeByMovie();
 }
 
 

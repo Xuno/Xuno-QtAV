@@ -191,6 +191,7 @@ private slots:
     void onImageSequenceToogledFrameExtractor(bool state);
     void captureGL();
     void onScaleX2Btn();
+    void onScaleX15Btn();
 
 protected:
     virtual void closeEvent(QCloseEvent *e);
@@ -238,7 +239,7 @@ private:
     QLabel *mpTitle;
     QLabel *mpSpeed;
     Slider *mpTimeSlider, *mpVolumeSlider;
-    QToolButton *mpWebBtn, *mpFullScreenBtn, *mpScaleX2Btn;
+    QToolButton *mpWebBtn, *mpFullScreenBtn, *mpScaleX2Btn, *mpScaleX15Btn;
     QToolButton *mpVolumeBtn;
     QToolButton *mpPlayPauseBtn;
     QToolButton *mpStopBtn, *mpForwardBtn, *mpBackwardBtn;
@@ -300,6 +301,7 @@ private:
 
     bool needToUseSuperResolution=false;
     bool needToUseSuperResolutionLastLinearFiltering=true;
+
 };
 
 
