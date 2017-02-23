@@ -80,7 +80,7 @@ private:
     virtual GLuint frameTexture() const;
     GLuint lastSuperscaleTexureId=0;
 
-    void superscale();
+    void superscale(GLfloat opt_sharpness=1.0f, GLfloat opt_edge_strength=0.6f);
     void initFrameBufers();
     void initFrameBufer(int id);
     bool initShaders2(int pass);

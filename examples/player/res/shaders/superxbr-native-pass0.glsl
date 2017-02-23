@@ -32,6 +32,10 @@ uniform mat2 MAIN_rot;
 //pixel size (pixel_size0)
 uniform vec2 MAIN_pt;
 
+//options
+uniform float sharpness = 1.0f;
+uniform float edge_strength = 0.6f;
+
 
 vec4 superxbr() {
 vec4 ai[4*4];
@@ -63,8 +67,8 @@ mat4 h1 = mat4( i(0,1), i(1,1), i(2,1), i(3,1) );
 mat4 h2 = mat4( i(0,2), i(1,2), i(2,2), i(3,2) );
 mat4 v1 = mat4( i(1,0), i(1,1), i(1,2), i(1,3) );
 mat4 v2 = mat4( i(2,0), i(2,1), i(2,2), i(2,3) );
-float dw = 0.129633;
-float ow = 0.175068;
+float dw = sharpness*0.129633;
+float ow = sharpness*0.175068;
 vec4 dk = vec4(-dw, dw+0.5, dw+0.5, -dw);
 vec4 ok = vec4(-ow, ow+0.5, ow+0.5, -ow);
 vec4 d1c = SAMPLE4_MUL(d1, dk);
@@ -99,7 +103,7 @@ o_edge += 2.0 * abs(luma(2,1) - luma(2,2));
 o_edge -= 2.0 * abs(luma(1,2) - luma(2,2));
 o_edge += 1.0 * abs(luma(2,2) - luma(2,3));
 o_edge -= 1.0 * abs(luma(2,2) - luma(3,2));
-float str = smoothstep(0.0, 0.600000 + 1e-6, abs(d_edge));
+float str = smoothstep(0.0, edge_strength + 1e-6, abs(d_edge));
 res = mix(mix(d2c, d1c, step(0.0, d_edge)),
       mix(hc,   vc, step(0.0, o_edge)), 1.0 - str);
 vec4 lo = min(min( i(1,1), i(2,1) ), min( i(1,2), i(2,2) ));

@@ -112,7 +112,7 @@ void XunoGLSLFilter::afterRendering()
 
         //need superscale image after rendering and replace fbo for show by opengl
         if (needSuperScale){
-            superscale();
+            superscale(2.0,1.0);
         }
 
         GLuint sfbotextid=sharpShader(frameTexture());
@@ -241,8 +241,9 @@ QString XunoGLSLFilter::defineFileName()
 
 //------------superscale----------------
 
-
-void XunoGLSLFilter::superscale()
+//opt_sharpness [0...2] default 1.0f
+//opt_edge_strength [0...1] default 0.6f
+void XunoGLSLFilter::superscale(GLfloat opt_sharpness, GLfloat opt_edge_strength)
 {
 
     if ( geometries==Q_NULLPTR) geometries = new GeometryEngine;
@@ -313,6 +314,10 @@ void XunoGLSLFilter::superscale()
 
             //qDebug()<<"texture_rot0 is";
             program->setUniformValue("texture_rot0", QVector2D(0.0f,0.0f));
+
+            //options
+            program->setUniformValue("sharpness", opt_sharpness);     // [0...2] default 1.0f
+            program->setUniformValue("edge_strength",opt_edge_strength); // [0...1] default 0.6f
 
             QMatrix4x4 matrix;
             matrix.setToIdentity();

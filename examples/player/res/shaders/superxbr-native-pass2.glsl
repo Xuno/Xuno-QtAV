@@ -20,7 +20,9 @@ uniform mat2 MAIN_rot;
 //pixel size (pixel_size0)
 uniform vec2 MAIN_pt;
 
-
+//options
+uniform float sharpness = 1.0f;
+uniform float edge_strength = 0.6f;
 
 //Create FBO: 3342x2086 (3342x2086) #4
 //recompiling a shader program:
