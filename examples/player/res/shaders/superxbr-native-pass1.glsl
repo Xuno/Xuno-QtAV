@@ -35,11 +35,11 @@ uniform vec2 MAIN_pt;
 
 
 vec4 superxbr() {
-vec4 i[4*4];
+vec4 ai[4*4];
 vec4 res;
-#define i(x,y) i[(x)*4+(y)]
-float luma[4*4];
-#define luma(x, y) luma[(x)*4+(y)]
+#define i(x,y) ai[(x)*4+(y)]
+float aluma[4*4];
+#define luma(x, y) aluma[(x)*4+(y)]
 #define GET_SAMPLE(pos) HOOKED_texOff(pos)
 #define SAMPLE4_MUL(sample4, w) ((sample4)*(w))
 vec2 dir = fract(HOOKED_pos * HOOKED_size / 2.0) - 0.5;

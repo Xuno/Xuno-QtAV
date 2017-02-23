@@ -299,7 +299,7 @@ private:
 
 
     bool needToUseSuperResolution=false;
-    bool needToUseSuperResolutionLastLinearFiltering=false;
+    bool needToUseSuperResolutionLastLinearFiltering=true;
 };
 
 
