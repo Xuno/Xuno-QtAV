@@ -331,8 +331,8 @@ void XunoGLSLFilter::superscale()
                 //}else{
                 f->glActiveTexture(GL_TEXTURE0);
                 f->glBindTexture(GL_TEXTURE_2D, fbotextid);
-                f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);//GL_NEAREST GL_LINEAR
-                f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+                f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);//GL_NEAREST GL_LINEAR
+                f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
                 //f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);//GL_CLAMP_TO_EDGE
                 //f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
                 //}
@@ -460,13 +460,15 @@ GLuint XunoGLSLFilter::sharpShader(GLuint pfbotextid)
 
     f->glActiveTexture(GL_TEXTURE0);
     f->glBindTexture(GL_TEXTURE_2D, pfbotextid);
-    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);//GL_NEAREST GL_LINEAR
-    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);//GL_NEAREST GL_LINEAR
+    f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
 
     f->glClearColor(0.0,1.0,0.0,1.0);//GREEN
     f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    geometries->drawCubeGeometry(program);
+    if ( geometries==Q_NULLPTR) geometries = new GeometryEngine;
+
+    if ( geometries!=Q_NULLPTR) geometries->drawCubeGeometry(program);
 
     f->glBindTexture(GL_TEXTURE_2D, 0);
 

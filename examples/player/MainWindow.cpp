@@ -1531,6 +1531,7 @@ void MainWindow::calcToUseSuperResolution()
         qDebug()<<"MainWindow::calcToUseSuperResolution Scale WxH:"<<sscaleWidth<<sscaleHeight<<"Middle:"<<scale;
 
         needToUseSuperResolutionLastLinearFiltering=true;
+        needToUseSuperResolution=true;
 
         if (scale<1.){
             needToUseSuperResolution=false;
