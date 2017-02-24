@@ -2482,26 +2482,39 @@ void MainWindow::installSimpleFilter()
     }
 }
 
+void MainWindow::onScaleBtn(qreal _scale)
+{
+    //qDebug()<<"MainWindow: onScaleBtn"<<_scale;
+    qreal scale,nextscale15,nextscale20;
+    //mPlayerScale
+
+    if (_scale==1.5) {
+        scale=mpScaleX15Btn->text().split('x')[1].toFloat();
+        nextscale15=(scale==1.)?1.5:1.0;
+        nextscale20=2.0;
+    }else if (_scale==2.0){
+        scale=mpScaleX2Btn->text().split('x')[1].toFloat();
+        nextscale15=1.5;
+        nextscale20=(scale==1.)?2.0:1.0;
+    }
+    qDebug()<<"MainWindow: onScaleBtn scale set:"<<scale;
+    setPlayerScale(scale);
+
+    mpScaleX15Btn->setText(QString("x%1").arg(nextscale15));
+    mpScaleX15Btn->setToolTip(QString("Scale X%1").arg(nextscale15));
+    mpScaleX2Btn->setText(QString("x%1").arg(nextscale20));
+    mpScaleX2Btn->setToolTip(QString("Scale X%1").arg(nextscale20));
+    reSizeByMovie();
+}
+
 void MainWindow::onScaleX2Btn()
 {
-    qDebug()<<"MainWindow: onScaleX2Btn";
-    qreal scale=(mPlayerScale==2.)?1.:2.;
-    int nextscale=(scale==2.)?1:2;
-    setPlayerScale(scale);
-    mpScaleX2Btn->setText(QString("x%1").arg(nextscale));
-    mpScaleX2Btn->setToolTip(QString("Scale X%1").arg(nextscale));
-    reSizeByMovie();
+    onScaleBtn(2.0);
 }
 
 void MainWindow::onScaleX15Btn()
 {
-    qDebug()<<"MainWindow: onScaleX15Btn";
-    qreal scale=(mPlayerScale==1.5)?1.0:1.5;
-    qreal nextscale=(scale==1.5)?1.0:1.5;
-    setPlayerScale(scale);
-    mpScaleX15Btn->setText(QString("x%1").arg(nextscale));
-    mpScaleX15Btn->setToolTip(QString("Scale X%1").arg(nextscale));
-    reSizeByMovie();
+    onScaleBtn(1.5);
 }
 
 

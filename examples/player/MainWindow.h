@@ -217,7 +217,7 @@ private:
     void installSaveGL();
     void installGLSLFilter();
     void installSimpleFilter();
-
+    void onScaleBtn(qreal _scale);
 
 
 
