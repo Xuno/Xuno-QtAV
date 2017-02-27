@@ -112,7 +112,7 @@ void XunoGLSLFilter::afterRendering()
 
         //need superscale image after rendering and replace fbo for show by opengl
         if (needSuperScale){
-            superscale(2.0,1.0);
+            superscale(2.0f,1.0f);
         }
 
         GLuint sfbotextid=sharpShader(frameTexture());

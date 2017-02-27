@@ -1542,9 +1542,9 @@ void MainWindow::calcToUseSuperResolution()
         needToUseSuperResolutionLastLinearFiltering=true;
         needToUseSuperResolution=true;
 
-        if (scale<1.){
+        if (scale<=1.){
             needToUseSuperResolution=false;
-        }else if(scale>=1.){
+        }else if(scale>1.){
             needToUseSuperResolution=true;
         }
 //        if (scale==2.){
