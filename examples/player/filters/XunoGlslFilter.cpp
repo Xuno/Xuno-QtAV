@@ -47,6 +47,15 @@ XunoGLSLFilter::XunoGLSLFilter(QObject *parent):
         scales<<2<<1<<1<<1<<1;
     }
 
+    if (shader_files_adaptive_sharpen.isEmpty()){
+        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass0.glsl";
+        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass1.glsl";
+        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass2.glsl";
+        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass3.glsl";
+        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass4.glsl";
+    }
+    maxPass_adaptive_sahrpen=shader_files_adaptive_sharpen.size()-1;
+
 }
 
 void XunoGLSLFilter::setShader(QtAV::VideoShader *ush)
@@ -59,7 +68,7 @@ void XunoGLSLFilter::beforeRendering()
 {
     //qDebug()<<"XunoGLSLFilter::beforeRendering"<<fbo()->size();
     colorTransform();
-//    return;
+    //    return;
     if (fbo() && fbo()->isValid()){
 
         QOpenGLFunctions *f=opengl()->openGLContext()->functions();
@@ -111,12 +120,22 @@ void XunoGLSLFilter::afterRendering()
         }
 
         //need superscale image after rendering and replace fbo for show by opengl
-        if (needSuperScale){
+        if (0 && needSuperScale){
             superscale(2.0f,1.0f);
         }
 
-        GLuint sfbotextid=sharpShader(frameTexture());
-        if (sfbotextid) lastSuperscaleTexureId=sfbotextid;
+        GLuint sfbotextid;
+        if (0){
+            sfbotextid=sharpShader(frameTexture());
+            if (sfbotextid) lastSuperscaleTexureId=sfbotextid;
+        }
+
+        needAdaptiveSharpen=needSuperScale;
+        if (needAdaptiveSharpen){
+            sfbotextid=adaptiveSharpen(frameTexture());
+            if (sfbotextid) lastSuperscaleTexureId=sfbotextid;
+        }
+
 
         //need last linear filtering image
         if (needSuperScaleLastLinearFiltering){
@@ -330,38 +349,38 @@ void XunoGLSLFilter::superscale(GLfloat opt_sharpness, GLfloat opt_edge_strength
             program->setUniformValue("MVPMatrix", matrix);
 
             //if (1) {
-                //if (0){  //pass==0
-                //    f->glActiveTexture(GL_TEXTURE0);
-                //    texture->bind();
-                //}else{
-                f->glActiveTexture(GL_TEXTURE0);
-                f->glBindTexture(GL_TEXTURE_2D, fbotextid);
-                f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);//GL_NEAREST GL_LINEAR
-                f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-                //f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);//GL_CLAMP_TO_EDGE
-                //f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-                //}
+            //if (0){  //pass==0
+            //    f->glActiveTexture(GL_TEXTURE0);
+            //    texture->bind();
+            //}else{
+            f->glActiveTexture(GL_TEXTURE0);
+            f->glBindTexture(GL_TEXTURE_2D, fbotextid);
+            f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);//GL_NEAREST GL_LINEAR
+            f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+            //f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);//GL_CLAMP_TO_EDGE
+            //f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+            //}
 
-                f->glClearColor(1.0,0.0,0.0,1.0);//RED
-                f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            f->glClearColor(1.0,0.0,0.0,1.0);//RED
+            f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-                // Draw cube geometry
-                geometries->drawCubeGeometry(program);
+            // Draw cube geometry
+            geometries->drawCubeGeometry(program);
 
-//                if (0){//pass==0
-//                    texture->release();
-//                }else{
+            //                if (0){//pass==0
+            //                    texture->release();
+            //                }else{
 
-                f->glBindTexture(GL_TEXTURE_2D, 0);
+            f->glBindTexture(GL_TEXTURE_2D, 0);
 
-//                }
-//            }
+            //                }
+            //            }
             program->release();
             m_fbo[fboID]->release();
 #if (unix)
-//            QString filename=QString("/home/lex/temp/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
+            //            QString filename=QString("/home/lex/temp/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
 #else
-//            QString filename=QString("e:/temp/shader/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
+            //            QString filename=QString("e:/temp/shader/savefbo_pass_%1_%2x%3-%4.bmp").arg(pass).arg(m_fbo[fboID]->width()).arg(m_fbo[fboID]->height()).arg(frame);
 #endif
             // qDebug()<<"Saving:"<<filename;
             // m_fbo[fboID]->toImage(false).save(filename);
@@ -438,10 +457,10 @@ GLuint XunoGLSLFilter::sharpShader(GLuint pfbotextid)
 
     m_sharpShader->setUserUniformValues();
 
-//    qDebug()<<"ShaderFilterXuno::compile() Sharer vertex:";
-//    qDebug()<<program->shaders().at(0)->sourceCode();
-//    qDebug()<<"ShaderFilterXuno::compile() Sharer fragment:";
-//    qDebug()<<program->shaders().at(1)->sourceCode();
+    //    qDebug()<<"ShaderFilterXuno::compile() Sharer vertex:";
+    //    qDebug()<<program->shaders().at(0)->sourceCode();
+    //    qDebug()<<"ShaderFilterXuno::compile() Sharer fragment:";
+    //    qDebug()<<program->shaders().at(1)->sourceCode();
 
 
     //qDebug()<<"texture0 is";
@@ -786,6 +805,164 @@ void XunoGLSLFilter::initFrameBufers()
     initFrameBufer(0);
     initFrameBufer(1);
 }
+
+
+bool XunoGLSLFilter::initShaders_adaptiveSharpen(int pass)
+{
+    QOpenGLShaderProgram *program=Q_NULLPTR;
+    if (pass<=programs.size()){
+        program=programs[pass];
+    }
+    if (program==Q_NULLPTR) {
+        qDebug()<<"program not present";
+        return false;
+    }
+
+    //qDebug()<<"initShaders pass"<<pass;
+
+    program->removeAllShaders();
+
+    if (shader_files.size()){
+        QString filename;
+        filename=QString(shader_files_prefix).append(shader_vertex_files.at(0));
+        //qDebug()<<Shader;
+        // Compile vertex shader
+        if (!program->addShaderFromSourceFile(QOpenGLShader::Vertex, filename)){
+            return false;
+        }
+        filename=QString(shader_files_prefix).append(shader_files.at(pass));
+        //qDebug()<<Shader;
+        // Compile vertex shader
+        if (!program->addShaderFromSourceFile(QOpenGLShader::Fragment, filename)){
+            return false;
+        }
+
+        if (!program->link()) {
+            qDebug()<<program->log();
+            qDebug()<<program->shaders().at(0)->sourceCode();
+            return false;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+
+GLuint XunoGLSLFilter::adaptiveSharpen(GLuint pfbotextid)
+{
+    //qDebug()<<"XunoGLSLFilter::adaptiveSharpen";
+
+    int prid=-1;
+
+    QOpenGLFunctions *f=opengl()->openGLContext()->functions();
+    if (!f) {
+        qDebug()<<"adaptiveSharpen skipped 2";
+        return 0;
+    }
+
+    GLuint fbotextid;
+
+    for (pass=0;pass<=maxPass_adaptive_sahrpen;pass++){
+        //qDebug()<<"adaptiveSharpen pass"<<pass;
+
+        prid=addProgram();
+        QOpenGLShaderProgram *program=Q_NULLPTR;
+        if (prid!=-1){
+            program=programs.at(prid);
+        }else{
+            qDebug()<<"programs not is"<<prid;
+            return 0;
+        }
+        if (program==Q_NULLPTR) {
+            qDebug()<<"adaptiveSharpen skipped 3, prid"<<prid;
+            return 0;
+        }
+
+
+        int fboID=addFBO(1,false);
+
+        program->removeAllShaders();
+
+        if (shader_files_adaptive_sharpen.size()){
+            QString filename;
+            filename=QString(shader_files_prefix).append(shader_vertex_files.at(0));
+            //qDebug()<<Shader;
+            // Compile vertex shader
+            if (!program->addShaderFromSourceFile(QOpenGLShader::Vertex, filename)){
+                qDebug()<<"Vertex Shader error load"<<filename ;
+                return 0;
+            }
+            filename=QString(shader_files_prefix).append(shader_files_adaptive_sharpen.at(pass));
+            // Compile vertex shader
+            if (!program->addShaderFromSourceFile(QOpenGLShader::Fragment, filename)){
+                qDebug()<<"Fragment Shader error load"<<filename ;
+                return 0;
+            }
+
+            if (!program->link()) {
+                qDebug()<<"Fragment Shader error link"<<filename ;
+                qDebug()<<program->log();
+                qDebug()<<program->shaders().at(0)->sourceCode();
+                qDebug()<<program->shaders().at(1)->sourceCode();
+                return false;
+            }
+        }
+
+
+        m_fbo[fboID]->bind();
+        f->glViewport(0,0,m_fbo[fboID]->width(),m_fbo[fboID]->height());
+
+        program->bind();
+
+        //    qDebug()<<"ShaderFilterXuno::compile() Sharer vertex:";
+        //    qDebug()<<program->shaders().at(0)->sourceCode();
+        //    qDebug()<<"ShaderFilterXuno::compile() Sharer fragment:";
+        //    qDebug()<<program->shaders().at(1)->sourceCode();
+
+
+        //qDebug()<<"texture0 is";
+        program->setUniformValue("texture0",  0);
+
+        QVector2D textureSize=QVector2D (float(m_fbo[fboID]->width()),float(m_fbo[fboID]->height()));
+
+        //qDebug()<<"texture_size0 is";
+        program->setUniformValue("u_textureSize", textureSize);
+
+        //qDebug()<<"pixel_size0 is";
+        program->setUniformValue("u_texelSize", QVector2D(1.0f,1.0f)/textureSize);
+
+        //qDebug()<<"texture_rot0 is";
+        program->setUniformValue("texture_rot0", QVector2D(0.0f,0.0f));
+
+        QMatrix4x4 matrix;
+        matrix.setToIdentity();
+
+        program->setUniformValue("MVPMatrix", matrix);
+
+        f->glActiveTexture(GL_TEXTURE0);
+        f->glBindTexture(GL_TEXTURE_2D, pfbotextid);
+        f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);//GL_NEAREST GL_LINEAR
+        f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+
+        f->glClearColor(0.0,0.0,1.0,1.0);//BLUE
+        f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        if ( geometries==Q_NULLPTR) geometries = new GeometryEngine;
+
+        if ( geometries!=Q_NULLPTR) geometries->drawCubeGeometry(program);
+
+        f->glBindTexture(GL_TEXTURE_2D, 0);
+
+        program->release();
+        m_fbo[fboID]->release();
+        fbotextid=m_fbo[fboID]->texture();
+    }
+
+    return  fbotextid;
+}
+
 
 
 

@@ -19,5 +19,10 @@
         <file>shaders/superxbr-naitive-vertex.glsl</file>
         <file>shaders/superxbr-native-pass1.glsl</file>
         <file>shaders/superxbr-native-pass2.glsl</file>
+        <file>shaders/adaptive-sharpen-pass1.glsl</file>
+        <file>shaders/adaptive-sharpen-pass0.glsl</file>
+        <file>shaders/adaptive-sharpen-pass2.glsl</file>
+        <file>shaders/adaptive-sharpen-pass3.glsl</file>
+        <file>shaders/adaptive-sharpen-pass4.glsl</file>
     </qresource>
 </RCC>

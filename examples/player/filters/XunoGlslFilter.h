@@ -24,6 +24,7 @@
 #include <QtGui/QOpenGLFramebufferObject>
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
+#include <QOpenGLShader>
 #include "geometryengine.h"
 #include "ShaderFilterXuno.h"
 
@@ -53,6 +54,7 @@ public:
 
     bool getNeedSuperScaleLastLinearFiltering() const;
     void setNeedSuperScaleLastLinearFiltering(bool value);
+
 protected slots:
     void beforeRendering();
     void afterRendering();
@@ -61,6 +63,7 @@ private:
     QtAV::VideoShader *user_shader=Q_NULLPTR;
     bool needSave=false,colorTransformChanged=true,needSuperScale=true;
     bool needSuperScaleLastLinearFiltering=true;
+    bool needAdaptiveSharpen=true;
     QString savePath;
     QtAV::AVPlayer *m_player=Q_NULLPTR;
     qreal brightness=0,contrast=0,hue=0,saturation=0;
@@ -69,10 +72,10 @@ private:
     QVector <QOpenGLShaderProgram *> programs;
     QVector <QOpenGLFramebufferObject *> m_fbo;
     int pass=0;
-    int maxPass=0;
+    int maxPass=0,maxPass_adaptive_sahrpen=0;
     QVector <int> scales;
     GeometryEngine *geometries=Q_NULLPTR;
-    QStringList shader_files,shader_vertex_files;
+    QStringList shader_files,shader_vertex_files,shader_files_adaptive_sharpen;
     QString shader_files_prefix,shader_files_include;
     QOpenGLTexture *texture=Q_NULLPTR;
     int frame=0;
@@ -90,6 +93,9 @@ private:
     bool initShaders(int pass);
     bool initShaders_simple(int pass);
     bool initShaders_xbr(int pass);
+    bool initShaders_adaptiveSharpen(int pass);
     GLuint sharpShader(GLuint pfbotextid);
+    GLuint adaptiveSharpen(GLuint pfbotextid);
+
 };
 #endif // XUNOGLSLFILTER_H
