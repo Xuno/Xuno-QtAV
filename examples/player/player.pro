@@ -57,7 +57,15 @@ DISTFILES += \
     res/shaders/simple_ver.glsl \
     res/shaders/simple_frag.glsl \
     res/shaders/superxbr-naitive-vertex.glsl \
-    res/shaders/adaptive-sahrpen-pass0.glsl \
-    res/shaders/adaptive-sahrpen-pass1.glsl
+    res/shaders/adaptive-sahrpen-pass0-0.glsl \
+    res/shaders/adaptive-sahrpen-pass0-1.glsl \
+    res/shaders/adaptive-sahrpen-pass1-0.glsl \
+    res/shaders/adaptive-sahrpen-pass1-1.glsl \
+    res/shaders/adaptive-sahrpen-pass1-2.glsl \
+    res/shaders/superxbr-native-pass0.glsl  \
+    res/shaders/superxbr-native-pass1.glsl  \
+    res/shaders/superxbr-native-pass2.glsl
+
+
 
 

@@ -48,11 +48,11 @@ XunoGLSLFilter::XunoGLSLFilter(QObject *parent):
     }
 
     if (shader_files_adaptive_sharpen.isEmpty()){
-        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass0.glsl";
-        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass1.glsl";
-        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass2.glsl";
-        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass3.glsl";
-        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass4.glsl";
+       shader_files_adaptive_sharpen<<"adaptive-sharpen-pass0-0.glsl";
+       shader_files_adaptive_sharpen<<"adaptive-sharpen-pass0-1.glsl";
+//       shader_files_adaptive_sharpen<<"adaptive-sharpen-pass1-0.glsl";
+//        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass1-1.glsl";
+//        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass1-2.glsl";
     }
     maxPass_adaptive_sahrpen=shader_files_adaptive_sharpen.size()-1;
 
@@ -883,7 +883,7 @@ GLuint XunoGLSLFilter::adaptiveSharpen(GLuint pfbotextid)
 
         int fboID=addFBO(1,false);
 
-        program->removeAllShaders();
+        //program->removeAllShaders();
 
         if (shader_files_adaptive_sharpen.size()){
             QString filename;
@@ -895,6 +895,7 @@ GLuint XunoGLSLFilter::adaptiveSharpen(GLuint pfbotextid)
                 return 0;
             }
             filename=QString(shader_files_prefix).append(shader_files_adaptive_sharpen.at(pass));
+            //qDebug()<<"Vertex Shader load"<<filename ;
             // Compile vertex shader
             if (!program->addShaderFromSourceFile(QOpenGLShader::Fragment, filename)){
                 qDebug()<<"Fragment Shader error load"<<filename ;
@@ -906,10 +907,13 @@ GLuint XunoGLSLFilter::adaptiveSharpen(GLuint pfbotextid)
                 qDebug()<<program->log();
                 qDebug()<<program->shaders().at(0)->sourceCode();
                 qDebug()<<program->shaders().at(1)->sourceCode();
-                return false;
+                return 0;
             }
         }
 
+
+//        qDebug()<<program->shaders().at(0)->sourceCode();
+//        qDebug()<<program->shaders().at(1)->sourceCode();
 
         m_fbo[fboID]->bind();
         f->glViewport(0,0,m_fbo[fboID]->width(),m_fbo[fboID]->height());
@@ -943,8 +947,8 @@ GLuint XunoGLSLFilter::adaptiveSharpen(GLuint pfbotextid)
 
         f->glActiveTexture(GL_TEXTURE0);
         f->glBindTexture(GL_TEXTURE_2D, pfbotextid);
-        f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);//GL_NEAREST GL_LINEAR
-        f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+       // f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);//GL_NEAREST GL_LINEAR
+        //f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
 
         f->glClearColor(0.0,0.0,1.0,1.0);//BLUE
         f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -958,6 +962,8 @@ GLuint XunoGLSLFilter::adaptiveSharpen(GLuint pfbotextid)
         program->release();
         m_fbo[fboID]->release();
         fbotextid=m_fbo[fboID]->texture();
+        pfbotextid=fbotextid;
+        //qDebug()<<"pfbotextid"<<pfbotextid;
     }
 
     return  fbotextid;

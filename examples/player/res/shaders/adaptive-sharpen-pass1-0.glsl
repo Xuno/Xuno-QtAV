@@ -31,8 +31,8 @@ uniform mat2 MAIN_rot;
 //pixel size (pixel_size0)
 uniform vec2 MAIN_pt;
 
-// https://gist.github.com/igv/8a77e4eb8276753b54bb94c1c50c317e#file-adaptive-sharpen-glsl
-// Copyright (c) 2015-2017, bacondither
+// https://gist.github.com/igv/4792d0abab41d436ac1a51bb171f8c2f#file-adaptive-sharpen-2pass-glsl
+// Copyright (c) 2015-2016, bacondither
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -56,23 +56,27 @@ uniform vec2 MAIN_pt;
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 // THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Adaptive sharpen - version 2017-01-22 - (requires ps >= 3.0)
+// Adaptive sharpen - version 2016-11-19 - (requires ps >= 3.0)
 // Tuned for use post resize
 
 //!HOOK SCALED
 //!BIND HOOKED
+//!COMPONENTS 4
 
-//#define Gamma(x)  ( mix(x * vec3(12.92), vec3(1.055) * pow(max(x, 0.0), vec3(1.0/2.4)) - vec3(0.055), step(vec3(0.0031308), x)) )
+//#define Gamma(x)    ( mix(x * vec3(12.92), vec3(1.055) * pow(max(x, 0.0), vec3(1.0/2.4)) - vec3(0.055), step(vec3(0.0031308), x)) )
 #define Gamma(x) ( pow(max(x, 0.0), vec3(1.0/2.0)) )
 
 vec4 hook() {
-    vec4 c = HOOKED_tex(HOOKED_pos);
-    c.rgb = Gamma(c.rgb);
-    return c;
+        vec4 c = HOOKED_tex(HOOKED_pos);
+        c.rgb = Gamma(c.rgb);
+        return c;
 }
+
+
 
 void main(void)
 {
     //gl_FragColor = texture2D(qt_Texture0, qt_TexCoord0.st);
-    gl_FragColor=hook();
+    gl_FragColor = hook();
+    //gl_FragColor.g=1.;
 }

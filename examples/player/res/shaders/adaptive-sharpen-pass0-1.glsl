@@ -102,6 +102,7 @@ uniform vec2 SCALED_pt = vec2(1.0, 1.0);
 
 // Colour to luma, fast approx gamma, avg of rec. 709 & 601 luma coeffs
 #define CtL(RGB)       ( dot(vec3(0.2558, 0.6511, 0.0931), GammaInv(RGB.rgb)) )
+//#define CtL(RGB)       ( dot(vec3(0.2627, 0.6780, 0.0593), GammaInv(RGB.rgb)) )
 
 // Center pixel diff
 #define mdiff(a,b,c,d,e,f,g) ( abs(luma[g]-luma[a]) + abs(luma[g]-luma[b])           \
@@ -110,6 +111,7 @@ uniform vec2 SCALED_pt = vec2(1.0, 1.0);
 
 //#define GammaInv(x) ( mix(pow((x + vec3(0.055))/vec3(1.055), vec3(2.4)), x / vec3(12.92), step(x, vec3(0.04045))) )
 #define GammaInv(x) ( pow((x), vec3(2.0)) )
+//#define GammaInv(x) ( pow((x), vec3(.5)) )
 
 vec4 hook() {
 
@@ -291,7 +293,6 @@ vec4 hook() {
     vec3 res = c0_Y + sharpdiff + (c[0].rgb - c0_Y)*satmul;
 
     o.rgb = GammaInv(video_level_out == true ? o.rgb + (res - c[0].rgb) : res);
-
     return o;
 }
 
@@ -299,4 +300,5 @@ void main(void)
 {
     //gl_FragColor = texture2D(qt_Texture0, qt_TexCoord0.st);
     gl_FragColor=hook();
+    //gl_FragColor.r=1.;
 }
