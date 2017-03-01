@@ -31,7 +31,7 @@ uniform mat2 MAIN_rot;
 //pixel size (pixel_size0)
 uniform vec2 MAIN_pt;
 
-uniform vec2 SCALED_pt = vec2(1.0, 1.0);
+uniform vec2 SCALED_pt = vec2(2.0, 2.0);
 
 // https://gist.github.com/igv/8a77e4eb8276753b54bb94c1c50c317e#file-adaptive-sharpen-glsl
 // Copyright (c) 2015-2017, bacondither
@@ -102,7 +102,6 @@ uniform vec2 SCALED_pt = vec2(1.0, 1.0);
 
 // Colour to luma, fast approx gamma, avg of rec. 709 & 601 luma coeffs
 #define CtL(RGB)       ( dot(vec3(0.2558, 0.6511, 0.0931), GammaInv(RGB.rgb)) )
-//#define CtL(RGB)       ( dot(vec3(0.2627, 0.6780, 0.0593), GammaInv(RGB.rgb)) )
 
 // Center pixel diff
 #define mdiff(a,b,c,d,e,f,g) ( abs(luma[g]-luma[a]) + abs(luma[g]-luma[b])           \
@@ -111,7 +110,6 @@ uniform vec2 SCALED_pt = vec2(1.0, 1.0);
 
 //#define GammaInv(x) ( mix(pow((x + vec3(0.055))/vec3(1.055), vec3(2.4)), x / vec3(12.92), step(x, vec3(0.04045))) )
 #define GammaInv(x) ( pow((x), vec3(2.0)) )
-//#define GammaInv(x) ( pow((x), vec3(.5)) )
 
 vec4 hook() {
 

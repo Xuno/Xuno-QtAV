@@ -67,8 +67,12 @@ uniform vec2 MAIN_pt;
 
 vec4 hook() {
     vec4 c = HOOKED_tex(HOOKED_pos);
-//    c.rgb = pow(saturate(c.rgb), 1/2.2);
-    c.rgb = Gamma(c.rgb);
+
+    //ConvertToLinearLight.hlsl  //c.rgb = pow(saturate(c.rgb), 1/2.2);
+    c.rgb = pow(clamp(c.rgb, 0.0, 1.0), vec3(1.0/2.2));
+    //ConvertToLinearLight.hlsl
+
+    //c.rgb = Gamma(c.rgb);
     return c;
 }
 

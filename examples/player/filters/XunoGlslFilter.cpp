@@ -48,8 +48,12 @@ XunoGLSLFilter::XunoGLSLFilter(QObject *parent):
     }
 
     if (shader_files_adaptive_sharpen.isEmpty()){
-       shader_files_adaptive_sharpen<<"adaptive-sharpen-pass0-0.glsl";
-       shader_files_adaptive_sharpen<<"adaptive-sharpen-pass0-1.glsl";
+      // shader_files_adaptive_sharpen<<"adaptive-sharpen-pass0-0.glsl";
+       shader_files_adaptive_sharpen<<"adaptive-sharpen-v2-pass0-1.glsl";
+       shader_files_adaptive_sharpen<<"adaptive-sharpen-v2-pass1-0.glsl";
+
+
+//       shader_files_adaptive_sharpen<<"adaptive-sharpen-pass0-1.glsl";
 //       shader_files_adaptive_sharpen<<"adaptive-sharpen-pass1-0.glsl";
 //        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass1-1.glsl";
 //        shader_files_adaptive_sharpen<<"adaptive-sharpen-pass1-2.glsl";
@@ -670,11 +674,13 @@ int XunoGLSLFilter::addFBO(int scale, bool rotate)
     if (prev_id<0){
         texture_width=fbo()->size().width();//texture->width();
         texture_height=fbo()->size().height();//texture->height();
-        //qDebug()<<"addFBO first"<<texture_width<<texture_height;
+//        qDebug()<<"addFBO first original"<<texture_width<<texture_height;
+//        qDebug()<<"addFBO first scaled  "<<texture_width*scale<<texture_height*scale;
     }else{
         texture_width=m_fbo[prev_id]->width();
         texture_height=m_fbo[prev_id]->height();
-        //qDebug()<<"addFBO next"<<prev_id<<texture_width<<texture_height;
+//        qDebug()<<"addFBO next original"<<texture_width<<texture_height;
+//        qDebug()<<"addFBO next scaled  "<<texture_width*scale<<texture_height*scale<<"prev_id"<<prev_id;
     }
     texture_width*=scale;
     texture_height*=scale;
@@ -685,7 +691,7 @@ int XunoGLSLFilter::addFBO(int scale, bool rotate)
         texture_height=t;
     }
 
-    QOpenGLFramebufferObject* cfbo = new QOpenGLFramebufferObject(texture_width,texture_height,GL_TEXTURE_2D);
+    QOpenGLFramebufferObject* cfbo = new QOpenGLFramebufferObject(texture_width,texture_height,QOpenGLFramebufferObject::NoAttachment,GL_TEXTURE_2D,GL_RGBA16);
     m_fbo.append(cfbo);
     return m_fbo.size()-1;
 
@@ -881,7 +887,12 @@ GLuint XunoGLSLFilter::adaptiveSharpen(GLuint pfbotextid)
         }
 
 
-        int fboID=addFBO(1,false);
+        int fboID;
+        if (pass==0) {
+            fboID = addFBO(2,false);
+        }else{
+            fboID = addFBO(1,false);
+        }
 
         //program->removeAllShaders();
 
@@ -947,8 +958,8 @@ GLuint XunoGLSLFilter::adaptiveSharpen(GLuint pfbotextid)
 
         f->glActiveTexture(GL_TEXTURE0);
         f->glBindTexture(GL_TEXTURE_2D, pfbotextid);
-       // f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);//GL_NEAREST GL_LINEAR
-        //f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+        f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);//GL_NEAREST GL_LINEAR
+        f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
 
         f->glClearColor(0.0,0.0,1.0,1.0);//BLUE
         f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
