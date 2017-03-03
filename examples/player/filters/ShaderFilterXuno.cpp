@@ -150,6 +150,8 @@ bool ShaderFilterXuno::setUserUniformValues()
             0.,fsa ,0.
         };
 
+        //qDebug()<<"ShaderFilterXuno :: setUserUniformValues"<<filterSharp<<fsa<<fs<<"gamma:"<<u_gammaRGB;
+
         program()->setUniformValueArray("u_pixeloffsetkernel", pixeloffsetkernel,9);
         program()->setUniformValueArray("u_filterkernel", filterkernel, 9,1);
         program()->setUniformValue("u_gammaRGB", u_gammaRGB);
@@ -161,7 +163,7 @@ bool ShaderFilterXuno::compile()
     QString ret;
     ret.append("#version 130\n\n"
                "uniform sampler2D texture0;\n"
-               "varying vec2 texcoord0;\n"
+               "in vec2 texcoord0;\n"
                "uniform vec2 u_texelSize;\n"
                "uniform vec2 u_pixelSize;\n");
     ret.append(userShaderHeader(QOpenGLShader::Fragment));
