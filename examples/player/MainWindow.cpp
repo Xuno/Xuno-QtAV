@@ -170,6 +170,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::initPlayer()
 {
+    mpFullScreenBtn->hide();
     mpPlayer = new AVPlayer(this);
     mIsReady = true;
     VideoRenderer *vo = VideoRenderer::create((VideoRendererId)property("rendererId").toInt());
@@ -1047,7 +1048,10 @@ void MainWindow::setRepeatLoop(const bool loop)
 
 void MainWindow::setPlayerScale(const double scale)
 {
-    if (scale>0) mPlayerScale=scale;
+    if (scale>0) {
+        mPlayerScale=scale;
+        this->setMaximumSize(QSize(QWIDGETSIZE_MAX,QWIDGETSIZE_MAX));
+    }
 }
 
 void MainWindow::setFileName(const QString fname)
@@ -1324,11 +1328,17 @@ void MainWindow::resizeEvent(QResizeEvent *e)
 {
     Q_UNUSED(e);
     QWidget::resizeEvent(e);
-    //qDebug()<<"MainWindow::resizeEvent";
+    //e->ignore();
+   // qDebug()<<"MainWindow::resizeEvent"<<e->size()<<e->oldSize();
+
     //calcToUseSuperResolution();
-//    if (mpRenderer) {
-//        qDebug()<<"MainWindow::resizeEvent size:"<<mpRenderer->videoFrameSize()<<mpRenderer->rendererSize()<<mpRenderer->widget()->size();
-//    }
+    if (mpRenderer && mPlayerScale<=1.5) {
+        QSize framesize=mpRenderer->videoFrameSize();
+        //qDebug()<<"MainWindow::resizeEvent size:"<<mpRenderer->videoFrameSize()<<mpRenderer->rendererSize()<<mpRenderer->widget()->size();
+        if (!framesize.isEmpty()) this->setMaximumSize(framesize*mPlayerScale);
+    }else{
+        this->setMaximumSize(QSize(QWIDGETSIZE_MAX,QWIDGETSIZE_MAX));
+    }
     /*
     if (mpTitle)
         QLabelSetElideText(mpTitle, QFileInfo(mFile).fileName(), e->size().width());
@@ -1597,28 +1607,34 @@ void MainWindow::calcToUseSuperResolution()
         }
 
         if (shaderXuno) {
-            if (sharpValue>=0.f) {
+            if (1) {
                 qDebug()<<"Set XunoSharp Value"<<sharpValue;
-                shaderXuno->setSharpValue(sharpValue-1.0f);
+//                shaderXuno->setSharpValue(0.5);
+//                shaderXuno->setSharpValue(sharpValue-1.0f);
+                mpVideoEQ->filterSharp(sharpValue-1.0f);
             }
             if (gammaValue>=0.f) {
-                shaderXuno->setGammaValue(gammaValue);
+                //shaderXuno->setGammaValue(gammaValue);
+                mpVideoEQ->gammaRGB(gammaValue);
                 qDebug()<<"Set XunoGamma Value"<<gammaValue;
             }
         }
 
-        if (mpGLSLFilter) {
+        if (mpVideoEQ) {//mpGLSLFilter
             if (contrastValue>=0.) {
-                mpGLSLFilter->setContrast(contrastValue);
+                //mpGLSLFilter->setContrast(contrastValue);
+                mpVideoEQ->contrast(contrastValue);
                 qDebug()<<"Set XunoContrast Value"<<contrastValue;
             }
             if (brightnessValue>=0.) {
-                mpGLSLFilter->setBrightness(brightnessValue);
+                //mpGLSLFilter->setBrightness(brightnessValue);
+                 mpVideoEQ->brightness(brightnessValue);
                 qDebug()<<"Set XunoBrightness Value"<<brightnessValue;
             }
             if (saturationValue>=0.) {
-                mpGLSLFilter->setSaturation(saturationValue);
-                qDebug()<<"Set XunoSaturation Value"<<brightnessValue;
+                //mpGLSLFilter->setSaturation(saturationValue);
+                mpVideoEQ->saturation(saturationValue);
+                qDebug()<<"Set XunoSaturation Value"<<saturationValue;
             }
         }
 
@@ -2547,6 +2563,9 @@ void MainWindow::onScaleBtn(qreal _scale)
     qreal scale,nextscale15,nextscale20;
     //mPlayerScale
 
+
+
+
     if (_scale==1.5) {
         scale=mpScaleX15Btn->text().split('x')[1].toFloat();
         nextscale15=(scale==1.)?1.5:1.0;
@@ -2557,6 +2576,7 @@ void MainWindow::onScaleBtn(qreal _scale)
         nextscale20=(scale==1.)?2.0:1.0;
     }
     qDebug()<<"MainWindow: onScaleBtn scale set:"<<scale;
+
     setPlayerScale(scale);
 
     mpScaleX15Btn->setText(QString("x%1").arg(nextscale15));
@@ -2564,6 +2584,15 @@ void MainWindow::onScaleBtn(qreal _scale)
     mpScaleX2Btn->setText(QString("x%1").arg(nextscale20));
     mpScaleX2Btn->setToolTip(QString("Scale X%1").arg(nextscale20));
     reSizeByMovie();
+
+    if (scale==2.0){
+        qDebug()<<"mpFullScreenBtn Show"<<scale;
+        mpFullScreenBtn->show();
+    }else{
+        qDebug()<<"mpFullScreenBtn Hide"<<scale;
+        mpFullScreenBtn->hide();
+    }
+
 }
 
 void MainWindow::onScaleX2Btn()

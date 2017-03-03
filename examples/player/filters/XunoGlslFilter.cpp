@@ -147,7 +147,7 @@ void XunoGLSLFilter::afterRendering()
             if (f && fbo()->textures().size()){
                 GLenum target=GL_TEXTURE_2D;
                 f->glBindTexture(target,frameTexture());
-                f->glGenerateMipmap(target);
+                //f->glGenerateMipmap(target);
 
                 //TextureMinFilter
 //#define GL_NEAREST_MIPMAP_NEAREST         0x2700
@@ -156,7 +156,7 @@ void XunoGLSLFilter::afterRendering()
 //#define GL_LINEAR_MIPMAP_LINEAR           0x2703
 
                 f->glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);//GL_LINEAR
+                f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);//GL_LINEAR //GL_LINEAR_MIPMAP_LINEAR
                 f->glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                 f->glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
                 f->glBindTexture(target,0);
@@ -408,16 +408,17 @@ void XunoGLSLFilter::superscale(GLfloat opt_sharpness, GLfloat opt_edge_strength
 
 GLuint XunoGLSLFilter::sharpShader(GLuint pfbotextid)
 {
-    //qDebug()<<"XunoGLSLFilter::sharpShader";
+//    qDebug()<<"XunoGLSLFilter::sharpShader";
     ShaderFilterXuno *m_sharpShader = static_cast <ShaderFilterXuno*> (user_shader);
     if (!m_sharpShader)  {
-        //qDebug()<<"m_sharpShader skipped 0";
+        qDebug()<<"m_sharpShader skipped 0";
         return 0;
     }
-    if (!m_sharpShader->needToRun()) {
-        //qDebug()<<"m_sharpShader skipped 1";
-        return 0;
-    }
+//     qDebug()<<"getFilterSharp()"<<m_sharpShader->getFilterSharp();
+//    if (!m_sharpShader->needToRun()) {
+//        //qDebug()<<"m_sharpShader skipped 1";
+//        return 0;
+//    }
 
     int prid=-1;
     prid=addProgram();
@@ -681,13 +682,13 @@ int XunoGLSLFilter::addFBO(int scale, bool rotate)
     if (prev_id<0){
         texture_width=fbo()->size().width();//texture->width();
         texture_height=fbo()->size().height();//texture->height();
-//        qDebug()<<"addFBO first original"<<texture_width<<texture_height;
-//        qDebug()<<"addFBO first scaled  "<<texture_width*scale<<texture_height*scale;
+        //qDebug()<<"addFBO first original"<<texture_width<<texture_height;
+        //qDebug()<<"addFBO first scaled  "<<texture_width*scale<<texture_height*scale;
     }else{
         texture_width=m_fbo[prev_id]->width();
         texture_height=m_fbo[prev_id]->height();
-//        qDebug()<<"addFBO next original"<<texture_width<<texture_height;
-//        qDebug()<<"addFBO next scaled  "<<texture_width*scale<<texture_height*scale<<"prev_id"<<prev_id;
+        //qDebug()<<"addFBO next original"<<texture_width<<texture_height;
+        //qDebug()<<"addFBO next scaled  "<<texture_width*scale<<texture_height*scale<<"prev_id"<<prev_id;
     }
     texture_width*=scale;
     texture_height*=scale;
