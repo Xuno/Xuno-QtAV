@@ -20,6 +20,7 @@ protected:
    virtual bool eventFilter(QObject *obj, QEvent *event);
 private:
   MainWindow *mMainWindow;
+  bool waitPaint=false;
 };
 
 #endif // EVENTRENDERER_H
