@@ -192,6 +192,7 @@ private slots:
     void captureGL();
     void onScaleX2Btn();
     void onScaleX15Btn();
+    void onScaleX1Btn();
 
 protected:
     virtual void closeEvent(QCloseEvent *e);
@@ -239,7 +240,7 @@ private:
     QLabel *mpTitle;
     QLabel *mpSpeed;
     Slider *mpTimeSlider, *mpVolumeSlider;
-    QToolButton *mpWebBtn, *mpFullScreenBtn, *mpScaleX2Btn, *mpScaleX15Btn;
+    QToolButton *mpWebBtn, *mpFullScreenBtn, *mpScaleX2Btn, *mpScaleX15Btn,*mpScaleX1Btn;
     QToolButton *mpVolumeBtn;
     QToolButton *mpPlayPauseBtn;
     QToolButton *mpStopBtn, *mpForwardBtn, *mpBackwardBtn;

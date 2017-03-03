@@ -404,6 +404,14 @@ void MainWindow::setupUi()
     mpScaleX2Btn->setMaximumHeight(mpInfoBtn->sizeHint().height());
     mpScaleX2Btn->setMinimumHeight(mpInfoBtn->sizeHint().height());
 
+    mpScaleX1Btn = new QToolButton();
+    mpScaleX1Btn->setText(tr("N"));
+    mpScaleX1Btn->setToolTip(tr("Naitive Resolution"));
+    mpScaleX1Btn->setStyleSheet(QString::fromLatin1("color:grey;"));
+    mpScaleX1Btn->setMaximumHeight(mpInfoBtn->sizeHint().height());
+    mpScaleX1Btn->setMinimumHeight(mpInfoBtn->sizeHint().height());
+
+
     mpMenuBtn = new QToolButton();
     mpMenuBtn->setIcon(QIcon(QString::fromLatin1(":/theme/dark/menu.svg")));
     //mpMenuBtn->setAutoRaise(true);
@@ -723,6 +731,8 @@ void MainWindow::setupUi()
     controlLayout->addWidget(mpFullScreenBtn);
     controlLayout->addWidget(mpScaleX15Btn);
     controlLayout->addWidget(mpScaleX2Btn);
+    controlLayout->addWidget(mpScaleX1Btn);
+
     space = new QSpacerItem(mpPlayPauseBtn->width(), mpPlayPauseBtn->height(), QSizePolicy::Expanding);
     controlLayout->addSpacerItem(space);
     controlLayout->addWidget(mpEnd);
@@ -770,7 +780,7 @@ void MainWindow::setupUi()
 
     connect(mpScaleX2Btn, SIGNAL(clicked()), SLOT(onScaleX2Btn()));
     connect(mpScaleX15Btn, SIGNAL(clicked()), SLOT(onScaleX15Btn()));
-
+    connect(mpScaleX1Btn, SIGNAL(clicked()), SLOT(onScaleX1Btn()));
 
     connect(&Config::instance(), SIGNAL(userShaderEnabledChanged()), SLOT(onUserShaderChanged()));
     connect(&Config::instance(), SIGNAL(fragHeaderChanged()), SLOT(onUserShaderChanged()));
@@ -1051,7 +1061,13 @@ void MainWindow::setPlayerScale(const double scale)
     if (scale>0) {
         mPlayerScale=scale;
         this->setMaximumSize(QSize(QWIDGETSIZE_MAX,QWIDGETSIZE_MAX));
-        emit wheelEvent(new QWheelEvent(QPoint(0,0),0,Qt::NoButton,Qt::NoModifier));
+        //reset wheelzoom of player
+        //emit wheelEvent(new QWheelEvent(QPoint(0,0),0,Qt::NoButton,Qt::NoModifier));
+        if (mpRenderer) {
+            QSize videoFrame=mpRenderer->videoFrameSize();
+            if (mPlayerScale>0.) videoFrame*=mPlayerScale;
+            mpRenderer->setRegionOfInterest(QRectF(QPointF(0,0), videoFrame));
+        }
     }
 }
 
@@ -2570,10 +2586,11 @@ void MainWindow::onScaleBtn(qreal _scale)
     qreal scale,nextscale15,nextscale20;
     //mPlayerScale
 
-
-
-
-    if (_scale==1.5) {
+    if (_scale==1.0) {
+        nextscale15=1.5;
+        nextscale20=2.0;
+        scale=1.0;
+    }else if (_scale==1.5) {
         scale=mpScaleX15Btn->text().split('x')[1].toFloat();
         nextscale15=(scale==1.)?1.5:1.0;
         nextscale20=2.0;
@@ -2612,6 +2629,10 @@ void MainWindow::onScaleX15Btn()
     onScaleBtn(1.5);
 }
 
+void MainWindow::onScaleX1Btn()
+{
+    onScaleBtn(1.0);
+}
 
 void MainWindow::captureGL()
 {
