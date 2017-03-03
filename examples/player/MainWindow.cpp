@@ -1520,7 +1520,7 @@ void MainWindow::calcToUseSuperResolution()
         }else{
             framesize=mpRenderer->videoFrameSize();
         }
-        rendersize=mpRenderer->videoRect().size()-QSize(1,1);//widget()->size();
+        rendersize=mpRenderer->videoRect().size();//-QSize(1,1);//widget()->size();
 
         if (framesize.isEmpty()) {
             //qDebug()<<"MainWindow::calcToUseSuperResolution framesize.isEmpty";
@@ -1536,7 +1536,8 @@ void MainWindow::calcToUseSuperResolution()
         qreal sscaleWidth=qreal(rendersize.width())/qreal(framesize.width());
         qreal sscaleHeight=qreal(rendersize.height())/qreal(framesize.height());
         //qDebug()<<"MainWindow::calcToUseSuperResolution opengl()->video_size"<<mpRenderer
-        qreal scale=(sscaleWidth+sscaleHeight)/2;
+        qreal scale=(sscaleWidth+sscaleHeight)/2.;
+        scale=ceil((scale)*100)/100.;
         qDebug()<<"MainWindow::calcToUseSuperResolution Scale WxH:"<<sscaleWidth<<sscaleHeight<<"Middle:"<<scale;
 
         needToUseSuperResolutionLastLinearFiltering=true;
@@ -1565,6 +1566,64 @@ void MainWindow::calcToUseSuperResolution()
             mpGLSLFilter->setNeedSuperScale(needToUseSuperResolution);
             mpGLSLFilter->setNeedSuperScaleLastLinearFiltering(needToUseSuperResolutionLastLinearFiltering);
         }
+
+        //calculate tunes for XunoSharp values
+        const float sharpScaler_x1=0.0001562f;
+        const float sharpScaler_x2=0.0005208f;
+        const double brightnessScaler=0.0000312;
+        const double contrastScaler=0.0000625;
+        const double saturationScaler=0.0000312;
+        const float gammaScaler=0.0000625f;
+
+        float sharpValue=0.f,gammaValue=0.f;
+        double contrastValue=0.,brightnessValue=0.,saturationValue=0.;
+
+        if (scale==1.){
+          sharpValue=(framesize.width()*sharpScaler_x1);
+        }else if (scale>1.){
+            if (scale<2.){
+              sharpValue=(framesize.width()*(sharpScaler_x1+sharpScaler_x2*(scale-1.f)));
+              gammaValue=framesize.width()*gammaScaler*(scale-1.f);
+              contrastValue=framesize.width()*contrastScaler*(scale-1.f);
+              brightnessValue=framesize.width()*brightnessScaler*(scale-1.f);
+              saturationValue=framesize.width()*saturationScaler*(scale-1.f);
+            }else{
+              sharpValue=(framesize.width()*(sharpScaler_x1+sharpScaler_x2));
+              gammaValue=framesize.width()*gammaScaler;
+              contrastValue=framesize.width()*contrastScaler;
+              brightnessValue=framesize.width()*brightnessScaler;
+              saturationValue=framesize.width()*saturationScaler;
+            }
+        }
+
+        if (shaderXuno) {
+            if (sharpValue>=0.f) {
+                qDebug()<<"Set XunoSharp Value"<<sharpValue;
+                shaderXuno->setSharpValue(sharpValue-1.0f);
+            }
+            if (gammaValue>=0.f) {
+                shaderXuno->setGammaValue(gammaValue);
+                qDebug()<<"Set XunoGamma Value"<<gammaValue;
+            }
+        }
+
+        if (mpGLSLFilter) {
+            if (contrastValue>=0.) {
+                mpGLSLFilter->setContrast(contrastValue);
+                qDebug()<<"Set XunoContrast Value"<<contrastValue;
+            }
+            if (brightnessValue>=0.) {
+                mpGLSLFilter->setBrightness(brightnessValue);
+                qDebug()<<"Set XunoBrightness Value"<<brightnessValue;
+            }
+            if (saturationValue>=0.) {
+                mpGLSLFilter->setSaturation(saturationValue);
+                qDebug()<<"Set XunoSaturation Value"<<brightnessValue;
+            }
+        }
+
+
+
 
 
     }
