@@ -1580,7 +1580,7 @@ void MainWindow::calcToUseSuperResolution()
         //calculate tunes for XunoSharp values
         const float sharpScaler_x1=0.0001562f;
         const float sharpScaler_x2=0.0005208f;
-        const double brightnessScaler=0.0000312;
+        const double brightnessScaler=0.0000000;
         const double contrastScaler=0.0000625;
         const double saturationScaler=0.0000312;
         const float gammaScaler=0.0000625f;
@@ -1621,7 +1621,7 @@ void MainWindow::calcToUseSuperResolution()
             }
         }
 
-        if (mpVideoEQ) {//mpGLSLFilter
+        if (shaderXuno && mpVideoEQ) {//mpGLSLFilter
             if (contrastValue>=0.) {
                 qreal userValue=mpVideoEQ->contrast();
                 qreal correctedValue=userValue+contrastValue;
