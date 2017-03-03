@@ -1051,6 +1051,7 @@ void MainWindow::setPlayerScale(const double scale)
     if (scale>0) {
         mPlayerScale=scale;
         this->setMaximumSize(QSize(QWIDGETSIZE_MAX,QWIDGETSIZE_MAX));
+        emit wheelEvent(new QWheelEvent(QPoint(0,0),0,Qt::NoButton,Qt::NoModifier));
     }
 }
 
@@ -1471,6 +1472,8 @@ void MainWindow::wheelEvent(QWheelEvent *e)
         return;
     }
 #endif //WHEEL_SPEED
+    QSize videoFrame=mpRenderer->videoFrameSize();
+    if (mPlayerScale>0.) videoFrame*=mPlayerScale;
     QPointF p = mpRenderer->widget()->mapFrom(this, e->pos());
     QPointF fp = mpRenderer->mapToFrame(p);
     //qDebug() <<  p << fp;
@@ -1478,10 +1481,10 @@ void MainWindow::wheelEvent(QWheelEvent *e)
         fp.setX(0);
     if (fp.y() < 0)
         fp.setY(0);
-    if (fp.x() > mpRenderer->videoFrameSize().width())
-        fp.setX(mpRenderer->videoFrameSize().width());
-    if (fp.y() > mpRenderer->videoFrameSize().height())
-        fp.setY(mpRenderer->videoFrameSize().height());
+    if (fp.x() > videoFrame.width())
+        fp.setX(videoFrame.width());
+    if (fp.y() > videoFrame.height())
+        fp.setY(videoFrame.height());
     QRectF viewport = QRectF(mpRenderer->mapToFrame(QPointF(0, 0)), mpRenderer->mapToFrame(QPointF(mpRenderer->rendererWidth(), mpRenderer->rendererHeight())));
     //qDebug("vo: (%.1f, %.1f)=> frame: (%.1f, %.1f)", p.x(), p.y(), fp.x(), fp.y());
     qreal zoom = 1.0 + deg*3.14/180.0;
@@ -1495,14 +1498,14 @@ void MainWindow::wheelEvent(QWheelEvent *e)
     qreal x0 = fp.x() - fp.x()/z;
     qreal y0 = fp.y() - fp.y()/z;
     //qDebug() << "fr: " << QRectF(x0, y0, qreal(mpRenderer->videoFrameSize().width())/z, qreal(mpRenderer->videoFrameSize().height())/z) << fp << z;
-    mpRenderer->setRegionOfInterest(QRectF(x0, y0, qreal(mpRenderer->videoFrameSize().width())/z, qreal(mpRenderer->videoFrameSize().height())/z));
+    mpRenderer->setRegionOfInterest(QRectF(x0, y0, qreal(videoFrame.width())/z, qreal(videoFrame.height())/z));
     return;
     QTransform m;
     m.translate(fp.x(), fp.y());
     m.scale(1.0/zoom, 1.0/zoom);
     m.translate(-fp.x(), -fp.y());
     QRectF r = m.mapRect(mpRenderer->realROI());
-    mpRenderer->setRegionOfInterest((r | m.mapRect(viewport))&QRectF(QPointF(0,0), mpRenderer->videoFrameSize()));
+    mpRenderer->setRegionOfInterest((r | m.mapRect(viewport))&QRectF(QPointF(0,0), videoFrame));
 }
 
 QString MainWindow::aboutXunoQtAV_PlainText()
