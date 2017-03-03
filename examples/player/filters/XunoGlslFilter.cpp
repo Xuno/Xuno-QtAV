@@ -129,13 +129,13 @@ void XunoGLSLFilter::afterRendering()
         }
 
         GLuint sfbotextid;
-        if (0){
+        if (1){
             sfbotextid=sharpShader(frameTexture());
             if (sfbotextid) lastSuperscaleTexureId=sfbotextid;
         }
 
         needAdaptiveSharpen=needSuperScale;
-        if (needAdaptiveSharpen){
+        if (0 && needAdaptiveSharpen){
             sfbotextid=adaptiveSharpen(frameTexture());
             if (sfbotextid) lastSuperscaleTexureId=sfbotextid;
         }
@@ -147,9 +147,16 @@ void XunoGLSLFilter::afterRendering()
             if (f && fbo()->textures().size()){
                 GLenum target=GL_TEXTURE_2D;
                 f->glBindTexture(target,frameTexture());
-                //f->glGenerateMipmap(target);
+                f->glGenerateMipmap(target);
+
+                //TextureMinFilter
+//#define GL_NEAREST_MIPMAP_NEAREST         0x2700
+//#define GL_LINEAR_MIPMAP_NEAREST          0x2701
+//#define GL_NEAREST_MIPMAP_LINEAR          0x2702
+//#define GL_LINEAR_MIPMAP_LINEAR           0x2703
+
                 f->glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                f->glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);//GL_LINEAR
                 f->glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                 f->glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
                 f->glBindTexture(target,0);

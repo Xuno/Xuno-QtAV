@@ -11,7 +11,7 @@ ShaderFilterXuno::ShaderFilterXuno()
 
 void ShaderFilterXuno::setSharpValue(float v)
 {
-    //qDebug("VideoShader.cpp VideoMaterial::setFilterSgarp: %f",value);
+    qDebug("ShaderFilterXuno::setSharpValue: %f",v);
     //1-10  W=MAX-MIN,   fs=(value/100.0)*w/2+w+min
     const qreal min=1.,max=10.,w=(max-min)/2.,of=w+min;
     qreal fs=((qreal)v)*w+of;
