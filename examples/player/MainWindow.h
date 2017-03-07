@@ -192,6 +192,7 @@ private slots:
     void captureGL();
     void onScaleX2Btn();
     void onScaleX15Btn();
+    void onScaleX1Btn();
 
 protected:
     virtual void closeEvent(QCloseEvent *e);
@@ -218,12 +219,14 @@ private:
     void installGLSLFilter();
     void installSimpleFilter();
     void onScaleBtn(qreal _scale);
+    void scaleReset();
 
 
 
 private:
     bool mIsReady, mHasPendingPlay;
     bool mControlOn;
+    bool mNaitiveScaleOn=false;
     int mCursorTimer;
     int mShowControl; //0: can hide, 1: show and playing, 2: always show(not playing)
     int mRepeateMax;
@@ -239,7 +242,7 @@ private:
     QLabel *mpTitle;
     QLabel *mpSpeed;
     Slider *mpTimeSlider, *mpVolumeSlider;
-    QToolButton *mpWebBtn, *mpFullScreenBtn, *mpScaleX2Btn, *mpScaleX15Btn;
+    QToolButton *mpWebBtn, *mpFullScreenBtn, *mpScaleX2Btn, *mpScaleX15Btn,*mpScaleX1Btn;
     QToolButton *mpVolumeBtn;
     QToolButton *mpPlayPauseBtn;
     QToolButton *mpStopBtn, *mpForwardBtn, *mpBackwardBtn;
@@ -301,6 +304,7 @@ private:
 
     bool needToUseSuperResolution=false;
     bool needToUseSuperResolutionLastLinearFiltering=true;
+
 
 };
 
