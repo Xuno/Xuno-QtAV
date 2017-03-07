@@ -1,8 +1,9 @@
 set(MODULE QtAV)
-# TODO: translations, rpath, rc template,egl, dygl, uchardet, d3d11, cuda
+# TODO: translations, rpath, rc template, uchardet, x11extras, android
 
-INCLUDE(CheckCCompilerFlag)
-INCLUDE(CheckIncludeFile)
+include(CheckCCompilerFlag)
+include(CheckCXXSourceCompiles)
+include(CheckIncludeFile)
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 INCLUDE(CheckTypeSize)
@@ -139,13 +140,14 @@ if (APPLE)
   set(CMAKE_CXX_SYSTEM_FRAMEWORK_SEARCH_FLAG "-F ") # original is "-iframework", lots of build errors
   set(CMAKE_C_SYSTEM_FRAMEWORK_SEARCH_FLAG "-F ")
   set(OLD_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
-  set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} -lavcodec)
+  set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} avcodec)
   check_c_source_compiles(
     "#include <libavcodec/videotoolbox.h>
     int main() {
         av_videotoolbox_alloc_context();
         return 0;
     }" HAVE_VIDEOTOOLBOX)
+  set(CMAKE_REQUIRED_LIBRARIES ${OLD_REQUIRED_LIBRARIES})
 
   if (HAVE_VIDEOTOOLBOX)
     list(APPEND EXTRA_DEFS -DQTAV_HAVE_VIDEOTOOLBOX=1)
@@ -185,23 +187,19 @@ endif()
 
 set(HAVE_EGL 0)
 set(DYNAMIC_GL 0)
-set(OPENGL 0)     #desktop opengl
-set(OPENGLES 0)   #glesv2
+set(OPENGL 0)     #desktop opengl only
+set(OPENGLES 0)   #glesv2 only
+set(HAVE_OPENGL 1) # qt with opengl enabled. 1 of DYNAMIC_GL, OPENGL and OPENGLES is true
 #get_target_property(QtGui_location Qt5::Gui LOCATION) #dll path
-get_target_property(qmake Qt5::qmake LOCATION) #dll path
-execute_process(
-    COMMAND ${qmake} -query QT_INSTALL_HEADERS
-    OUTPUT_VARIABLE QT_INSTALL_HEADERS
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
 
 if(Qt5Gui_OPENGL_IMPLEMENTATION STREQUAL GL) # windows always set to GL
-  set(OPENGL 1)
   if(EXISTS ${QT_INSTALL_HEADERS}/QtANGLE)
-    set(DYNAMIC_GL 1)
+    set(DYNAMIC_GL 1) # assume Qt5Gui_OPENGL_IMPLEMENTATION is not GL if build with ANGLE only
     if(NOT DEFINED Qt5Gui_EGL_INCLUDE_DIRS)
       set(Qt5Gui_EGL_INCLUDE_DIRS ${QT_INSTALL_HEADERS}/QtANGLE)
     endif()
+  else()
+    set(OPENGL 1)
   endif()
   if(DEFINED Qt5Gui_EGL_LIBRARIES) # x11?
     set(HAVE_EGL 1)
@@ -212,82 +210,19 @@ endif()
 if(OPENGLES OR DYNAMIC_GL)
   set(HAVE_EGL 1)
 endif()
-set(HAVE_OPENGL 1) # qt with opengl enabled
 if(NOT OPENGL AND NOT OPENGLES AND NOT DYNAMIC_GL)
   set(HAVE_OPENGL 0)
 endif()
+if(HAVE_OPENGL)
+  if(WIN32 AND NOT DYNAMIC_GL AND NOT OPENGLES) # msys2
+    find_package(OpenGL REQUIRED)
+    list(APPEND EXTRA_LIBS ${OPENGL_gl_LIBRARY})
+  endif()
+endif()
 
-set(SDK_HEADERS 
-      QtAV/QtAV
-    QtAV/QtAV.h
-    QtAV/dptr.h
-    QtAV/QtAV_Global.h
-    QtAV/AudioResampler.h
-    QtAV/AudioDecoder.h
-    QtAV/AudioEncoder.h
-    QtAV/AudioFormat.h
-    QtAV/AudioFrame.h
-    QtAV/AudioOutput.h
-    QtAV/AVDecoder.h
-    QtAV/AVEncoder.h
-    QtAV/AVDemuxer.h
-    QtAV/AVMuxer.h
-    QtAV/Filter.h
-    QtAV/FilterContext.h
-    QtAV/GLSLFilter.h
-    QtAV/LibAVFilter.h
-    QtAV/EncodeFilter.h
-    QtAV/Frame.h
-    QtAV/FrameReader.h
-    QtAV/QPainterRenderer.h
-    QtAV/Packet.h
-    QtAV/AVError.h
-    QtAV/AVPlayer.h
-    QtAV/AVTranscoder.h
-    QtAV/VideoCapture.h
-    QtAV/VideoRenderer.h
-    QtAV/VideoOutput.h
-    QtAV/MediaIO.h
-    QtAV/AVOutput.h
-    QtAV/AVClock.h
-    QtAV/VideoDecoder.h
-    QtAV/VideoEncoder.h
-    QtAV/VideoFormat.h
-    QtAV/VideoFrame.h
-    QtAV/VideoFrameExtractor.h
-    QtAV/FactoryDefine.h
-    QtAV/Statistics.h
-    QtAV/SubImage.h
-    QtAV/Subtitle.h
-    QtAV/SubtitleFilter.h
-    QtAV/SurfaceInterop.h
-    QtAV/OpenGLVideo.h
-    QtAV/OpenGLRendererBase.h
-    QtAV/VideoShader.h
-    QtAV/VideoShaderObject.h
-    QtAV/version.h
-    )
-set(SDK_PRIVATE_HEADERS
-    QtAV/private/factory.h
-    QtAV/private/mkid.h
-    QtAV/private/prepost.h
-    QtAV/private/singleton.h
-    QtAV/private/PlayerSubtitle.h
-    QtAV/private/SubtitleProcessor.h
-    QtAV/private/AVCompat.h
-    QtAV/private/AudioOutputBackend.h
-    QtAV/private/AudioResampler_p.h
-    QtAV/private/AVDecoder_p.h
-    QtAV/private/AVEncoder_p.h
-    QtAV/private/MediaIO_p.h
-    QtAV/private/AVOutput_p.h
-    QtAV/private/Filter_p.h
-    QtAV/private/Frame_p.h
-    QtAV/private/VideoShader_p.h
-    QtAV/private/VideoRenderer_p.h
-    QtAV/private/QPainterRenderer_p.h
-    QtAV/private/OpenGLRendererBase_p.h
-    )
+file(GLOB SDK_HEADERS QtAV/*.h)
+list(APPEND SDK_HEADERS QtAV/QtAV)
+file(GLOB SDK_PRIVATE_HEADERS QtAV/private/*.h)
 
 list(APPEND SOURCES
     AVCompat.cpp
@@ -402,12 +337,51 @@ if(WIN32 OR WindowsStore OR WindowsPhone)
     codec/video/VideoDecoderD3D.cpp
   )
   list(APPEND EXTRA_DEFS -DQTAV_HAVE_XAUDIO2=1)
+  set(OLD_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
+  set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} avcodec) # TODO: lib dir
+  set(OLD_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES})
+  set(CMAKE_REQUIRED_INCLUDES ${EXTRA_INCLUDE} ${CMAKE_CURRENT_SOURCE_DIR})
+  check_cxx_source_compiles("
+  #include \"directx/dxcompat.h\"
+  #include <d3d11.h>
+  extern \"C\" {
+  #include <libavcodec/d3d11va.h>
+  }
+  #include <wrl/client.h> //ComPtr is used in QtAV
+  int main() {
+    av_d3d11va_alloc_context();
+    D3D11_VIDEO_PROCESSOR_STREAM s; //used by vp
+    return 0;
+  }
+  " HAVE_D3D11)
+  set(CMAKE_REQUIRED_INCLUDES ${OLD_REQUIRED_INCLUDES})
+  set(CMAKE_REQUIRED_LIBRARIES ${OLD_REQUIRED_LIBRARIES})
+  if(HAVE_D3D11)
+    # https://crascit.com/2015/03/28/enabling-cxx11-in-cmake/ (global and specified target)
+    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    list(APPEND EXTRA_DEFS -DQTAV_HAVE_D3D11VA=1)
+    list(APPEND SOURCES
+      codec/video/VideoDecoderD3D11.cpp
+      directx/SurfaceInteropD3D11.cpp
+      directx/D3D11VP.cpp
+    )
+    if(HAVE_EGL)
+      list(APPEND SOURCES directx/SurfaceInteropD3D11EGL.cpp)
+    endif()
+    if(HAVE_OPENGL AND NOT OPENGLES) # dynamic gl or desktop
+      list(APPEND SOURCES directx/SurfaceInteropD3D11GL.cpp)
+    endif()
+  endif()
   if(WindowsStore OR WindowsPhone)
     list(APPEND SOURCES io/WinRTIO.cpp)
     list(APPEND EXTRA_LIBS
       xaudio2 #only for xbox or >=win8
       shcore
     )
+    if(HAVE_D3D11)
+      list(APPEND EXTRA_LIBS d3d11)
+    endif()
   else()
     list(APPEND EXTRA_LIBS ole32 user32) #ole32: CoInitializeEx for vs2008, but can not find the symbol at runtime
     list(APPEND SOURCES
@@ -456,6 +430,16 @@ if(HAVE_VAAPI)
   list(APPEND EXTRA_LIBS va X11)
 endif()
 
+if(NOT APPLE)
+  list(APPEND EXTRA_DEFS -DQTAV_HAVE_CUDA=1)
+  list(APPEND EXTRA_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/cuda)
+  list(APPEND SOURCES
+    cuda/cuda_api.cpp
+    codec/video/SurfaceInteropCUDA.cpp
+    codec/video/VideoDecoderCUDA.cpp
+  )
+endif()
+
 list(APPEND HEADERS ${SDK_HEADERS} ${SDK_PRIVATE_HEADERS}
     AVPlayerPrivate.h
     AVDemuxThread.h
@@ -500,6 +484,11 @@ target_link_libraries(${MODULE}
 set_target_properties(${MODULE} PROPERTIES
   MACOSX_RPATH ON
   FRAMEWORK ON
+    #  MACOSX_FRAMEWORK_INFO_PLIST qtav-Info.plist
+    #PUBLIC_HEADER ${SDK_HEADERS}
+    #PRIVATE_HEADER ${SDK_PRIVATE_HEADERS}
+    XCODE_ATTRIBUTE_INSTALL_PATH "@rpath"
+
   VERSION ${PROJECT_VERSION}
   SOVERSION ${SO_VERSION}
   OUTPUT_NAME ${MODULE}
@@ -512,8 +501,35 @@ set_target_properties(${MODULE} PROPERTIES
 #http://doc.qt.io/qt-5/cmake-manual.html
 set(CMAKE_INCLUDE_CURRENT_DIR ON) # for .moc
 target_include_directories(${MODULE}
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/QtAV
+  PUBLIC $<INSTALL_INTERFACE:include>
+  PUBLIC $<INSTALL_INTERFACE:include/${MODULE}>
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${MODULE}>
   PRIVATE ${EXTRA_INCLUDE}
   )
 target_compile_definitions(${MODULE} PRIVATE ${EXTRA_DEFS})
+
+install(FILES
+  ${SDK_HEADERS}
+  DESTINATION ${QTAV_INSTALL_HEADERS}/${MODULE}
+)
+install(FILES
+  ${SDK_PRIVATE_HEADERS}
+  DESTINATION ${QTAV_INSTALL_HEADERS}/${MODULE}/private
+)
+install(TARGETS ${MODULE}
+  EXPORT ${MODULE}-targets
+  #PUBLIC_HEADER DESTINATION ${QTAV_INSTALL_HEADERS}/${MODULE} # list is too long
+  #PRIVATE_HEADER DESTINATION ${QTAV_INSTALL_HEADERS}/${MODULE}/private
+  RUNTIME DESTINATION ${QTAV_INSTALL_BINS}
+  LIBRARY DESTINATION ${QTAV_INSTALL_LIBS}
+  ARCHIVE DESTINATION ${QTAV_INSTALL_LIBS}
+  FRAMEWORK DESTINATION ${CMAKE_INSTALL_PREFIX}
+)
+
+# FIXME: why QTAV_INCLUDE_DIRS is empty?
+install(EXPORT ${MODULE}-targets
+  DESTINATION ${QTAV_INSTALL_LIBS}/cmake/${MODULE}
+  FILE ${MODULE}-config.cmake
+)
+
