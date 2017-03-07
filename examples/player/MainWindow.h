@@ -219,12 +219,14 @@ private:
     void installGLSLFilter();
     void installSimpleFilter();
     void onScaleBtn(qreal _scale);
+    void scaleReset();
 
 
 
 private:
     bool mIsReady, mHasPendingPlay;
     bool mControlOn;
+    bool mNaitiveScaleOn=false;
     int mCursorTimer;
     int mShowControl; //0: can hide, 1: show and playing, 2: always show(not playing)
     int mRepeateMax;
@@ -302,6 +304,7 @@ private:
 
     bool needToUseSuperResolution=false;
     bool needToUseSuperResolutionLastLinearFiltering=true;
+
 
 };
 

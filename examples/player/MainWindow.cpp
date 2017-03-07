@@ -1060,6 +1060,7 @@ void MainWindow::setPlayerScale(const double scale)
 {
     if (scale>0) {
         mPlayerScale=scale;
+        mNaitiveScaleOn=false;
         this->setMaximumSize(QSize(QWIDGETSIZE_MAX,QWIDGETSIZE_MAX));
         //reset wheelzoom of player
         //emit wheelEvent(new QWheelEvent(QPoint(0,0),0,Qt::NoButton,Qt::NoModifier));
@@ -1233,6 +1234,7 @@ void MainWindow::onStartPlay()
         mpStatisticsView->setStatistics(mpPlayer->statistics());
     analyeUsedFPS();
     if (mpImgSeqExtract) mpImgSeqExtract->setEndTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
+    scaleReset();
     reSizeByMovie();
 }
 
@@ -1459,12 +1461,36 @@ void MainWindow::mouseMoveEvent(QMouseEvent *e)
         if (!mpRenderer || !mpRenderer->widget())
             return;
         QRectF roi = mpRenderer->realROI();
+
+        //roi.setTopLeft(roi.topLeft());
+        //roi.setSize(roi.size());
+
         QPointF delta = e->globalPos() - mGlobalMouse;
         mGlobalMouse=e->globalPos();
         QPointF center=roi.center()-delta;
         roi.moveCenter(center);
-        if (roi.top()>1 && roi.left()>1 && roi.right() < mpRenderer->rendererWidth() && roi.bottom() < mpRenderer->rendererHeight()){
-            mpRenderer->setRegionOfInterest(roi);
+        if (mNaitiveScaleOn){
+            //qDebug()<<"mouseMoveEvent mNaitiveScaleOn";
+            //qDebug()<<"mouseMoveEvent roi"<<roi<<"rendererSize"<<mpRenderer->rendererSize();
+            QRectF roi2=roi;
+//            roi2.setTopLeft(roi2.topLeft()*mPlayerScale);
+//            roi2.setSize(roi2.size()*mPlayerScale);
+
+            QSize videoFrame=mpRenderer->videoFrameSize();
+            if (mPlayerScale>0.) videoFrame*=mPlayerScale;
+
+            QRectF roi3=QRectF(QPointF(0,0), videoFrame);
+
+            ///qDebug()<<"mouseMoveEvent scaled roi"<<roi<<"rendererSize"<<mpRenderer->rendererSize()<<"roi2"<<roi2<<"roi3"<<roi3<<"r3 intersects r2"<<roi3.intersects(roi2);
+            if (roi2.top()>1 && roi2.left()>1 && roi2.right() < roi3.right() && roi2.bottom() < roi3.bottom()){
+                mpRenderer->setRegionOfInterest(roi2);
+            }
+        }else{
+            //qDebug()<<"mouseMoveEvent roi"<<roi<<"rendererSize"<<mpRenderer->rendererSize();
+
+            if (roi.top()>1 && roi.left()>1 && roi.right() < mpRenderer->rendererWidth() && roi.bottom() < mpRenderer->rendererHeight()){
+                mpRenderer->setRegionOfInterest(roi);
+            }
         }
     }
 }
@@ -1515,6 +1541,7 @@ void MainWindow::wheelEvent(QWheelEvent *e)
     qreal y0 = fp.y() - fp.y()/z;
     //qDebug() << "fr: " << QRectF(x0, y0, qreal(mpRenderer->videoFrameSize().width())/z, qreal(mpRenderer->videoFrameSize().height())/z) << fp << z;
     mpRenderer->setRegionOfInterest(QRectF(x0, y0, qreal(videoFrame.width())/z, qreal(videoFrame.height())/z));
+    mNaitiveScaleOn=false;
     return;
     QTransform m;
     m.translate(fp.x(), fp.y());
@@ -1598,7 +1625,7 @@ void MainWindow::calcToUseSuperResolution()
 
         //calculate tunes for XunoSharp values
         const float sharpScaler_x1=0.0001562f;
-        const float sharpScaler_x2=0.0005208f;
+        const float sharpScaler_x2=0.0002604f;
         const double brightnessScaler=0.0000000;
         const double contrastScaler=0.0000625;
         const double saturationScaler=0.0000312;
@@ -2065,6 +2092,8 @@ void MainWindow::onBrightnessChanged(int b)
         vo->setBrightness(mpVideoEQ->brightness());
     }
 
+    calcToUseSuperResolution();
+
 }
 
 void MainWindow::onContrastChanged(int c)
@@ -2084,6 +2113,8 @@ void MainWindow::onContrastChanged(int c)
         VideoRenderer *vo = mpPlayer->renderer();
         vo->setContrast(mpVideoEQ->contrast());
     }
+
+    calcToUseSuperResolution();
 }
 
 void MainWindow::onHueChanged(int h)
@@ -2103,6 +2134,8 @@ void MainWindow::onHueChanged(int h)
         VideoRenderer *vo = mpPlayer->renderer();
         vo->setHue(mpVideoEQ->hue());
     }
+
+    calcToUseSuperResolution();
 }
 
 void MainWindow::onSaturationChanged(int s)
@@ -2122,18 +2155,24 @@ void MainWindow::onSaturationChanged(int s)
         VideoRenderer *vo = mpPlayer->renderer();
         vo->setSaturation(mpVideoEQ->saturation());
     }
+
+    calcToUseSuperResolution();
 }
 
 void MainWindow::onGammaRGBChanged(int g)
 {
     Q_UNUSED(g);
     if (shaderXuno) shaderXuno->setGammaValue(mpVideoEQ->gammaRGB());
+
+    calcToUseSuperResolution();
 }
 
 void MainWindow::onFilterSharpChanged(int fs)
 {
     Q_UNUSED(fs);
     if (shaderXuno) shaderXuno->setSharpValue(mpVideoEQ->filterSharp());
+
+    calcToUseSuperResolution();
 }
 
 void MainWindow::onCaptureConfigChanged()
@@ -2364,13 +2403,18 @@ void MainWindow::loadRemoteUrlPresset(const QString& url){
 
 void MainWindow::reSizeByMovie()
 {
-    if (isFullScreen()) return;
+    if (isFullScreen()) {
+        qDebug()<<"skipped, MainWindow::reSizeByMovie(). isFullScreen";
+        return;
+    }
     QSize t=mpRenderer->rendererSize();
     Statistics st=mpPlayer->statistics();
 
-    if (st.video_only.width>0 && st.video_only.width>0 && mPlayerScale>0 ){ //(t.width()+t.height())==0
+    if (st.video_only.width>0 && st.video_only.height>0 && mPlayerScale>0 ){ //(t.width()+t.height())==0
         t.setWidth(st.video_only.width*mPlayerScale);
         t.setHeight(st.video_only.height*mPlayerScale);
+    }else{
+        qDebug()<<"skipped, MainWindow::reSizeByMovie(). st.video_only"<<st.video_only.width<<st.video_only.height<<mPlayerScale;
     }
     if (t.isValid() && (!t.isNull())) {
         resize(t);
@@ -2378,6 +2422,8 @@ void MainWindow::reSizeByMovie()
             mpGLSLFilter->setOutputSize(t);
         }
         //installGLSLFilter(t);
+    }else{
+       qDebug()<<"skipped, MainWindow::reSizeByMovie(). t.is Not Valid()"<<t;
     }
     //qDebug()<<"reSizeByMovie before calcToUseSuperResolution";
     //calcToUseSuperResolution();
@@ -2580,6 +2626,24 @@ void MainWindow::installSimpleFilter()
     }
 }
 
+void MainWindow::scaleReset()
+{
+    qreal scale=1.0;
+    qreal nextscale15=1.5;
+    qreal nextscale20=2.0;
+    setPlayerScale(scale);
+    mpScaleX15Btn->setText(QString("x%1").arg(nextscale15));
+    mpScaleX15Btn->setToolTip(QString("Scale X%1").arg(nextscale15));
+    mpScaleX2Btn->setText(QString("x%1").arg(nextscale20));
+    mpScaleX2Btn->setToolTip(QString("Scale X%1").arg(nextscale20));
+    if (mpRenderer) {
+        QSize renderFrame=mpRenderer->videoRect().size();
+        QRectF roi2=QRectF(QPointF(0,0), renderFrame);
+        mpRenderer->setRegionOfInterest(roi2);
+    }
+}
+
+
 void MainWindow::onScaleBtn(qreal _scale)
 {
     //qDebug()<<"MainWindow: onScaleBtn"<<_scale;
@@ -2631,7 +2695,21 @@ void MainWindow::onScaleX15Btn()
 
 void MainWindow::onScaleX1Btn()
 {
-    onScaleBtn(1.0);
+    //onScaleBtn(1.0);
+    //setPlayerScale(1.0);
+    if (mpRenderer){
+        QSize videoFrame=mpRenderer->videoFrameSize();
+        //QSize renderFrame=mpRenderer->rendererSize();
+        QSize renderFrame=mpRenderer->videoRect().size();
+        if (mPlayerScale>0.) videoFrame*=mPlayerScale;
+        //QRectF viewport = QRectF(mpRenderer->mapToFrame(QPointF(0, 0)), mpRenderer->mapToFrame(QPointF(mpRenderer->rendererWidth(), mpRenderer->rendererHeight())));
+        qDebug()<<"onScaleX1Btn roi"<<mpRenderer->realROI();
+        qDebug()<<"onScaleX1Btn videoFrame"<<videoFrame<<"renderFrame"<<renderFrame<<"maptoFrame"<<QRectF(mpRenderer->mapToFrame(QPointF(0,0)), renderFrame);
+        QRectF roi2=QRectF(QPointF(0,0), renderFrame);
+        roi2.moveCenter(QPointF(videoFrame.width()/2,videoFrame.height()/2));
+        mpRenderer->setRegionOfInterest(roi2);
+        mNaitiveScaleOn=true;
+    }
 }
 
 void MainWindow::captureGL()
