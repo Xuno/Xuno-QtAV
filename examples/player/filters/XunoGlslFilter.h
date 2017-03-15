@@ -75,7 +75,7 @@ private:
     int maxPass=0,maxPass_adaptive_sahrpen=0;
     QVector <int> scales;
     GeometryEngine *geometries=Q_NULLPTR;
-    QStringList shader_files,shader_vertex_files,shader_files_adaptive_sharpen;
+    QStringList shader_files,shader_vertex_files,shader_files_adaptive_sharpen,shader_files_fxaa;
     QString shader_files_prefix,shader_files_include;
     QOpenGLTexture *texture=Q_NULLPTR;
     int frame=0;
@@ -96,6 +96,6 @@ private:
     bool initShaders_adaptiveSharpen(int pass);
     GLuint sharpShader(GLuint pfbotextid);
     GLuint adaptiveSharpen(GLuint pfbotextid);
-
+    GLuint fxaaShader(GLuint pfbotextid);
 };
 #endif // XUNOGLSLFILTER_H

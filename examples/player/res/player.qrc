@@ -26,5 +26,6 @@
         <file>shaders/adaptive-sharpen-pass1-2.glsl</file>
         <file>shaders/adaptive-sharpen-v2-pass0-1.glsl</file>
         <file>shaders/adaptive-sharpen-v2-pass1-0.glsl</file>
+        <file>shaders/fxaa-sharpen-pass0.glsl</file>
     </qresource>
 </RCC>

@@ -60,6 +60,10 @@ XunoGLSLFilter::XunoGLSLFilter(QObject *parent):
     }
     maxPass_adaptive_sahrpen=shader_files_adaptive_sharpen.size()-1;
 
+    if (shader_files_fxaa.isEmpty()){
+        shader_files_fxaa<<"fxaa-sharpen-pass0.glsl";
+    }
+
 }
 
 void XunoGLSLFilter::setShader(QtAV::VideoShader *ush)
@@ -140,9 +144,15 @@ void XunoGLSLFilter::afterRendering()
             if (sfbotextid) lastSuperscaleTexureId=sfbotextid;
         }
 
+        //fxaa
+        if (needSuperScale){
+            sfbotextid=fxaaShader(frameTexture());
+            if (sfbotextid) lastSuperscaleTexureId=sfbotextid;
+        }
+
 
         //need last linear filtering image
-        if (needSuperScaleLastLinearFiltering){
+        if (0 && needSuperScaleLastLinearFiltering){
             QOpenGLFunctions *f=opengl()->openGLContext()->functions();
             if (f && fbo()->textures().size()){
                 GLenum target=GL_TEXTURE_2D;
@@ -667,7 +677,6 @@ bool XunoGLSLFilter::initShaders_xbr(int pass)
     return false;
 }
 
-
 int XunoGLSLFilter::addProgram()
 {
     QOpenGLShaderProgram *pr=new QOpenGLShaderProgram(this);
@@ -914,6 +923,126 @@ GLuint XunoGLSLFilter::adaptiveSharpen(GLuint pfbotextid)
                 return 0;
             }
             filename=QString(shader_files_prefix).append(shader_files_adaptive_sharpen.at(pass));
+            //qDebug()<<"Vertex Shader load"<<filename ;
+            // Compile vertex shader
+            if (!program->addShaderFromSourceFile(QOpenGLShader::Fragment, filename)){
+                qDebug()<<"Fragment Shader error load"<<filename ;
+                return 0;
+            }
+
+            if (!program->link()) {
+                qDebug()<<"Fragment Shader error link"<<filename ;
+                qDebug()<<program->log();
+                qDebug()<<program->shaders().at(0)->sourceCode();
+                qDebug()<<program->shaders().at(1)->sourceCode();
+                return 0;
+            }
+        }
+
+
+//        qDebug()<<program->shaders().at(0)->sourceCode();
+//        qDebug()<<program->shaders().at(1)->sourceCode();
+
+        m_fbo[fboID]->bind();
+        f->glViewport(0,0,m_fbo[fboID]->width(),m_fbo[fboID]->height());
+
+        program->bind();
+
+        //    qDebug()<<"ShaderFilterXuno::compile() Sharer vertex:";
+        //    qDebug()<<program->shaders().at(0)->sourceCode();
+        //    qDebug()<<"ShaderFilterXuno::compile() Sharer fragment:";
+        //    qDebug()<<program->shaders().at(1)->sourceCode();
+
+
+        //qDebug()<<"texture0 is";
+        program->setUniformValue("texture0",  0);
+
+        QVector2D textureSize=QVector2D (float(m_fbo[fboID]->width()),float(m_fbo[fboID]->height()));
+
+        //qDebug()<<"texture_size0 is";
+        program->setUniformValue("u_textureSize", textureSize);
+
+        //qDebug()<<"pixel_size0 is";
+        program->setUniformValue("u_texelSize", QVector2D(1.0f,1.0f)/textureSize);
+
+        //qDebug()<<"texture_rot0 is";
+        program->setUniformValue("texture_rot0", QVector2D(0.0f,0.0f));
+
+        QMatrix4x4 matrix;
+        matrix.setToIdentity();
+
+        program->setUniformValue("MVPMatrix", matrix);
+
+        f->glActiveTexture(GL_TEXTURE0);
+        f->glBindTexture(GL_TEXTURE_2D, pfbotextid);
+        f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);//GL_NEAREST GL_LINEAR
+        f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+
+        f->glClearColor(0.0,0.0,1.0,1.0);//BLUE
+        f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        if ( geometries==Q_NULLPTR) geometries = new GeometryEngine;
+
+        if ( geometries!=Q_NULLPTR) geometries->drawCubeGeometry(program);
+
+        f->glBindTexture(GL_TEXTURE_2D, 0);
+
+        program->release();
+        m_fbo[fboID]->release();
+        fbotextid=m_fbo[fboID]->texture();
+        pfbotextid=fbotextid;
+        //qDebug()<<"pfbotextid"<<pfbotextid;
+    }
+
+    return  fbotextid;
+}
+
+GLuint XunoGLSLFilter::fxaaShader(GLuint pfbotextid)
+{
+    //qDebug()<<"XunoGLSLFilter::fxaaShader";
+
+    int prid=-1;
+
+    QOpenGLFunctions *f=opengl()->openGLContext()->functions();
+    if (!f) {
+        qDebug()<<"adaptiveSharpen skipped 2";
+        return 0;
+    }
+
+    GLuint fbotextid;
+
+    for (pass=0;pass<shader_files_fxaa.size();pass++){
+        //qDebug()<<"adaptiveSharpen pass"<<pass;
+
+        prid=addProgram();
+        QOpenGLShaderProgram *program=Q_NULLPTR;
+        if (prid!=-1){
+            program=programs.at(prid);
+        }else{
+            qDebug()<<"programs not is"<<prid;
+            return 0;
+        }
+        if (program==Q_NULLPTR) {
+            qDebug()<<"adaptiveSharpen skipped 3, prid"<<prid;
+            return 0;
+        }
+
+
+        int fboID;
+        fboID = addFBO(1,false);
+
+        //program->removeAllShaders();
+
+        if (shader_files_fxaa.size()){
+            QString filename;
+            filename=QString(shader_files_prefix).append(shader_vertex_files.at(0));
+            //qDebug()<<Shader;
+            // Compile vertex shader
+            if (!program->addShaderFromSourceFile(QOpenGLShader::Vertex, filename)){
+                qDebug()<<"Vertex Shader error load"<<filename ;
+                return 0;
+            }
+            filename=QString(shader_files_prefix).append(shader_files_fxaa.at(pass));
             //qDebug()<<"Vertex Shader load"<<filename ;
             // Compile vertex shader
             if (!program->addShaderFromSourceFile(QOpenGLShader::Fragment, filename)){
