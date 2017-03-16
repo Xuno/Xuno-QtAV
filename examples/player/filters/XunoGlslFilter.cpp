@@ -145,7 +145,7 @@ void XunoGLSLFilter::afterRendering()
         }
 
         //fxaa
-        if (needSuperScale){
+        if (1){
             sfbotextid=fxaaShader(frameTexture());
             if (sfbotextid) lastSuperscaleTexureId=sfbotextid;
         }
