@@ -224,6 +224,16 @@ int main(int argc, char *argv[])
         if (argc > 1 && !a.arguments().last().startsWith(QLatin1Char('-')) && !a.arguments().at(argc-2).startsWith(QLatin1Char('-')))
             window.play(a.arguments().last());
     }
+
+    QGLFormat glfmt=QGLFormat::defaultFormat();
+    glfmt.setSwapInterval(10);
+    QGLFormat::setDefaultFormat(glfmt);
+
+    QSurfaceFormat fmt=QSurfaceFormat::defaultFormat();
+    fmt.setSwapInterval(10);
+    QSurfaceFormat::setDefaultFormat(fmt);
+
+
     int ret = a.exec();
     return ret;
 }
