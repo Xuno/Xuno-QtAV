@@ -109,8 +109,8 @@ vec3 FxaaPixelShader(vec4 posPos, sampler2D tex, vec2 rcpFrame)
 vec4 PostFX(sampler2D tex, vec2 uv)
 {
      vec4 c;
-     c.a = texture2D(tex, uv.xy).a;
-     uv.x=1.0-uv.x;
+     c.a = texture2D(tex, uv).a;
+     //uv.x=1.0-uv.x;
      vec2 rcpFrame = MAIN_pt;
      vec4 posPos = vec4(uv.st,uv.st -(rcpFrame * (0.5 + FXAA_SUBPIX_SHIFT)));
      c.rgb = FxaaPixelShader(posPos, tex, rcpFrame);
@@ -125,7 +125,9 @@ vec4 hook() {
 
     //c.rgb = pow(clamp(c.rgb, 0.0, 1.0), vec3(1.0/2.2));
 
-    c=PostFX(MAIN_raw, MAIN_pos);
+    vec2 uv = MAIN_pos.st;
+
+    c=PostFX(MAIN_raw, uv);
 
     return c;
 }

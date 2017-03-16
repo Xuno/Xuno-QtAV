@@ -61,7 +61,7 @@ XunoGLSLFilter::XunoGLSLFilter(QObject *parent):
     maxPass_adaptive_sahrpen=shader_files_adaptive_sharpen.size()-1;
 
     if (shader_files_fxaa.isEmpty()){
-        shader_files_fxaa<<"fxaa-sharpen-pass0.glsl";
+        shader_files_fxaa<<"fxaa-sharpen-v2-pass0.glsl";
     }
 
 }
@@ -152,7 +152,7 @@ void XunoGLSLFilter::afterRendering()
 
 
         //need last linear filtering image
-        if (0 && needSuperScaleLastLinearFiltering){
+        if (needSuperScaleLastLinearFiltering){
             QOpenGLFunctions *f=opengl()->openGLContext()->functions();
             if (f && fbo()->textures().size()){
                 GLenum target=GL_TEXTURE_2D;
@@ -1083,7 +1083,7 @@ GLuint XunoGLSLFilter::fxaaShader(GLuint pfbotextid)
         program->setUniformValue("u_textureSize", textureSize);
 
         //qDebug()<<"pixel_size0 is";
-        program->setUniformValue("u_texelSize", QVector2D(1.0f,1.0f)/textureSize);
+        program->setUniformValue("pixel_size0", QVector2D(1.0f,1.0f)/textureSize);
 
         //qDebug()<<"texture_rot0 is";
         program->setUniformValue("texture_rot0", QVector2D(0.0f,0.0f));
@@ -1095,8 +1095,8 @@ GLuint XunoGLSLFilter::fxaaShader(GLuint pfbotextid)
 
         f->glActiveTexture(GL_TEXTURE0);
         f->glBindTexture(GL_TEXTURE_2D, pfbotextid);
-        f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);//GL_NEAREST GL_LINEAR
-        f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+        //f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);//GL_NEAREST GL_LINEAR
+        //f->glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
 
         f->glClearColor(0.0,0.0,1.0,1.0);//BLUE
         f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
