@@ -150,7 +150,6 @@ void XunoGLSLFilter::afterRendering()
             if (sfbotextid) lastSuperscaleTexureId=sfbotextid;
         }
 
-
         //need last linear filtering image
         if (needSuperScaleLastLinearFiltering){
             QOpenGLFunctions *f=opengl()->openGLContext()->functions();
