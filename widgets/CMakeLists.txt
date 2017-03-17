@@ -41,9 +41,12 @@ if(Qt5Gui_VERSION VERSION_LESS 5.4.0)
 endif()
 
 set(HEADERS ${SDK_HEADERS})
-
+if(WIN32)
+  set(RC_FILE ${CMAKE_CURRENT_BINARY_DIR}/${MODULE}.rc)
+  configure_file(${CMAKE_SOURCE_DIR}/cmake/QtAV.rc.in ${RC_FILE})
+endif()
 # add HEADERS for moc
-add_library(${MODULE} SHARED ${SOURCES} ${RESOURCES_SOURCES} ${HEADERS})
+add_library(${MODULE} SHARED ${SOURCES} ${RESOURCES_SOURCES} ${HEADERS} ${RC_FILE})
 target_link_libraries(${MODULE}
   LINK_PRIVATE ${EXTRA_LIBS}
   LINK_PUBLIC QtAV Qt5::Widgets
