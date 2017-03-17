@@ -807,6 +807,7 @@ bool XunoGLSLFilter::initShaders2(int pass)
     // Bind shader pipeline for use
     //    if (!program2.bind())
     //        close();
+     return true;
 }
 
 void XunoGLSLFilter::initFrameBufer(int id)

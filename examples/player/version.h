@@ -3,7 +3,7 @@
 
 #define XUNO_QTAV_MAJOR 0    //((XUNO_QTAV_VERSION&0xff0000)>>16)
 #define XUNO_QTAV_MINOR 2    //((XUNO_QTAV_VERSION&0xff00)>>8)
-#define XUNO_QTAV_PATCH 7    //(XUNO_QTAV_VERSION&0xff)
+#define XUNO_QTAV_PATCH 8    //(XUNO_QTAV_VERSION&0xff)
 
 #ifdef WIN64
 #define QTAV_PLATFORM x64
