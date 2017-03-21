@@ -44,8 +44,8 @@ float FXAA_SUBPIX_SHIFT = 1.0/4.0;
 
 #define FxaaInt2 ivec2
 #define FxaaFloat2 vec2
-#define FxaaTexLod0(t, p) texture2DLod(t, p, 0.0)
-#define FxaaTexOff(t, p, o, r) texture2DLodOffset(t, p, 0.0, o)
+#define FxaaTexLod0(t, p) textureLod(t, p, 0.0)
+#define FxaaTexOff(t, p, o, r) textureLodOffset(t, p, 0.0, o)
 
 vec3 FxaaPixelShader(
   vec4 posPos, // Output of FxaaVertexShader interpolated across screen.
