@@ -226,11 +226,11 @@ int main(int argc, char *argv[])
     }
 
     QGLFormat glfmt=QGLFormat::defaultFormat();
-    glfmt.setSwapInterval(3);
+    glfmt.setSwapInterval(2);
     QGLFormat::setDefaultFormat(glfmt);
 
     QSurfaceFormat fmt=QSurfaceFormat::defaultFormat();
-    fmt.setSwapInterval(3);
+    fmt.setSwapInterval(2);
     QSurfaceFormat::setDefaultFormat(fmt);
 
 

@@ -145,7 +145,7 @@ void XunoGLSLFilter::afterRendering()
         }
 
         //fxaa
-        if (1){
+        if (needToUseFXAAFiltering){
             sfbotextid=fxaaShader(frameTexture());
             if (sfbotextid) lastSuperscaleTexureId=sfbotextid;
         }
@@ -172,6 +172,16 @@ void XunoGLSLFilter::afterRendering()
             }
         }
     }
+}
+
+bool XunoGLSLFilter::getNeedToUseFXAAFiltering() const
+{
+    return needToUseFXAAFiltering;
+}
+
+void XunoGLSLFilter::setNeedToUseFXAAFiltering(bool value)
+{
+    needToUseFXAAFiltering = value;
 }
 
 bool XunoGLSLFilter::getNeedSuperScaleLastLinearFiltering() const

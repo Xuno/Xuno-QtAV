@@ -268,9 +268,11 @@ bool EventFilter::eventFilter(QObject *watched, QEvent *event)
             break;
         case Qt::Key_X: {
             if (xunoGLSLFilter!=Q_NULLPTR){
-                bool state=!xunoGLSLFilter->getNeedSuperScale();
-                xunoGLSLFilter->setNeedSuperScale(state);
-                qDebug("toggle superscale: %d", state);
+                //bool state=!xunoGLSLFilter->getNeedSuperScale();
+                //xunoGLSLFilter->setNeedSuperScale(state);
+                bool state=!xunoGLSLFilter->getNeedToUseFXAAFiltering();
+                xunoGLSLFilter->setNeedToUseFXAAFiltering(state);
+                qDebug("toggle FXAA: %d", state);
             }
         }
             break;

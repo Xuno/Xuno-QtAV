@@ -1604,6 +1604,14 @@ void MainWindow::calcToUseSuperResolution()
         }else if(scale>1.){
             needToUseSuperResolution=true;
         }
+
+        if ((scale>=1.5) || (framesize.width()>=1920.)){
+            needToUseFXAAFiltering=true;
+        }else{
+            needToUseFXAAFiltering=false;
+        }
+        qDebug()<<"needToUseFXAAFiltering:"<<needToUseFXAAFiltering;
+
 //        if (scale==2.){
 //            needToUseSuperResolutionLastLinearFiltering=false;
 //        }
@@ -1621,6 +1629,7 @@ void MainWindow::calcToUseSuperResolution()
         if (mpGLSLFilter!=Q_NULLPTR){
             mpGLSLFilter->setNeedSuperScale(needToUseSuperResolution);
             mpGLSLFilter->setNeedSuperScaleLastLinearFiltering(needToUseSuperResolutionLastLinearFiltering);
+            mpGLSLFilter->setNeedToUseFXAAFiltering(needToUseFXAAFiltering);
         }
 
         //calculate tunes for XunoSharp values

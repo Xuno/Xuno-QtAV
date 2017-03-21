@@ -55,6 +55,9 @@ public:
     bool getNeedSuperScaleLastLinearFiltering() const;
     void setNeedSuperScaleLastLinearFiltering(bool value);
 
+    bool getNeedToUseFXAAFiltering() const;
+    void setNeedToUseFXAAFiltering(bool value);
+
 protected slots:
     void beforeRendering();
     void afterRendering();
@@ -64,6 +67,7 @@ private:
     bool needSave=false,colorTransformChanged=true,needSuperScale=true;
     bool needSuperScaleLastLinearFiltering=true;
     bool needAdaptiveSharpen=true;
+    bool needToUseFXAAFiltering=false;
     QString savePath;
     QtAV::AVPlayer *m_player=Q_NULLPTR;
     qreal brightness=0,contrast=0,hue=0,saturation=0;

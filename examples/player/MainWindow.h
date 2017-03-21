@@ -304,6 +304,7 @@ private:
 
     bool needToUseSuperResolution=false;
     bool needToUseSuperResolutionLastLinearFiltering=true;
+    bool needToUseFXAAFiltering=false;
 
 
 };
