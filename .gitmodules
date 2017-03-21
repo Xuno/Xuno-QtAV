@@ -1,6 +1,3 @@
-[submodule "tools/build_ffmpeg"]
-	path = tools/build_ffmpeg
-	url = https://github.com/wang-bin/build_ffmpeg.git
 [submodule "contrib/uchardet"]
 	path = contrib/uchardet
 	url = https://github.com/BYVoid/uchardet.git
