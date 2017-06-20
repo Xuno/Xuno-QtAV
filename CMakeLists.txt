@@ -16,6 +16,7 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
 
 option(BUILD_EXAMPLES "Build examples" ON)
+option(BUILD_PLAYERS "Build players" ON)
 option(BUILD_TESTS "Build tests" ON)
 option(BUILD_QT5OPENGL "Build with Qt5 OpenGL module" ON)
 
@@ -63,8 +64,7 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON) # for .moc
 # Instruct CMake to run moc automatically when needed.
 set(CMAKE_AUTOMOC ON)
-
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+if(NOT CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(QTAV_INSTALL_HEADERS ${CMAKE_INSTALL_PREFIX}/include)
   set(QTAV_INSTALL_LIBS ${CMAKE_INSTALL_PREFIX}/lib)
   set(QTAV_INSTALL_BINS ${CMAKE_INSTALL_PREFIX}/bin)
@@ -92,7 +92,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 install(FILES
   cmake/FindQtAV.cmake
-  DESTINATION ${QT_INSTALL_LIBS}/cmake
+  DESTINATION ${QTAV_INSTALL_LIBS}/cmake
 )
 
 if(CMAKE_GENERATOR MATCHES "Visual Studio.*")
@@ -119,7 +119,7 @@ if(Qt5Qml_FOUND AND Qt5Quick_FOUND)
   add_subdirectory(qml)
 endif()
 
-if(BUILD_EXAMPLES)
+if(BUILD_EXAMPLES OR BUILD_PLAYERS)
   add_subdirectory(examples)
 endif()
 

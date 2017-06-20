@@ -54,7 +54,7 @@ DEBUG_SUF=
 mac: DEBUG_SUF=_debug
 win32: DEBUG_SUF=d
 NAME_SUF=
-iphonesimulator: NAME_SUF=_iphonesimulator
+iphonesimulator:!device: NAME_SUF=_iphonesimulator
 defineTest(createForModule) {
   MODULE_NAME = $$1
   MODULE_FULL_NAME = Qt$$MODULE_NAME
@@ -72,7 +72,7 @@ greaterThan(QT_MAJOR_VERSION, 4) {
   MODULE_PRF_FILE = $$OUT_PWD/mkspecs/features/$${MODULE}.prf
   NEW_LIB = $${LIBPREFIX}Qt$${QT_MAJOR_VERSION}$${MODULE_NAME}$${NAME_SUF}.$${LIBSUFFIX}
   NEW_LIB_D = $${LIBPREFIX}Qt$${QT_MAJOR_VERSION}$${MODULE_NAME}$${NAME_SUF}$${DEBUG_SUF}.$${LIBSUFFIX}
-  MKSPECS_DIR = $$[QT_INSTALL_ARCHDATA]/mkspecs
+  MKSPECS_DIR = $$[QT_HOST_DATA]/mkspecs
 } else {
   MODULE_PRF_FILE = $$PWD/qt4/$${MODULE}.prf
   NEW_LIB = $${ORIG_LIB}
