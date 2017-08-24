@@ -121,7 +121,7 @@ MainWindow::MainWindow(QWidget *parent) :
   , mpSubtitle(0)
   , mCustomFPS(0.)
   , mPlayerScale(1.)
-  , m_preview(0)
+  , m_preview(Q_NULLPTR)
   , m_shader(NULL)
 {
     XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
@@ -1292,7 +1292,7 @@ void MainWindow::seek(int value)
         return;
     m_preview->setTimestamp(value);
     m_preview->preview();
-    m_preview->setWindowFlags(m_preview->windowFlags() |Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
+    m_preview->setWindowFlags(Qt::Tool |Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
     m_preview->resize(Config::instance().previewWidth(), Config::instance().previewHeight());
     m_preview->show();
     if (mpImgSeqExtract) mpImgSeqExtract->setStartTime(QTime(0,0,0).addMSecs((qint64)mpTimeSlider->value()));
@@ -1997,8 +1997,19 @@ void MainWindow::onTimeSliderHover(int pos, int value)
 
 void MainWindow::onTimeSliderLeave()
 {
-    if (m_preview && m_preview->isVisible())
-        m_preview->hide();
+    /*if (m_preview && m_preview->isVisible())
+         m_preview->hide();
+         m_preview->hide();*/
+    if (!m_preview)
+    {
+        return;
+    }
+    if (m_preview->isVisible())
+    {
+        m_preview->close();
+    }
+    delete m_preview;
+    m_preview = Q_NULLPTR;
 }
 
 void MainWindow::handleError(const AVError &e)
@@ -2517,7 +2528,7 @@ void MainWindow::onPreviewEnabledChanged(){
     if (m_preview && !Config::instance().previewEnabled()) {
         m_preview->close();
         delete m_preview;
-        m_preview = 0;
+        m_preview = Q_NULLPTR;
         return;
     }
 }
