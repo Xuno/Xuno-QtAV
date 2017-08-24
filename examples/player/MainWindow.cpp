@@ -130,7 +130,7 @@ MainWindow::MainWindow(QWidget *parent) :
     QApplication::setStyle(QStyleFactory::create("Fusion"));
 #endif
 
-    setWindowIcon(QIcon(QString::fromLatin1(":/Xuno-QtAV.ico")));
+    setWindowIcon(QIcon(QString::fromLatin1(":/ico/Xuno-QtAV.ico")));
 
     mpOSD = new OSDFilter(this);
     mpSubtitle = new SubtitleFilter(this);

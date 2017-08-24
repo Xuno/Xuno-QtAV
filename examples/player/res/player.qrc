@@ -29,5 +29,6 @@
         <file>shaders/fxaa-sharpen-pass0.glsl</file>
         <file>shaders/fxaa-sharpen-v2-pass0.glsl</file>
         <file>shaders/fxaa-sharpen-v3-pass0.glsl</file>
+        <file>../ico/Xuno-QtAV.ico</file>
     </qresource>
 </RCC>

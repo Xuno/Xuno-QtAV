@@ -24,6 +24,7 @@ contains(QT_CONFIG, opengl): SUBDIRS += \
   sdk_build {
     SUBDIRS *= \
         simpleplayer/simpleplayer_sdk.pro \
+        player/XunoPlayer.pro \
         player/player_sdk.pro
   }
 }
