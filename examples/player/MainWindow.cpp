@@ -2740,6 +2740,3 @@ QString  MainWindow::XUNO_QtAV_Version_String_Long()
 {
     return XUNO_QTAV_VERSION_STR_LONG;
 }
-
-
-

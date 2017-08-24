@@ -1,4 +1,4 @@
-/******************************************************************************
+﻿/******************************************************************************
     QtAV:  Multimedia framework based on Qt and FFmpeg
     Copyright (C) 2012-2017 Wang Bin <wbsecg1@gmail.com>
 
@@ -82,6 +82,7 @@ class Q_AV_EXPORT AVPlayer : public QObject
     Q_PROPERTY(State state READ state WRITE setState NOTIFY stateChanged)
     Q_PROPERTY(QtAV::MediaStatus mediaStatus READ mediaStatus NOTIFY mediaStatusChanged)
     Q_PROPERTY(QtAV::MediaEndAction mediaEndAction READ mediaEndAction WRITE setMediaEndAction NOTIFY mediaEndActionChanged)
+    Q_PROPERTY(unsigned int chapters READ chapters NOTIFY chaptersChanged)
     Q_ENUMS(State)
 public:
     /*!
@@ -199,12 +200,30 @@ public:
     /*!
      * \brief externalAudioTracks
      * A list of QVariantMap. Using QVariantMap and QVariantList is mainly for QML support.
-     * [ {id: 0, file: abc.dts, language: eng, title: xyz}, ...]
+     * [ {id: 0, stream_index: 2, file: abc.dts, language: eng, title: xyz}, ...]
      * id: used for setAudioStream(id)
+     * stream_index: the actual muxer stream index -- not used by API to this class but possibly
+     *               useful for interop with external libs that require absolute stream_index
      * \sa externalAudioTracksChanged
      */
     const QVariantList& externalAudioTracks() const;
+    /*!
+     * \brief internalAudioTracks
+     * A list of QVariantMap. Using QVariantMap and QVariantList is mainly for QML support.
+     * [ {id: 0, stream_index: 2, file: abc.dts, language: eng, title: xyz}, ...]
+     * id: used for setAudioStream(id)
+     * stream_index: the actual muxer stream index -- not used by API to this class but possibly
+     *               useful for interop with external libs that require absolute stream_index
+     */
     const QVariantList& internalAudioTracks() const;
+    /*!
+     * \brief internalVideoTracks
+     * A list of QVariantMap. Using QVariantMap and QVariantList is mainly for QML support.
+     * [ {id: 0, stream_index: 2, file: abc.dts, language: eng, title: xyz}, ...]
+     * id: used for setAudioStream(id)
+     * stream_index: the actual muxer stream index -- not used by API to this class but possibly
+     *               useful for interop with external libs that require absolute stream_index
+     */
     const QVariantList& internalVideoTracks() const;
     /*!
      * \brief setAudioStream
@@ -356,6 +375,7 @@ public:
     int contrast() const;
     int hue() const; //not implemented
     int saturation() const;
+    unsigned int chapters() const;
     /*!
      * \sa AVDemuxer::setOptions()
      * example:
@@ -471,6 +491,8 @@ public Q_SLOTS:
     void seek(qint64 pos); //ms. same as setPosition(pos)
     void seekForward();
     void seekBackward();
+    void seekNextChapter();
+    void seekPreviousChapter();
     void setSeekType(SeekType type);
     SeekType seekType() const;
 
@@ -561,6 +583,7 @@ Q_SIGNALS:
     void contrastChanged(int val);
     void hueChanged(int val);
     void saturationChanged(int val);
+    void chaptersChanged(unsigned int val);
     void subtitleStreamChanged(int value);
     /*!
      * \brief internalAudioTracksChanged
@@ -593,6 +616,7 @@ private Q_SLOTS:
     void updateMediaStatus(QtAV::MediaStatus status);
     void onSeekFinished(qint64 value);
     void tryClearVideoRenderers();
+    void seekChapter(int incr);
 protected:
     // TODO: set position check timer interval
     virtual void timerEvent(QTimerEvent *);
