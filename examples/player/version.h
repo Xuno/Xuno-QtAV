@@ -1,5 +1,5 @@
-#ifndef VERSION_H
-#define VERSION_H
+#ifndef XUNO_VERSION_H
+#define XUNO_VERSION_H
 
 #define XUNO_QTAV_MAJOR VER_MAJ_STRING    //((XUNO_QTAV_VERSION&0xff0000)>>16)
 #define XUNO_QTAV_MINOR VER_MIN_STRING    //((XUNO_QTAV_VERSION&0xff00)>>8)
@@ -24,5 +24,5 @@
 
 #define XUNO_QTAV_VERSION_STR_LONG   XUNO_QTAV_VERSION_STR " (" __DATE__ ", " __TIME__ ")"
 
-#endif // VERSION_H
+#endif // XUNO_VERSION_H
 

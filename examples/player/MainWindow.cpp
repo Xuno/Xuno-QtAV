@@ -1205,22 +1205,27 @@ void MainWindow::onStartPlay()
     ScreenSaver::instance().disable();
     initAudioTrackMenu();
 
-    mpRepeatA->clearMinimumTime();
-    mpRepeatA->clearMaximumTime();
-    mpRepeatB->clearMinimumTime();
-    mpRepeatB->clearMaximumTime();
+    if (!isFileImgageSequence()){
+        mpRepeatA->clearMinimumTime();
+        mpRepeatA->clearMaximumTime();
+        mpRepeatB->clearMinimumTime();
+        mpRepeatB->clearMaximumTime();
 
-    mpRepeatA->setMinimumTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStartPosition()));
-    mpRepeatA->setMaximumTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
-    mpRepeatB->setMinimumTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStartPosition()));
-    mpRepeatB->setMaximumTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
-    if (mpRepeatAction->isChecked()) {
-        mpRepeatA->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->startPosition()));
-        mpRepeatB->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->stopPosition()));
+        mpRepeatA->setMinimumTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStartPosition()));
+        mpRepeatA->setMaximumTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
+        mpRepeatB->setMinimumTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStartPosition()));
+        mpRepeatB->setMaximumTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
+        if (mpRepeatAction->isChecked()) {
+            mpRepeatA->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->startPosition()));
+            mpRepeatB->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->stopPosition()));
+        }else{
+            mpRepeatA->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStartPosition()));
+            mpRepeatB->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
+
+        }
     }else{
-        mpRepeatA->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStartPosition()));
-        mpRepeatB->setTime(QTime(0, 0, 0).addMSecs(mpPlayer->mediaStopPosition()));
-
+        repeatAChanged(mpRepeatA->time());
+        repeatBChanged(mpRepeatB->time());
     }
     mCursorTimer = startTimer(3000);
     PlayListItem item = mpHistory->itemAt(0);
@@ -1387,16 +1392,19 @@ void MainWindow::onPositionChange(qint64 pos)
 
 void MainWindow::repeatAChanged(const QTime& t)
 {
+    //qDebug()<<"repeatAChanged start"<<t;
     mpRepeatA->setTime(t);
     if (!mpPlayer)
         return;
     mpPlayer->setStartPosition(QTime(0, 0, 0).msecsTo(t));
     mpTimeSlider->setVisualMinLimit(QTime(0, 0, 0).msecsTo(t));
+    //qDebug()<<"repeatAChanged end"<<t;
 }
 
 void MainWindow::repeatBChanged(const QTime& t)
 {
     // when this slot is called? even if only range is set?
+    //qDebug()<<"repeatBChanged start"<<t;
     if (t <= mpRepeatA->time())
         return;
     mpRepeatB->setTime(t);
@@ -1404,6 +1412,7 @@ void MainWindow::repeatBChanged(const QTime& t)
         return;
     mpPlayer->setStopPosition(QTime(0, 0, 0).msecsTo(t));
     mpTimeSlider->setVisualMaxLimit(QTime(0, 0, 0).msecsTo(t));
+    //qDebug()<<"repeatBChanged end"<<t;
 }
 
 void MainWindow::setTimeSliderVisualMinLimit(const QTime& t)

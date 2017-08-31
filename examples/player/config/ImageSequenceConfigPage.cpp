@@ -335,7 +335,7 @@ int ImageSequenceConfigPage::getDigetsFilename() {
 
 void ImageSequenceConfigPage::playImgages()
 {
-    //    calculatePos();
+    calculatePos();
     //    int digs=getDigetsFilename();
     //    //qDebug()<<"playImgages :: getDigetsFilename :"<<digs;
     //    QString filename=fileinfo.absolutePath().append("/%0").append(QString("%1d.").arg(digs)).append(fileinfo.suffix());
@@ -429,7 +429,7 @@ void ImageSequenceConfigPage::calculatePos(){
     QTime mRepeatB = QTime(0, 0, 0).addMSecs(stopPos);
     if (startPos) emit repeatAChanged(mRepeatA);
     if (stopPos) emit repeatBChanged(mRepeatB);
-    qDebug()<<"calculatePos mRepeatA:"<<mRepeatA<<",mRepeatB:"<<mRepeatB;
+    qDebug()<<"calculatePos mRepeatA:"<<mRepeatA<<",mRepeatB:"<<mRepeatB<<"startPos"<<startPos<<"stopPos"<<stopPos;
 }
 
 void ImageSequenceConfigPage::setMovieDuration(qint64 d){
