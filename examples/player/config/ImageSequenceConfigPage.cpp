@@ -265,7 +265,8 @@ void ImageSequenceConfigPage::onSelectImgages()
         type.append(QString("*.").append(ImageTypes.at(i)));
     }
     //get latest used path
-    QString prevPath="E:\\public\\Videos\\OWN\\work\\image-seq\\outbmp-bgr24";//= config.getLastUsedPath();
+    //QString prevPath="E:\\public\\Videos\\OWN\\work\\image-seq\\outbmp-bgr24";//= config.getLastUsedPath();
+    QString prevPath=InputPath->text();
     QStringList fileNameList = QFileDialog::getOpenFileNames(this,tr("Open Input"), prevPath, type);
     if (fileNameList.size()>0){
         QString fileName=QDir::toNativeSeparators(fileNameList.at(0));
