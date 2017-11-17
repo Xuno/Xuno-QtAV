@@ -424,7 +424,7 @@ void ImageSequenceConfigPage::calculatePos(){
     qDebug()<<"calculatePos frames"<<frames;
     if (frames<1 || fps<1)
         return;
-    startPos=startFrame*(1000UL/fps);
+    startPos=(startFrame-1UL)*(1000UL/fps);
     stopPos=startPos + frames*(1000UL/fps);
     QTime mRepeatA = QTime(0, 0, 0).addMSecs(startPos);
     QTime mRepeatB = QTime(0, 0, 0).addMSecs(stopPos);

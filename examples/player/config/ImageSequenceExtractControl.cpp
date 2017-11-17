@@ -291,7 +291,7 @@ void ImgSeqExtractControl::setVisible(bool visible)
 
 void ImgSeqExtractControl::setStartTime(QTime time)
 {
-    //qDebug()<<"setStartTime"<<time.toString("hh:mm:ss.zzz");
+    qDebug()<<"ImgSeqExtractControl setStartTime"<<time.toString("hh:mm:ss.zzz");
     if (isFPS==0. ||isStartTime==time) return;
     isStartTime=time;
     startTime->setText(time.toString("hh:mm:ss.zzz"));
@@ -300,7 +300,7 @@ void ImgSeqExtractControl::setStartTime(QTime time)
 
 void ImgSeqExtractControl::setEndTime(QTime time)
 {
-    //qDebug()<<"setEndTime"<<time.toString("hh:mm:ss.zzz");
+    qDebug()<<"ImgSeqExtractControl setEndTime"<<time.toString("hh:mm:ss.zzz");
     if (time==QTime(0,0,0)) onPaused();
     if (isFPS==0. || isEndTime==time) return;
     isEndTime=time;
