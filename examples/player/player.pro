@@ -1,4 +1,4 @@
-TARGET = Player
+TARGET = player
 TEMPLATE = app
 contains(QT_CONFIG, opengl): QT += opengl
 QT += sql svg

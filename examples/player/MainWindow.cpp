@@ -123,6 +123,7 @@ MainWindow::MainWindow(QWidget *parent) :
   , mPlayerScale(1.)
   , m_preview(Q_NULLPTR)
   , m_shader(NULL)
+  , m_glsl(NULL)
 {
     XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
     XUNOpresetUrl=XUNOserverUrl+QString::fromLatin1("/getpreset.php?");
@@ -783,6 +784,7 @@ void MainWindow::setupUi()
     connect(mpScaleX1Btn, SIGNAL(clicked()), SLOT(onScaleX1Btn()));
 
     connect(&Config::instance(), SIGNAL(userShaderEnabledChanged()), SLOT(onUserShaderChanged()));
+    connect(&Config::instance(), SIGNAL(intermediateFBOChanged()), SLOT(onUserShaderChanged()));
     connect(&Config::instance(), SIGNAL(fragHeaderChanged()), SLOT(onUserShaderChanged()));
     connect(&Config::instance(), SIGNAL(fragSampleChanged()), SLOT(onUserShaderChanged()));
     connect(&Config::instance(), SIGNAL(fragPostProcessChanged()), SLOT(onUserShaderChanged()));
@@ -2289,6 +2291,14 @@ void MainWindow::onUserShaderChanged()
         return;
 #ifndef QT_NO_OPENGL
     if (Config::instance().userShaderEnabled()) {
+        if (Config::instance().intermediateFBO()) {
+            if (!m_glsl)
+                m_glsl = new GLSLFilter(this);
+            m_glsl->installTo(mpRenderer);
+        } else {
+            if (m_glsl)
+                m_glsl->uninstall();
+        }
         if (!m_shader)
             m_shader = new DynamicShaderObject(this);
         m_shader->setHeader(Config::instance().fragHeader());

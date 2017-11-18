@@ -105,7 +105,6 @@ void EventFilter::help()
                        "<p>") + tr("C: capture video") + QString::fromLatin1("</p>"
                        "<p>") + tr("Up/Down: volume +/-\n") + QString::fromLatin1("</p>"
                        "<p>") + tr("Ctrl+Up/Down: speed +/-\n") + QString::fromLatin1("</p>"
-                       "<p>") + tr("X: SuperScale on/off\n") + QString::fromLatin1("</p>"
                        "<p>") + tr("-&gt;/&lt;-: seek forward/backward\n");
     QMessageBox::about(0, tr("Help"), help);
 }
@@ -150,12 +149,14 @@ bool EventFilter::eventFilter(QObject *watched, QEvent *event)
         case Qt::Key_Q:
         case Qt::Key_Escape:
             //qApp->quit();
+            //Xuno
             { QWidget *w = qApp->activeWindow();
             if (!w)
                 return false;
             if (w->isFullScreen())
                 w->showNormal();
             }
+            break;
             break;
         case Qt::Key_S:
             player->stop(); //check playing?
@@ -266,6 +267,7 @@ bool EventFilter::eventFilter(QObject *watched, QEvent *event)
             qDebug("orientation: %d", renderer->orientation());
         }
             break;
+        //Xuno
         case Qt::Key_X: {
             if (xunoGLSLFilter!=Q_NULLPTR){
                 //bool state=!xunoGLSLFilter->getNeedSuperScale();
@@ -275,7 +277,6 @@ bool EventFilter::eventFilter(QObject *watched, QEvent *event)
                 qDebug("toggle FXAA: %d", state);
             }
         }
-            break;
         case Qt::Key_T: {
             QWidget *w = qApp->activeWindow();
             if (!w)
@@ -314,6 +315,21 @@ bool EventFilter::eventFilter(QObject *watched, QEvent *event)
         }
     }
         break;
+
+    case QEvent::MouseButtonDblClick: {
+          QMouseEvent *me = static_cast<QMouseEvent*>(event);
+          Qt::MouseButton mbt = me->button();
+          QWidget *mpWindow =  static_cast<QWidget*>(player->parent());
+        if (mbt == Qt::LeftButton) {
+            if (Qt::WindowFullScreen ==mpWindow->windowState()){
+               mpWindow->setWindowState(mpWindow->windowState() ^ Qt::WindowFullScreen);
+            }else{
+               mpWindow->showFullScreen();
+            }
+        }
+        break;
+    }
+
     case QEvent::GraphicsSceneContextMenu: {
         QGraphicsSceneContextMenuEvent *e = static_cast<QGraphicsSceneContextMenuEvent*>(event);
         showMenu(e->screenPos());
@@ -369,6 +385,7 @@ bool WindowEventFilter::eventFilter(QObject *watched, QEvent *event)
         }
         return false;
     }
+
     if (event->type() ==  QEvent::MouseButtonPress) {
         QMouseEvent *me = static_cast<QMouseEvent*>(event);
         Qt::MouseButton mbt = me->button();
@@ -390,7 +407,6 @@ bool WindowEventFilter::eventFilter(QObject *watched, QEvent *event)
     if (event->type() == QEvent::MouseMove) {
         if (iMousePos.isNull() || gMousePos.isNull() || !enableMovingWindow)
             return false;
-
         QMouseEvent *me = static_cast<QMouseEvent*>(event);
         int x = mpWindow->pos().x();
         int y = mpWindow->pos().y();

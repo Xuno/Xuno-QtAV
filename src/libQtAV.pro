@@ -143,7 +143,7 @@ config_avresample {
 #    SOURCES += AudioResamplerLibav.cpp
 #    LIBS += -lavresample
 }
-config_avdevice { #may depends on avfilter
+config_avdeviceX { #may depends on avfilter
     DEFINES += QTAV_HAVE_AVDEVICE=1
     LIBS *= -lavdevice
     static_ffmpeg {
@@ -184,7 +184,7 @@ config_ipp {
     #omp for static link. _t is multi-thread static link
 }
 mac|ios {
-  CONFIG *= config_openal
+  #CONFIG *= config_openal
   SOURCES += output/audio/AudioOutputAudioToolbox.cpp
   LIBS += -framework AudioToolbox
   LIBS += -Wl,-unexported_symbols_list,$$PWD/unexport.list
@@ -211,7 +211,7 @@ config_portaudio {
     LIBS *= -lportaudio
     #win32: LIBS *= -lwinmm #-lksguid #-luuid
 }
-config_openal {
+config_openalX {
     SOURCES *= output/audio/AudioOutputOpenAL.cpp
     HEADERS *= capi/openal_api.h
     SOURCES *= capi/openal_api.cpp
@@ -329,14 +329,13 @@ config_libcedarv {
 }
 mac {
   HEADERS *= codec/video/SurfaceInteropCV.h
-  SOURCES *= codec/video/SurfaceInteropCV.cpp
+  SOURCES *= codec/video/SurfaceInteropCV.cpp \
+             codec/video/SurfaceInteropIOSurface.mm
   ios {
     OBJECTIVE_SOURCES *= codec/video/SurfaceInteropCVOpenGLES.mm
   } else {
-    CONFIG += config_vda
-    SOURCES *= codec/video/SurfaceInteropIOSurface.cpp
+    #CONFIG += config_vda
     #SOURCES *= codec/video/SurfaceInteropCVOpenGL.cpp
-    LIBS += -framework IOSurface
   }
   LIBS += -framework CoreVideo -framework CoreFoundation
 }

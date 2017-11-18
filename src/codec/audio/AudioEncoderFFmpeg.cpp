@@ -53,7 +53,6 @@ class AudioEncoderFFmpegPrivate Q_DECL_FINAL: public AudioEncoderPrivate
 public:
     AudioEncoderFFmpegPrivate()
         : AudioEncoderPrivate()
-        , frame_size(0)
     {
         avcodec_register_all();
         // NULL: codec-specific defaults won't be initialized, which may result in suboptimal default settings (this is important mainly for encoders, e.g. libx264).
@@ -62,7 +61,6 @@ public:
     bool open() Q_DECL_OVERRIDE;
     bool close() Q_DECL_OVERRIDE;
 
-    int frame_size; // used if avctx->frame_size == 0
     QByteArray buffer;
 };
 
@@ -153,8 +151,8 @@ bool AudioEncoderFFmpegPrivate::open()
     } else {
         buffer_size = frame_size*format_used.bytesPerSample()*format_used.channels()*2+200;
     }
-    if (buffer_size < FF_MIN_BUFFER_SIZE)
-        buffer_size = FF_MIN_BUFFER_SIZE;
+    if (buffer_size < AV_INPUT_BUFFER_MIN_SIZE)
+        buffer_size = AV_INPUT_BUFFER_MIN_SIZE;
     buffer.resize(buffer_size);
     return true;
 }

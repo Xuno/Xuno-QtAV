@@ -22,8 +22,9 @@
 #define MAINWINDOW_H
 
 #include <QWidget>
-#include "version.h"
 #include <QUrl>
+
+#include "version.h"
 #include "config/configwebmemu.h"
 #include "config/ImageSequenceConfigPage.h"
 #include "config/ImageSequenceExtractControl.h"
@@ -31,7 +32,6 @@
 #include "filters/savegl.h"
 #include "filters/XunoGlslFilter.h"
 #include "filters/XunoSimpleFilter.h"
-
 
 QT_BEGIN_NAMESPACE
 class QWidgetAction;
@@ -47,8 +47,8 @@ class LibAVFilterAudio;
 class LibAVFilterVideo;
 class SubtitleFilter;
 class VideoPreviewWidget;
-class GLSLFilter;
 class DynamicShaderObject;
+class GLSLFilter;
 }
 QT_BEGIN_NAMESPACE
 class QMenu;
@@ -57,8 +57,8 @@ class QVBoxLayout;
 class QLabel;
 class QPushButton;
 class QSpinBox;
-class QCheckBox;
 class QTimeEdit;
+class QCheckBox;
 QT_END_NAMESPACE
 class Button;
 class Slider;
@@ -71,8 +71,6 @@ class AVFilterSubtitle;
 class Preview;
 class ImageSequenceConfigPage;
 class ShaderFilterXuno;
-
-
 class MainWindow : public QWidget
 {
     Q_OBJECT
@@ -82,6 +80,7 @@ public:
     void setAudioBackends(const QStringList& backends);
     bool setRenderer(QtAV::VideoRenderer* renderer);
     void setVideoDecoderNames(const QStringList& vd);
+
     void loadRemoteUrlPresset(const QString& url);
     void setStartSequenceFrame(const quint32 sf);
     void setEndSequenceFrame(const quint32 ef);
@@ -300,6 +299,7 @@ private:
     XunoGLSLFilter *mpGLSLFilter=Q_NULLPTR;
 
     QtAV::DynamicShaderObject *m_shader;
+    QtAV::GLSLFilter *m_glsl;
 
 
     bool needToUseSuperResolution=false;
