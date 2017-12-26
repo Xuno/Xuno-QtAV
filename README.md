@@ -1,8 +1,8 @@
 # [QtAV](http://www.qtav.org)  [![Build Status](https://travis-ci.org/wang-bin/QtAV.svg)](https://travis-ci.org/wang-bin/QtAV) [![Appveyor](https://ci.appveyor.com/api/projects/status/github/wang-bin/qtav?svg=true&passingText=windows%20-%20OK)](https://ci.appveyor.com/project/wang-bin/qtav)
 
-Xuno-QtAV is fork of QtAV a multimedia playback library based on Qt and FFmpeg with enhanced user functions and low overhead Adaptive Upscaling for large screen resolutions.  XunoPlayer has been optimized for High quality Quality 10-bit YUV444 HEVC video upscaled to 4K using w1920 in the 4-6mbps range and w2560 in the 6-8mbps range.
+XunoPlayer-QtAV is fork of QtAV a multimedia playback library based on Qt and FFmpeg with enhanced user functions. XunoPlayer has been optimized for High quality Quality 10-bit YUV444 HEVC video.
 
-XunoPlayer has been added to FFmpeg projects page [http://ffmpeg.org/projects.html](http://ffmpeg.org/projects.html)
+XunoPlayer-QtAV has been added to FFmpeg projects page [http://ffmpeg.org/projects.html](http://ffmpeg.org/projects.html)
 
 **QtAV is free software licensed under the term of LGPL v2.1. The player example is licensed under GPL v3.  If you use QtAV or its constituent libraries,
 you must adhere to the terms of the license in question.**
