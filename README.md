@@ -1,6 +1,6 @@
 # [QtAV](http://www.qtav.org)  [![Build Status](https://travis-ci.org/wang-bin/QtAV.svg)](https://travis-ci.org/wang-bin/QtAV) [![Appveyor](https://ci.appveyor.com/api/projects/status/github/wang-bin/qtav?svg=true&passingText=windows%20-%20OK)](https://ci.appveyor.com/project/wang-bin/qtav)
 
-XunoPlayer-QtAV is fork of QtAV a multimedia playback library based on Qt and FFmpeg with enhanced user functions. XunoPlayer has been optimized for High quality Quality 10-bit YUV444 HEVC video.
+XunoPlayer-QtAV is fork of QtAV a multimedia playback library based on Qt and FFmpeg with enhanced user functionality and optimization  for High quality Quality 10-bit YUV444 HEVC video.
 
 XunoPlayer-QtAV has been added to FFmpeg projects page [http://ffmpeg.org/projects.html](http://ffmpeg.org/projects.html)
 
