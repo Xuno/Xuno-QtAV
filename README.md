@@ -17,8 +17,6 @@ you must adhere to the terms of the license in question.**
 
 ### Features
 
-QtAV can meet your most demands
-
 <li>Hardware decoding suppprt: DXVA2, VAAPI, VDA/VideoToolbox, CedarX, CUDA(the 1st player support CUDA on linux?)</li>
 <li>OpenGL and ES2 support for almost all formats including Hi10P videos (The 1st player/library support 10bit in ES2? VLC, XBMC, mplayer does not support now)</li>
 <li>Real time preview</li>
