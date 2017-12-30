@@ -2,7 +2,7 @@
 
 XunoPlayer-QtAV is fork of  [QtAV a multimedia playback library](http://www.qtav.org) based on Qt and FFmpeg with enhanced user functionality and optimization  for High quality Quality 10-bit YUV444 HEVC video.
 
-XunoPlayer-QtAV has been added to FFmpeg projects page [http://ffmpeg.org/projects.html](http://ffmpeg.org/projects.html)
+XunoPlayer has been added to FFmpeg projects page [http://ffmpeg.org/projects.html](http://ffmpeg.org/projects.html)
 
 **QtAV is free software licensed under the term of LGPL v2.1. The player example is licensed under GPL v3.  If you use QtAV or its constituent libraries,
 you must adhere to the terms of the license in question.**
