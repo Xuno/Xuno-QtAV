@@ -7,11 +7,11 @@ XunoPlayer-QtAV has been added to FFmpeg projects page [http://ffmpeg.org/projec
 **QtAV is free software licensed under the term of LGPL v2.1. The player example is licensed under GPL v3.  If you use QtAV or its constituent libraries,
 you must adhere to the terms of the license in question.**
 
-# XunoPlayer-MPV based on MPV
+# XunoPlayer-QtAV based on QtAV
 
-![Alt text](http://www.xuno.com/images/XunoPlayer_sc.png "XunoPlayer-MPV")
+![Alt text](http://www.xuno.com/images/XunoPlayer_sc.png "XunoPlayer-QtAV")
 
-![Alt text](http://www.xuno.com/images/XunoPlayer_sc2.png "XunoPlayer-MPV")
+![Alt text](http://www.xuno.com/images/XunoPlayer_sc2.png "XunoPlayer-QtAV")
 
 
 ### Features
