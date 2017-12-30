@@ -41,7 +41,8 @@ tv.files = res/tv.ini
 target.path = $$[QT_INSTALL_BINS]
 include($$PROJECTROOT/deploy.pri)
 
-RESOURCES += res/player.qrc
+RESOURCES += res/player.qrc \
+    darkstyle.qrc
 
 contains(QMAKE_HOST.arch, x86_64):{
     message("Host is 64bit")
@@ -63,10 +64,39 @@ DISTFILES += \
     res/shaders/adaptive-sahrpen-pass1-2.glsl \
     res/shaders/superxbr-native-pass0.glsl  \
     res/shaders/superxbr-native-pass1.glsl  \
-    res/shaders/superxbr-native-pass2.glsl
+    res/shaders/superxbr-native-pass2.glsl \
+    darkstyle/icon_branch_closed.png \
+    darkstyle/icon_branch_end.png \
+    darkstyle/icon_branch_more.png \
+    darkstyle/icon_branch_open.png \
+    darkstyle/icon_checkbox_checked.png \
+    darkstyle/icon_checkbox_checked_disabled.png \
+    darkstyle/icon_checkbox_checked_pressed.png \
+    darkstyle/icon_checkbox_indeterminate.png \
+    darkstyle/icon_checkbox_indeterminate_disabled.png \
+    darkstyle/icon_checkbox_indeterminate_pressed.png \
+    darkstyle/icon_checkbox_unchecked.png \
+    darkstyle/icon_checkbox_unchecked_disabled.png \
+    darkstyle/icon_checkbox_unchecked_pressed.png \
+    darkstyle/icon_close.png \
+    darkstyle/icon_radiobutton_checked.png \
+    darkstyle/icon_radiobutton_checked_disabled.png \
+    darkstyle/icon_radiobutton_checked_pressed.png \
+    darkstyle/icon_radiobutton_unchecked.png \
+    darkstyle/icon_radiobutton_unchecked_disabled.png \
+    darkstyle/icon_radiobutton_unchecked_pressed.png \
+    darkstyle/icon_undock.png \
+    darkstyle/icon_vline.png \
+    darkstyle/darkstyle.qss
 
 //Xuno
 QT += webenginewidgets
+
+HEADERS += \
+    DarkStyle.h
+
+SOURCES += \
+    DarkStyle.cpp
 
 
 

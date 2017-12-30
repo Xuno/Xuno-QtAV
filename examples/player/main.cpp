@@ -29,6 +29,8 @@
 #include "config/PropertyEditor.h"
 #include "MainWindow.h"
 #include "../common/common.h"
+#include "DarkStyle.h"
+
 
 using namespace QtAV;
 static const struct {
@@ -95,6 +97,9 @@ int main(int argc, char *argv[])
     }
     QApplication a(argc, argv);
     a.setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
+
+    a.setStyle(new DarkStyle);
+
     qDebug() <<a.arguments();
     a.setApplicationName(QString::fromLatin1("Player"));
 //    a.setApplicationDisplayName(QString::fromLatin1("QtAV Player"));
@@ -118,7 +123,7 @@ int main(int argc, char *argv[])
     MainWindow window;
     window.setProperty("rendererId", rendererId_from_opt_name(vo.toLower()));
     window.show();
-    QString title = QString::fromLatin1("XunoPlayer %1 http://www.xuno.com").arg(window.XUNO_QtAV_Version_String_Long());
+    QString title = QString::fromLatin1("XunoPlayer-QtAV %1 http://www.xuno.com").arg(window.XUNO_QtAV_Version_String_Long());
     window.setWindowTitle(title);
     AppEventFilter ae(&window);
     qApp->installEventFilter(&ae);

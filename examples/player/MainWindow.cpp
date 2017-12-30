@@ -125,13 +125,13 @@ MainWindow::MainWindow(QWidget *parent) :
   , m_shader(NULL)
   , m_glsl(NULL)
 {
-    XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
+    XUNOserverUrl=QString::fromLatin1("http://www.xuno.com/playlist_10bit.php");
     XUNOpresetUrl=XUNOserverUrl+QString::fromLatin1("/getpreset.php?");
 #if defined(Q_OS_MACX) && QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QApplication::setStyle(QStyleFactory::create("Fusion"));
 #endif
 
-    setWindowIcon(QIcon(QString::fromLatin1(":/ico/Xuno-QtAV.ico")));
+    setWindowIcon(QIcon(QString::fromLatin1(":/ico/XunoPlayer-QtAV.ico")));
 
     mpOSD = new OSDFilter(this);
     mpSubtitle = new SubtitleFilter(this);
@@ -264,7 +264,7 @@ void MainWindow::setupUi()
 
     if (Config::instance().floatControlEnabled()){
         detachedControl = new QWidget(this);
-        detachedControl->setWindowTitle(tr("XunoPlayer Controls"));
+        detachedControl->setWindowTitle(tr("XunoPlayer-QtAV Controls"));
         detachedControl->setWindowFlags(Qt::Dialog);
         detachedControl->setWindowFlags(detachedControl->windowFlags() & ~Qt::WindowCloseButtonHint);
         detachedControl->setMaximumHeight(125);//785
@@ -1569,7 +1569,7 @@ QString MainWindow::aboutXunoQtAV_PlainText()
 
 QString MainWindow::aboutXunoQtAV_HTML()
 {
-    static QString about = "<h3>XunoPlayer " XUNO_QTAV_VERSION_STR_LONG "</h3>\n"
+    static QString about = "<h3>XunoPlayer-QtAV " XUNO_QTAV_VERSION_STR_LONG "</h3>\n"
                            "<p>" + QObject::tr("Fork project (Xuno-QtAV) of QtAV \n") + QTAV_VERSION_STR "</p>";
     return about;
 }
