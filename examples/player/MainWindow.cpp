@@ -283,7 +283,11 @@ void MainWindow::setupUi()
 
     }else{
         mpControl = new QWidget(this);
+
     }
+
+    QString buttons_style_bg= "background-color: rgba(30, 30, 30, 0);";
+    //this->setStyleSheet(buttons_style_bg);
 
     mpControl->setMinimumWidth(865);
     mpControl->setMaximumHeight(25);
@@ -430,6 +434,7 @@ void MainWindow::setupUi()
     QMenu *subMenu = 0;
     QWidgetAction *pWA = 0;
     mpMenu = new QMenu(mpMenuBtn);
+    mpMenu->setStyleSheet("color:white;");
     mpMenu->addAction(tr("Open File"), this, SLOT(openFile()));
     mpMenu->addAction(tr("Open Url"), this, SLOT(openUrl()));
     //mpMenu->addAction(tr("Online channels"), this, SLOT(onTVMenuClick()));
