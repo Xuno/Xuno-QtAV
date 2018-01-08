@@ -9,7 +9,7 @@ you must adhere to the terms of the license in question.**
 
 # XunoPlayer-QtAV based on QtAV
 
-![Alt text](http://www.xuno.com/images/XunoPlayer.png "XunoPlayer-QtAV")
+![Alt text](http://www.xuno.com/images/XunoPlayer.jpg "XunoPlayer-QtAV")
 
 
 ### Features
