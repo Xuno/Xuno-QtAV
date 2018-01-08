@@ -92,11 +92,6 @@ DISTFILES += \
 //Xuno
 QT += webenginewidgets
 
-HEADERS += \
-    DarkStyle.h
-
-SOURCES += \
-    DarkStyle.cpp
 
 
 

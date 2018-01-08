@@ -75,3 +75,11 @@ HEADERS += \
     config/WebConfigPage.h \
     config/ImageSequenceExtractControl.h \
     config/ShaderPage.h
+
+
+HEADERS += \
+    DarkStyle.h
+
+SOURCES += \
+    DarkStyle.cpp
+
