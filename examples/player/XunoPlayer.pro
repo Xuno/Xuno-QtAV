@@ -40,4 +40,4 @@ DISTFILES += \
     res/shaders/superxbr-native-pass2.glsl
 
 //Xuno
-QT += webenginewidgets
+//QT += webenginewidgets

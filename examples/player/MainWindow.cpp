@@ -2509,7 +2509,7 @@ void MainWindow::tuneRepeatMovieDuration(){
 }
 
 bool MainWindow::isFileImgageSequence(){
-    return (QDir::toNativeSeparators(mFile).contains("%0") && mFile.contains("d."));
+    return (QDir::toNativeSeparators(mFile).contains("*"));// && mFile.contains("d.")
 }
 
 bool MainWindow::applyCustomFPS(){
