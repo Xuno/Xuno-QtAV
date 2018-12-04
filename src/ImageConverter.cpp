@@ -1,6 +1,6 @@
 /******************************************************************************
     ImageConverter: Base class for image resizing & color model convertion
-    Copyright (C) 2012-2016 Wang Bin <wbsecg1@gmail.com>
+    Copyright (C) 2012-2018 Wang Bin <wbsecg1@gmail.com>
     
 *   This file is part of QtAV
 
@@ -45,7 +45,8 @@ ImageConverter::~ImageConverter()
 
 QByteArray ImageConverter::outData() const
 {
-    return d_func().data_out;
+    DPTR_D(const ImageConverter);
+    return d.data_out;
 }
 
 bool ImageConverter::check() const
@@ -215,8 +216,8 @@ bool ImageConverter::prepareData()
     const int nb_planes = qMax(av_pix_fmt_count_planes(d.fmt_out), 0);
     d.bits.resize(nb_planes);
     d.pitchs.resize(nb_planes);
-    // alignment is 16. sws in ffmpeg is 16, libav10 is 8
-    const int kAlign = 16;
+    // alignment is 16. sws in ffmpeg is 16, libav10 is 8. if not aligned sws will print warnings and go slow code paths
+    const int kAlign = DataAlignment;
     AV_ENSURE(av_image_fill_linesizes((int*)d.pitchs.constData(), d.fmt_out, kAlign > 7 ? FFALIGN(d.w_out, 8) : d.w_out), false);
     for (int i = 0; i < d.pitchs.size(); ++i)
         d.pitchs[i] = FFALIGN(d.pitchs[i], kAlign);
@@ -224,8 +225,8 @@ bool ImageConverter::prepareData()
     if (s < 0)
         return false;
     d.data_out.resize(s + kAlign-1);
-    const int offset = (kAlign - ((uintptr_t)d.data_out.constData() & (kAlign-1))) & (kAlign-1);
-    AV_ENSURE(av_image_fill_pointers((uint8_t**)d.bits.constData(), d.fmt_out, d.h_out, (uint8_t*)d.data_out.constData()+offset, d.pitchs.constData()), false);
+    d.out_offset = (kAlign - ((uintptr_t)d.data_out.constData() & (kAlign-1))) & (kAlign-1);
+    AV_ENSURE(av_image_fill_pointers((uint8_t**)d.bits.constData(), d.fmt_out, d.h_out, (uint8_t*)d.data_out.constData()+d.out_offset, d.pitchs.constData()), false);
     // TODO: special formats
     //if (desc->flags & AV_PIX_FMT_FLAG_PAL || desc->flags & AV_PIX_FMT_FLAG_PSEUDOPAL)
        //    avpriv_set_systematic_pal2((uint32_t*)pointers[1], pix_fmt);
