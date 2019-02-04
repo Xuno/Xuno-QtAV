@@ -2,6 +2,9 @@ TEMPLATE = lib
 MODULE_INCNAME = QtAV # for mac framework. also used in install_sdk.pro
 TARGET = QtAV
 QT += core gui
+
+CONFIG *= d3dva into win32:!winrt section
+
 #CONFIG *= ltcg
 greaterThan(QT_MAJOR_VERSION, 4) {
   contains(QT_CONFIG, opengl) {

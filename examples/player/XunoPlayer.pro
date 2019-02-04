@@ -4,7 +4,7 @@ include ($$PROJECTROOT/player.pro)
 TARGET = XunoPlayer-QtAV
 VER_MAJ = 0
 VER_MIN = 3
-VER_PAT = 1
+VER_PAT = 2
 VERSION = $${VER_MAJ}.$${VER_MIN}.$${VER_PAT}
 
 DEFINES += VER_MAJ_STRING=$${VER_MAJ}
@@ -40,4 +40,4 @@ DISTFILES += \
     res/shaders/superxbr-native-pass2.glsl
 
 //Xuno
-//QT += webenginewidgets
+QT += webenginewidgets
