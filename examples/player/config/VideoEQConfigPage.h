@@ -89,6 +89,8 @@ public:
 
 
 
+    void setXunoVersion(const QString &value);
+
 signals:
     void engineChanged();
     void brightnessChanged(int);
@@ -140,5 +142,6 @@ private:
     QString mFile,mURL,presetUrl;
     void parseJsonPressetData(QString &strReply);
     void reReadColorsCongig();
+    QString XunoVersion;
 };
 #endif // VIDEOEQCONFIGPAGE_H

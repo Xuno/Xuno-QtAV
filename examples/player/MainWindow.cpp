@@ -664,7 +664,7 @@ void MainWindow::setupUi()
     pWA = new QWidgetAction(0);
     pWA->setDefaultWidget(mpVideoEQ);
     subMenu->addAction(pWA);
-
+    mpVideoEQ->setXunoVersion(XUNO_QtAV_Version_String().split(' ').at(0));
     mpVideoEQ->setSaveFile(Config::instance().defaultDir() + "/presets.ini");
     mpVideoEQ->loadLocalPresets();
 
