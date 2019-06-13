@@ -4,7 +4,7 @@ include ($$PROJECTROOT/player.pro)
 TARGET = XunoPlayer-QtAV
 VER_MAJ = 0
 VER_MIN = 3
-VER_PAT = 2
+VER_PAT = 4
 VERSION = $${VER_MAJ}.$${VER_MIN}.$${VER_PAT}
 
 DEFINES += VER_MAJ_STRING=$${VER_MAJ}
@@ -15,7 +15,7 @@ DEFINES += VERSION_STRING=\\\"$${VER_MAJ}.$${VER_MIN}.$${VER_PAT}\\\"
 RC_ICONS = $${PROJECTROOT}/examples/player/ico/XunoPlayer-QtAV.ico
 QMAKE_TARGET_COMPANY = "Aaex Corp. http://www.xuno.com. https://github.com/Xuno/Xuno-QtAV"
 QMAKE_TARGET_DESCRIPTION = "XunoPlayer. Aaex Corp. http://www.xuno.com. QtAV Multimedia framework."
-QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2017 WangBin. Aaex Corp."
+QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2019 WangBin. Aaex Corp."
 QMAKE_TARGET_PRODUCT = "XunoPlayer-QtAV $$1"
 export(RC_ICONS)
 export(QMAKE_TARGET_COMPANY)
@@ -39,5 +39,6 @@ DISTFILES += \
     res/shaders/superxbr-native-pass1.glsl  \
     res/shaders/superxbr-native-pass2.glsl
 
-//Xuno
+#Xuno
 QT += webenginewidgets
+#CONFIG += console

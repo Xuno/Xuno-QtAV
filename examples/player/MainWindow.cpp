@@ -125,7 +125,8 @@ MainWindow::MainWindow(QWidget *parent) :
   , m_shader(NULL)
   , m_glsl(NULL)
 {
-    XUNOserverUrl=QString::fromLatin1("http://www.xuno.com/playlist_10bit.php");
+    //XUNOserverUrl=QString::fromLatin1("http://www.xuno.com/playlist_12bit.php");
+    XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
     XUNOpresetUrl=XUNOserverUrl+QString::fromLatin1("/getpreset.php?");
 #if defined(Q_OS_MACX) && QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QApplication::setStyle(QStyleFactory::create("Fusion"));
@@ -384,6 +385,7 @@ void MainWindow::setupUi()
 
 
     mpWebMenu = new ConfigWebMemu(mpWebBtn);
+    mpWebMenu->setXunoVersion(XUNO_QtAV_Version_String().split(" ").at(0));
     mpWebBtn->setMenu(mpWebMenu);
     connect(mpWebMenu, SIGNAL(onPlayXunoBrowser(QUrl)), SLOT(onClickXunoBrowser(QUrl)));
     connect(&Config::instance(),SIGNAL(weblinksChanged()),mpWebMenu,SLOT(onChanged()));
@@ -981,7 +983,10 @@ void MainWindow::play(const QString &name)
     }
     if (mFile.startsWith("http://")){
         mTitle = QString("http://%1/.../%2").arg(QUrl(mFile).host(),QString(QUrl(mFile).fileName()));
+    }else if (mFile.startsWith("https://")){
+        mTitle = QString("httsp://%1/.../%2").arg(QUrl(mFile).host(),QString(QUrl(mFile).fileName()));
     }
+
 
     setWindowTitle(mTitle);
     mpPlayer->stop(); //if no stop, in setPriority decoder will reopen
