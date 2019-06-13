@@ -90,7 +90,7 @@ public:
     void setExtractTask(const QString fname);
     void calcToUseSuperResolution();
 
-    QString XUNO_QtAV_Version_String();
+    QString XUNO_QtAV_Version_String(bool longstring=true);
     QString XUNO_QtAV_Version_String_Long();
 public slots:
     void play(const QString& name);

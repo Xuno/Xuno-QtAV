@@ -53,23 +53,22 @@ myWebEnginePage::myWebEnginePage(QWebEngineProfile *profile, QObject *parent)
 
 bool myWebEnginePage::acceptNavigationRequest(const QUrl &url, QWebEnginePage::NavigationType type, bool isMainFrame)
 {
-    bool state=true;
-    qDebug()<<"myWebEnginePage acceptNavigationRequest"<<url<<type<<isMainFrame;
+//    qDebug()<<"myWebEnginePage acceptNavigationRequest"<<url<<type<<isMainFrame;
     if (type==QWebEnginePage::NavigationType::NavigationTypeLinkClicked){
-     emit onClick(url);
-     if (url.path().startsWith("/content/") || url.fileName().endsWith(".mp4")){
+        if (url.path().startsWith("/content/") || url.fileName().endsWith(".mp4")){
+            emit onClick(url);
             setUrl(QUrl("about:blank"));
-      }
+        }
     }
-    return state;
+    return true;
 }
 
 //------------------------------------------------------
 
 
 XunoBrowser::XunoBrowser(QWidget *parent, const QString &version) : QDialog(parent)
-  , view(0)
-  , loading(0)
+  , view(Q_NULLPTR)
+  , loading(Q_NULLPTR)
 {
     progress = 0;
     setXunoVersion(version);
@@ -89,8 +88,8 @@ XunoBrowser::XunoBrowser(QWidget *parent, const QString &version) : QDialog(pare
 
 
 
-    view = new QWebEngineView();
-    profile=new QWebEngineProfile("xunoporfile",view);
+    view = new QWebEngineView(this);
+    profile=new QWebEngineProfile("xunoprofile",view);
     QString cagent=profile->httpUserAgent();
     profile->setHttpUserAgent(cagent+" XunoPlayer/"+XunoVersion);
     page = new myWebEnginePage(profile, view);
@@ -191,8 +190,8 @@ void XunoBrowser::linkClicked(QUrl url){
     if (url.toString().startsWith(XUNOContentUrl) && !url.toString().contains("playlist")){
         qDebug("XunoBrowser::linkClicked pass %s",qPrintable(url.toString()));
         clickedUrl=url;
-        //this->hide();
-        view->hide();
+        this->hide();
+        //view->hide();
         emit clicked();
     }else{
         //        clickedUrl.clear();

@@ -111,21 +111,20 @@ MainWindow::MainWindow(QWidget *parent) :
   , mControlOn(false)
   , mShowControl(2)
   , mRepeateMax(0)
-  , mpVOAction(0)
-  , mpPlayer(0)
-  , mpRenderer(0)
-  , mpVideoFilter(0)
-  , mpAudioFilter(0)
-  , mpStatisticsView(0)
-  , mpOSD(0)
-  , mpSubtitle(0)
+  , mpVOAction(nullptr)
+  , mpPlayer(nullptr)
+  , mpRenderer(nullptr)
+  , mpVideoFilter(nullptr)
+  , mpAudioFilter(nullptr)
+  , mpStatisticsView(nullptr)
+  , mpOSD(nullptr)
+  , mpSubtitle(nullptr)
   , mCustomFPS(0.)
   , mPlayerScale(1.)
   , m_preview(Q_NULLPTR)
-  , m_shader(NULL)
-  , m_glsl(NULL)
+  , m_shader(nullptr)
+  , m_glsl(nullptr)
 {
-    //XUNOserverUrl=QString::fromLatin1("http://www.xuno.com/playlist_12bit.php");
     XUNOserverUrl=QString::fromLatin1("http://www.xuno.com");
     XUNOpresetUrl=XUNOserverUrl+QString::fromLatin1("/getpreset.php?");
 #if defined(Q_OS_MACX) && QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
@@ -136,9 +135,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     mpOSD = new OSDFilter(this);
     mpSubtitle = new SubtitleFilter(this);
-    mpChannelAction = 0;
-    mpChannelMenu = 0;
-    mpAudioTrackAction = 0;
+    mpChannelAction = nullptr;
+    mpChannelMenu = nullptr;
+    mpAudioTrackAction = nullptr;
     mGlobalMouse = QPointF();
 
     setMouseTracking(true); //mouseMoveEvent without press.
@@ -162,11 +161,11 @@ MainWindow::~MainWindow()
     if (mpVolumeSlider && !mpVolumeSlider->parentWidget()) {
         mpVolumeSlider->close();
         delete mpVolumeSlider;
-        mpVolumeSlider = 0;
+        mpVolumeSlider = nullptr;
     }
     if (mpStatisticsView) {
         delete mpStatisticsView;
-        mpStatisticsView = 0;
+        mpStatisticsView = nullptr;
     }
 }
 
@@ -385,7 +384,7 @@ void MainWindow::setupUi()
 
 
     mpWebMenu = new ConfigWebMemu(mpWebBtn);
-    mpWebMenu->setXunoVersion(XUNO_QtAV_Version_String().split(" ").at(0));
+    mpWebMenu->setXunoVersion(XUNO_QtAV_Version_String(false));
     mpWebBtn->setMenu(mpWebMenu);
     connect(mpWebMenu, SIGNAL(onPlayXunoBrowser(QUrl)), SLOT(onClickXunoBrowser(QUrl)));
     connect(&Config::instance(),SIGNAL(weblinksChanged()),mpWebMenu,SLOT(onChanged()));
@@ -433,8 +432,8 @@ void MainWindow::setupUi()
     mpMenuBtn->setMaximumHeight(mpInfoBtn->sizeHint().height());
     mpMenuBtn->setMinimumHeight(mpInfoBtn->sizeHint().height());
 
-    QMenu *subMenu = 0;
-    QWidgetAction *pWA = 0;
+    QMenu *subMenu = Q_NULLPTR;
+    QWidgetAction *pWA = Q_NULLPTR;
     mpMenu = new QMenu(mpMenuBtn);
     mpMenu->setStyleSheet("color:white;");
     mpMenu->addAction(tr("Open File"), this, SLOT(openFile()));
@@ -468,7 +467,7 @@ void MainWindow::setupUi()
     mpPlayList->setSaveFile(Config::instance().defaultDir() + QString::fromLatin1("/playlist.qds"));
     mpPlayList->load();
     connect(mpPlayList, SIGNAL(aboutToPlay(QString)), SLOT(play(QString)));
-    pWA = new QWidgetAction(0);
+    pWA = new QWidgetAction(Q_NULLPTR);
     pWA->setDefaultWidget(mpPlayList);
     subMenu->addAction(pWA); //must add action after the widget action is ready. is it a Qt bug?
 
@@ -479,7 +478,7 @@ void MainWindow::setupUi()
     mpHistory->setSaveFile(Config::instance().defaultDir() + QString::fromLatin1("/history.qds"));
     mpHistory->load();
     connect(mpHistory, SIGNAL(aboutToPlay(QString)), SLOT(play(QString)));
-    pWA = new QWidgetAction(0);
+    pWA = new QWidgetAction(Q_NULLPTR);
     pWA->setDefaultWidget(mpHistory);
     subMenu->addAction(pWA); //must add action after the widget action is ready. is it a Qt bug?
 
@@ -496,12 +495,12 @@ void MainWindow::setupUi()
 
     subMenu = new QMenu(tr("Speed"));
     mpMenu->addMenu(subMenu);
-    QDoubleSpinBox *pSpeedBox = new QDoubleSpinBox(0);
+    QDoubleSpinBox *pSpeedBox = new QDoubleSpinBox(Q_NULLPTR);
     pSpeedBox->setRange(0.01, 20);
     pSpeedBox->setValue(1.0);
     pSpeedBox->setSingleStep(0.01);
     pSpeedBox->setCorrectionMode(QAbstractSpinBox::CorrectToPreviousValue);
-    pWA = new QWidgetAction(0);
+    pWA = new QWidgetAction(Q_NULLPTR);
     pWA->setDefaultWidget(pSpeedBox);
     subMenu->addAction(pWA); //must add action after the widget action is ready. is it a Qt bug?
 
@@ -515,7 +514,7 @@ void MainWindow::setupUi()
     // TODO: move to a func or class
     mpRepeatLoop = new QCheckBox(tr("Continuous Loop"), this);
     connect(mpRepeatLoop, SIGNAL(stateChanged(int)), SLOT(RepeatLoopChanged(int)));
-    mpRepeatBox = new QSpinBox(0);
+    mpRepeatBox = new QSpinBox(Q_NULLPTR);
     mpRepeatBox->setMinimum(-1);
     mpRepeatBox->setValue(1);
     mpRepeatBox->setToolTip(QString::fromLatin1("-1: ") + tr("infinity"));
@@ -549,7 +548,7 @@ void MainWindow::setupUi()
     QWidget *wgt = new QWidget;
     wgt->setLayout(vb);
 
-    pWA = new QWidgetAction(0);
+    pWA = new QWidgetAction(Q_NULLPTR);
     pWA->setDefaultWidget(wgt);
     pWA->defaultWidget()->setEnabled(false);
     subMenu->addAction(pWA); //must add action after the widget action is ready. is it a Qt bug?
@@ -594,7 +593,7 @@ void MainWindow::setupUi()
     hb->addWidget(new QLabel(tr("Engine")));
     QComboBox *box = new QComboBox();
     hb->addWidget(box);
-    pWA = new QWidgetAction(0);
+    pWA = new QWidgetAction(Q_NULLPTR);
     pWA->setDefaultWidget(wgt);
     subMenu->addAction(pWA); //must add action after the widget action is ready. is it a Qt bug?
     box->addItem(QString::fromLatin1("FFmpeg"), QString::fromLatin1("FFmpeg"));
@@ -609,7 +608,7 @@ void MainWindow::setupUi()
     hb->addWidget(new QLabel(tr("Charset")));
     box = new QComboBox();
     hb->addWidget(box);
-    pWA = new QWidgetAction(0);
+    pWA = new QWidgetAction(Q_NULLPTR);
     pWA->setDefaultWidget(wgt);
     subMenu->addAction(pWA); //must add action after the widget action is ready. is it a Qt bug?
     box->addItem(tr("Auto detect"), QString::fromLatin1("AutoDetect"));
@@ -661,17 +660,17 @@ void MainWindow::setupUi()
     mpMenu->addMenu(subMenu);
     mpVideoEQ = new VideoEQConfigPage();
     connect(mpVideoEQ, SIGNAL(engineChanged()), SLOT(onVideoEQEngineChanged()));
-    pWA = new QWidgetAction(0);
+    pWA = new QWidgetAction(Q_NULLPTR);
     pWA->setDefaultWidget(mpVideoEQ);
     subMenu->addAction(pWA);
-    mpVideoEQ->setXunoVersion(XUNO_QtAV_Version_String().split(' ').at(0));
+    mpVideoEQ->setXunoVersion(XUNO_QtAV_Version_String(false));
     mpVideoEQ->setSaveFile(Config::instance().defaultDir() + "/presets.ini");
     mpVideoEQ->loadLocalPresets();
 
     subMenu = new ClickableMenu(tr("Decoder"));
     mpMenu->addMenu(subMenu);
     mpDecoderConfigPage = new DecoderConfigPage();
-    pWA = new QWidgetAction(0);
+    pWA = new QWidgetAction(Q_NULLPTR);
     pWA->setDefaultWidget(mpDecoderConfigPage);
     subMenu->addAction(pWA);
 
@@ -679,7 +678,7 @@ void MainWindow::setupUi()
     mpMenu->addMenu(subMenu);
     connect(subMenu, SIGNAL(triggered(QAction*)), SLOT(changeVO(QAction*)));
     //TODO: AVOutput.name,detail(description). check whether it is available
-    VideoRendererId *vo = NULL;
+    VideoRendererId *vo = Q_NULLPTR;
     while ((vo = VideoRenderer::next(vo))) {
         // skip non-widget renderers
         if (*vo == VideoRendererId_OpenGLWindow || *vo == VideoRendererId_GraphicsItem)
@@ -2254,7 +2253,7 @@ void MainWindow::onAVFilterVideoConfigChanged()
     if (mpVideoFilter) {
         mpVideoFilter->uninstall();
         delete mpVideoFilter;
-        mpVideoFilter = 0;
+        mpVideoFilter = Q_NULLPTR;
     }
     mpVideoFilter = new LibAVFilterVideo(this);
     mpVideoFilter->setEnabled(Config::instance().avfilterVideoEnable());
@@ -2267,7 +2266,7 @@ void MainWindow::onAVFilterAudioConfigChanged()
     if (mpAudioFilter) {
         mpAudioFilter->uninstall();
         delete mpAudioFilter;
-        mpAudioFilter = 0;
+        mpAudioFilter = Q_NULLPTR;
     }
     mpAudioFilter = new LibAVFilterAudio(this);
     mpAudioFilter->setEnabled(Config::instance().avfilterAudioEnable());
@@ -2316,7 +2315,7 @@ void MainWindow::onUserShaderChanged()
         m_shader->setPostProcess(Config::instance().fragPostProcess());
         mpRenderer->opengl()->setUserShader(m_shader);
     } else {
-        mpRenderer->opengl()->setUserShader(NULL);
+        mpRenderer->opengl()->setUserShader(Q_NULLPTR);
     }
 #endif
 }
@@ -2347,7 +2346,7 @@ void MainWindow::toggleSubtitleAutoLoad(bool value)
 
 void MainWindow::openSubtitle()
 {
-    QString file = QFileDialog::getOpenFileName(0, tr("Open a subtitle file"));
+    QString file = QFileDialog::getOpenFileName(Q_NULLPTR, tr("Open a subtitle file"));
     if (file.isEmpty())
         return;
     mpSubtitle->setFile(file);
@@ -2564,7 +2563,7 @@ void MainWindow::onPreviewEnabledChanged(){
 
 void MainWindow::onImageSequenceConfig()
 {
-    int ret;
+    int ret=0;
     bool state=!mpPlayer->isPaused() && mpPlayer->isPlaying();
     if (mpImageSequence) {
         if (state) stopUnload();//togglePlayPause();
@@ -2696,7 +2695,7 @@ void MainWindow::scaleReset()
 void MainWindow::onScaleBtn(qreal _scale)
 {
     //qDebug()<<"MainWindow: onScaleBtn"<<_scale;
-    qreal scale,nextscale15,nextscale20;
+    qreal scale = 0.0,nextscale15 = 0.0,nextscale20 = 0.0;
     //mPlayerScale
 
     if (_scale==1.0) {
@@ -2771,9 +2770,11 @@ void MainWindow::captureGL()
     }
 }
 
-QString MainWindow::XUNO_QtAV_Version_String()
+QString MainWindow::XUNO_QtAV_Version_String(bool longstring)
 {
-    return XUNO_QTAV_VERSION_STR;
+    if (longstring) return XUNO_QTAV_VERSION_STR;
+    else return QString(XUNO_QTAV_VERSION_STR).split(' ').at(0);
+
 }
 
 QString  MainWindow::XUNO_QtAV_Version_String_Long()

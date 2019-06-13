@@ -73,7 +73,7 @@ void ConfigWebMemu::onXunoBrowser(QString url){
     bool emp=url.isEmpty();
 
     if (!mpXunoBrowser){
-        mpXunoBrowser = new XunoBrowser(this,XunoVersion);
+        mpXunoBrowser = new XunoBrowser(Q_NULLPTR,XunoVersion);
          mpXunoBrowser->setXUNOContentUrl(QString(XUNOserverUrl).append("/content/"));
         connect(mpXunoBrowser, SIGNAL(clicked()), SLOT(onClickXunoBrowser()));
     }
