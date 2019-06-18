@@ -234,8 +234,8 @@ private:
     QStringList mAudioBackends;
     QVBoxLayout *mpPlayerLayout;
 
-    QWidget *detachedControl=0;
-    QVBoxLayout *detachedControlLayout=0;
+    QWidget *detachedControl=Q_NULLPTR;
+    QVBoxLayout *detachedControlLayout=Q_NULLPTR;
     QWidget *mpControl;
     QLabel *mpCurrent, *mpEnd;
     QLabel *mpTitle;
@@ -257,8 +257,8 @@ private:
     QAction *mpAudioTrackAction;
     QMenu *mpAudioTrackMenu;
     QMenu *mpChannelMenu;
-    QMenu *mpClockMenu = 0;
-    QActionGroup *mpClockMenuAction = 0;
+    QMenu *mpClockMenu = Q_NULLPTR;
+    QActionGroup *mpClockMenuAction = Q_NULLPTR;
     QAction *mpChannelAction;
     QList<QAction*> mVOActions;
 
@@ -287,9 +287,9 @@ private:
     QString XUNOserverUrl;
     QString XUNOpresetUrl;
 
-    ImageSequenceConfigPage *mpImageSequence = 0;
-    ConfigWebMemu *mpWebMenu = 0;
-    ImgSeqExtractControl *mpImgSeqExtract=0;
+    ImageSequenceConfigPage *mpImageSequence = Q_NULLPTR;
+    ConfigWebMemu *mpWebMenu = Q_NULLPTR;
+    ImgSeqExtractControl *mpImgSeqExtract=Q_NULLPTR;
     QString aboutXunoQtAV_PlainText();
     QString aboutXunoQtAV_HTML();
 
@@ -300,6 +300,8 @@ private:
 
     QtAV::DynamicShaderObject *m_shader;
     QtAV::GLSLFilter *m_glsl;
+    QUrl remove_fistsubdomain(QUrl url);
+    bool same_site_domain(const QUrl &url1,const QUrl &url2);
 
 
     bool needToUseSuperResolution=false;

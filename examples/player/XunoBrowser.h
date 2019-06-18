@@ -55,6 +55,8 @@ private:
     QWebEngineView *view;
     QWebEngineProfile* profile;
     myWebEnginePage *page;
+    QUrl remove_fistsubdomain(QUrl url);
+    bool same_site_domain(const QUrl &url1, const QUrl &url2);
     //    QLineEdit *locationEdit;
     //    QAction *rotateAction;
     QLabel *loading;
