@@ -368,7 +368,11 @@ void VideoEQConfigPage::filterSharp(qreal val) const
 
 void VideoEQConfigPage::onReset()
 {
-    if (!resetByRemotePreset()) onResetLocalCongig();
+    if (!resetByRemotePreset()  && !mURL.startsWith("http")) {
+        onResetLocalCongig();
+    }else {
+        onResetByZerro();
+    }
 }
 
 void VideoEQConfigPage::onResetByZerro()
@@ -593,18 +597,18 @@ void VideoEQConfigPage::onResetLocalCongig(){
     if (!f.exists()) {
         QString message=tr("Can't find local .config into movie directory.\n%1").arg(f.fileName().toUtf8().constData());
         qWarning()<<message;
-        QMessageBox::warning(NULL, tr("Warning"), message);
+        QMessageBox::warning(Q_NULLPTR, tr("Warning"), message);
         return;
     }else if (!f.open(QIODevice::ReadWrite)) {
         QString message=tr("Can't open writable local .config from movie directory.\n%1\n%2").arg(f.fileName().toUtf8().constData()).arg(f.errorString().toUtf8().constData());
         qWarning()<<message;
-        QMessageBox::warning(NULL, tr("Warning"), message);
+        QMessageBox::warning(Q_NULLPTR, tr("Warning"), message);
         f.close();
         return;
     }else if (!f.remove()){
         QString message=tr("Can't remove local .config from movie directory.\n%1\n%2").arg(f.fileName().toUtf8().constData()).arg(f.errorString().toUtf8().constData());
         qWarning()<<message;
-        QMessageBox::warning(NULL, tr("Warning!"), message);
+        QMessageBox::warning(Q_NULLPTR, tr("Warning!"), message);
         f.close();
         return;
     }
@@ -612,7 +616,7 @@ void VideoEQConfigPage::onResetLocalCongig(){
     reReadColorsCongig();
     QString message=tr("Local .config was cleared.\n").append(f.fileName().toUtf8().constData());
     qWarning()<<message;
-    QMessageBox::information(NULL, tr("Information!"), message);
+    QMessageBox::information(Q_NULLPTR, tr("Information!"), message);
 
 }
 
@@ -623,7 +627,7 @@ void VideoEQConfigPage::onSaveLocalCongig(){
         f.close();
         QString message=tr("Can't save local .config into movie directory.\n%1\n%2").arg(f.fileName().toUtf8().constData()).arg(f.errorString().toUtf8().constData());
         qWarning()<<message;
-        QMessageBox::warning(NULL, tr("Warning!"), message);
+        QMessageBox::warning(Q_NULLPTR, tr("Warning!"), message);
         return;
     }
     QJsonObject jsonObject;
@@ -638,7 +642,7 @@ void VideoEQConfigPage::onSaveLocalCongig(){
     f.write(jsonDoc->toJson(QJsonDocument::Compact));
     f.close();
     QString message=tr("Local .config was saved into movie directory.\n").append(f.fileName().toUtf8().constData());
-    QMessageBox::information(NULL, tr("Information!"), message);
+    QMessageBox::information(Q_NULLPTR, tr("Information!"), message);
 }
 
 void VideoEQConfigPage::reReadColorsCongig(){

@@ -120,9 +120,9 @@ QList<QVariant> getAudioInfoValues(const Statistics& s) {
 StatisticsView::StatisticsView(QWidget *parent) :
     QDialog(parent)
   , mTimer(0)
-  , mpFPS(0)
-  , mpAudioBitRate(0)
-  , mpVideoBitRate(0)
+  , mpFPS(Q_NULLPTR)
+  , mpAudioBitRate(Q_NULLPTR)
+  , mpVideoBitRate(Q_NULLPTR)
 {
     setWindowTitle(tr("Media info"));
     setModal(false);
@@ -214,11 +214,12 @@ void StatisticsView::timerEvent(QTimerEvent *e)
     if (mpFPS) {
         mpFPS->setData(1, Qt::DisplayRole, QString::number(mStatistics.video_only.currentDisplayFPS(), 'f', 2));
     }
+    //setStatistics(mStatistics);
 }
 
 void StatisticsView::initBaseItems(QList<QTreeWidgetItem *> *items)
 {
-    QTreeWidgetItem *item = 0;
+    QTreeWidgetItem *item = Q_NULLPTR;
     foreach(const QString& key, getBaseInfoKeys()) {
         item = new QTreeWidgetItem(0);
         item->setData(0, Qt::DisplayRole, key);
@@ -230,7 +231,7 @@ QTreeWidgetItem* StatisticsView::createNodeWithItems(QTreeWidget *view, const QS
 {
     QTreeWidgetItem *nodeItem = new QTreeWidgetItem(view);
     nodeItem->setData(0, Qt::DisplayRole, name);
-    QTreeWidgetItem *item = 0;
+    QTreeWidgetItem *item = Q_NULLPTR;
     foreach(const QString& key, itemNames) {
         item = new QTreeWidgetItem(nodeItem);
         item->setData(0, Qt::DisplayRole, key);
