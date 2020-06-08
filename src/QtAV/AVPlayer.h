@@ -178,6 +178,7 @@ public:
      */
     qint64 stopPosition() const; //unit: ms
     qint64 position() const; //unit: ms
+    qint64 displayPosition() const;
     //0: play once. N: play N+1 times. <0: infinity
     int repeat() const; //or repeatMax()?
     /*!
@@ -575,6 +576,7 @@ Q_SIGNALS:
      * \param position The video or audio timestamp when seek is finished
      */
     void seekFinished(qint64 position);
+    void stepFinished();
     void positionChanged(qint64 position);
     void interruptTimeoutChanged();
     void interruptOnTimeoutChanged();
@@ -615,6 +617,7 @@ private Q_SLOTS:
     void onStarted();
     void updateMediaStatus(QtAV::MediaStatus status);
     void onSeekFinished(qint64 value);
+    void onStepFinished();
     void tryClearVideoRenderers();
     void seekChapter(int incr);
 protected:

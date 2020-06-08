@@ -30,15 +30,6 @@ isEmpty(QMAKE_EXTENSION_SHLIB) {
   }
 }
 
-CONFIG += profile
-#profiling, -pg is not supported for msvc
-debug:!ios:!android:!*msvc*:profile {
-	QMAKE_CXXFLAGS_DEBUG += -pg
-	QMAKE_LFLAGS_DEBUG += -pg
-	QMAKE_CXXFLAGS_DEBUG = $$unique(QMAKE_CXXFLAGS_DEBUG)
-	QMAKE_LFLAGS_DEBUG = $$unique(QMAKE_LFLAGS_DEBUG)
-}
-
 #$$[TARGET_PLATFORM]
 #$$[QT_ARCH] #windows symbian windowsce arm
 _OS =
@@ -143,6 +134,7 @@ defineReplace(qtLibName) {
        }
     }
         RET = $$RET$$platformTargetSuffix()
+        qtAtLeast(5, 14):android:RET = $${RET}_$$ANDROID_TARGET_ARCH
         !win32: return($$RET)
 
 	isEmpty(2): VERSION_EXT = $$VERSION

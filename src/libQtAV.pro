@@ -54,9 +54,9 @@ RESOURCES += QtAV.qrc \
 
 !rc_file {
     RC_ICONS = QtAV.ico
-    QMAKE_TARGET_COMPANY = "Shanghai University->S3 Graphics->Deepin | wbsecg1@gmail.com"
+    QMAKE_TARGET_COMPANY = "wbsecg1@gmail.com"
     QMAKE_TARGET_DESCRIPTION = "QtAV Multimedia framework. http://qtav.org"
-    QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2017 WangBin, wbsecg1@gmail.com"
+    QMAKE_TARGET_COPYRIGHT = "Copyright (C) 2012-2019 WangBin, wbsecg1@gmail.com"
     QMAKE_TARGET_PRODUCT = "QtAV"
 } else:win32 {
     RC_FILE = QtAV.rc
@@ -160,7 +160,6 @@ config_avdeviceX { #may depends on avfilter
         ios {
           LIBS += -framework AVFoundation
         } else {
-          LIBS += -framework QTKit
       # assume avdevice targets to the same version as Qt and always >= 10.6
          !isEqual(QMAKE_MACOSX_DEPLOYMENT_TARGET, 10.6): LIBS += -framework AVFoundation
         }
@@ -627,7 +626,7 @@ mac {
 
 unix:!mac:!cross_compile {
 icon.files = $$PWD/$${TARGET}.svg
-icon.path = /usr/share/icons/hicolor/scalable/apps
+icon.path = $$[QT_INSTALL_PREFIX]/share/icons/hicolor/scalable/apps
 INSTALLS += icon
 #debian
 DEB_INSTALL_LIST = .$$[QT_INSTALL_LIBS]/libQt*AV.so.*

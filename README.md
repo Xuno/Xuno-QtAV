@@ -31,5 +31,3 @@ you must adhere to the terms of the license in question.**
 <li>Video eq(software and OpenGL): brightness, contrast, saturation, hue</li>
 <li>QML support. Most playback APIs are compatible with QtMultimedia module</li>
 <li>Compatibility: QtAV can be built with both Qt4 and Qt5, FFmpeg(>=1.0) and [Libav](http://libav.org) (>=9.0). Latest FFmpeg release is recommended.</li>
-
-

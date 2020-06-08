@@ -425,6 +425,51 @@ void QmlAVPlayer::setBufferSize(int value)
     }
 }
 
+QmlAVPlayer::BufferMode QmlAVPlayer::bufferMode() const
+{
+    return static_cast<BufferMode>(mpPlayer->bufferMode());
+}
+
+void QmlAVPlayer::setBufferMode(QmlAVPlayer::BufferMode value)
+{
+    QtAV::BufferMode mode = static_cast<QtAV::BufferMode>(value);
+    if(mpPlayer->bufferMode() == mode)
+        return;
+    if(mpPlayer) {
+        mpPlayer->setBufferMode(mode);
+        Q_EMIT bufferModeChanged();
+    }
+}
+
+qreal QmlAVPlayer::frameRate() const
+{
+    return mpPlayer->forcedFrameRate();
+}
+
+void QmlAVPlayer::setFrameRate(qreal value)
+{
+    if(mpPlayer) {
+        mpPlayer->setFrameRate(value);
+        Q_EMIT frameRateChanged();
+    }
+}
+
+QmlAVPlayer::MediaEndAction QmlAVPlayer::mediaEndAction() const
+{
+    return  static_cast<MediaEndAction>(int(mpPlayer->mediaEndAction()));
+}
+
+void QmlAVPlayer::setMediaEndAction(QmlAVPlayer::MediaEndAction value)
+{
+    QtAV::MediaEndAction action = static_cast<QtAV::MediaEndAction>(value);
+    if (mpPlayer->mediaEndAction() == action)
+        return;
+    if (mpPlayer) {
+        mpPlayer->setMediaEndAction(action);
+        Q_EMIT mediaEndActionChanged();
+    }
+}
+
 QUrl QmlAVPlayer::externalAudio() const
 {
     return m_audio;
