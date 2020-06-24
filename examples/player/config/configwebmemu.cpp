@@ -12,8 +12,8 @@ ConfigWebMemu::ConfigWebMemu(QWidget *parent) :
 ConfigWebMemu::~ConfigWebMemu()
 {
     if (mpXunoBrowser) {
-        delete mpXunoBrowser;
-        mpXunoBrowser = 0;
+        mpXunoBrowser->deleteLater();
+        mpXunoBrowser = Q_NULLPTR;
     }
 }
 

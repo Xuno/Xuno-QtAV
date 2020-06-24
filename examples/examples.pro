@@ -1,6 +1,7 @@
 TEMPLATE = subdirs
 
-SUBDIRS = common
+SUBDIRS = common \
+    player/XunoPlayer.pro
 !android:!ios:!winrt {
   SUBDIRS += audiopipeline
 !no-widgets {
@@ -8,7 +9,6 @@ SUBDIRS = common
     sharedoutput \
     simpletranscode \
     simpleplayer \
-    player \
     filters \
     framereader \
     videocapture \
@@ -19,12 +19,16 @@ contains(QT_CONFIG, opengl): SUBDIRS += \
     shader \
     glslfilter
 
-  player.depends += common
+    #XunoPlayer \
+    #player \
+
+  #player.depends += common
+  XunoPlayer.depends += common
 
   sdk_build {
     SUBDIRS *= \
         simpleplayer/simpleplayer_sdk.pro \
-        player/XunoPlayer.pro \
+        XunoPlayer/XunoPlayer.pro \
         player/player_sdk.pro
   }
 }

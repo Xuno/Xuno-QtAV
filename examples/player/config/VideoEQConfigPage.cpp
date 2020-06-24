@@ -152,6 +152,10 @@ VideoEQConfigPage::VideoEQConfigPage(QWidget *parent) :
     connect(mpResetLocalCongig, SIGNAL(clicked()), SLOT(onResetByZerro()));
     connect(mpSaveLocalCongig, SIGNAL(clicked()), SLOT(onSaveLocalCongig()));
 }
+VideoEQConfigPage::~VideoEQConfigPage()
+{
+ if (nam) delete nam;
+}
 
 void VideoEQConfigPage::onGlobalSet(bool g)
 {
@@ -526,7 +530,7 @@ void VideoEQConfigPage::getLocalPressets (){
 void VideoEQConfigPage::getRemotePressets (){
     qDebug("VideoEQConfigPage::getRemotePressets before: mURL %s",qPrintable(mURL));
     if (mURL.compare(presetUrl)==0 || mURL.isEmpty()) return; //check if pressets was loaded for this url
-    QNetworkAccessManager *nam = new QNetworkAccessManager(this);
+    if (!nam) nam = new QNetworkAccessManager(this);
     QObject::connect(nam, SIGNAL(finished(QNetworkReply*)),
                      this, SLOT(onPresetRequestFinished(QNetworkReply*)));
     QUrl url(mURL);
@@ -534,8 +538,8 @@ void VideoEQConfigPage::getRemotePressets (){
     request.setUrl(url);
     QString agent=request.rawHeader("User-Agent")+" XunoPlayer/"+XunoVersion;
     request.setRawHeader("User-Agent", agent.toUtf8());
-    QNetworkReply* reply = nam->get(request);
-    if (reply->error() != QNetworkReply::NoError) {
+    reply = nam->get(request);
+    if (reply && reply->error() != QNetworkReply::NoError) {
         qDebug("Error  getRemotePressets : %s, error %d",qPrintable(mURL),(int)reply->error());
     }
     //qDebug("VideoEQConfigPage::getRemotePressets after: mURL %s",qPrintable(mURL));
@@ -548,7 +552,7 @@ void VideoEQConfigPage::onPresetRequestFinished(QNetworkReply* reply){
     } else {
         qDebug("VideoEQConfigPage.cpp: ERROR, read fromJson VideoEQConfigPage::onPresetRequestFinished");
     }
-    delete reply;
+    //reply->deleteLater();
     qDebug("VideoEQConfigPage::onPresetRequestFinished");
 }
 

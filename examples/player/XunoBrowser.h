@@ -8,7 +8,6 @@
 #include <QWebEngineProfile>
 #include <QWebEngineView>
 
-
 class QWebEngineView;
 class QLineEdit;
 class QLabel;
@@ -33,7 +32,7 @@ class XunoBrowser : public QDialog
     Q_OBJECT
 
 public:
-    explicit XunoBrowser(QWidget *parent = nullptr, const QString &version="none");
+    explicit XunoBrowser(QWidget *parent = Q_NULLPTR, const QString &version="none");
     ~XunoBrowser();
     void setUrl(const QUrl& url);
     void setXUNOContentUrl(const QString &url);

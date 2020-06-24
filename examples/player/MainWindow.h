@@ -236,7 +236,7 @@ private:
 
     QWidget *detachedControl=Q_NULLPTR;
     QVBoxLayout *detachedControlLayout=Q_NULLPTR;
-    QWidget *mpControl;
+    QWidget *mpControl = Q_NULLPTR;;
     QLabel *mpCurrent, *mpEnd;
     QLabel *mpTitle;
     QLabel *mpSpeed;
@@ -245,44 +245,44 @@ private:
     QToolButton *mpVolumeBtn;
     QToolButton *mpPlayPauseBtn;
     QToolButton *mpStopBtn, *mpForwardBtn, *mpBackwardBtn;
-    QToolButton *mpOpenBtn;
-    QToolButton *mpInfoBtn, *mpMenuBtn, *mpSetupBtn, *mpCaptureBtn;
-    QMenu *mpMenu;
-    QAction *mpVOAction, *mpARAction; //remove mpVOAction if vo.id() is supported
-    QAction *mpRepeatEnableAction;
-    QCheckBox *mpRepeatLoop;
-    QWidgetAction *mpRepeatAction;
-    QSpinBox *mpRepeatBox;
+    QToolButton *mpOpenBtn = Q_NULLPTR;
+    QToolButton *mpInfoBtn = Q_NULLPTR, *mpMenuBtn, *mpSetupBtn, *mpCaptureBtn;
+    QMenu *mpMenu = Q_NULLPTR;;
+    QAction *mpVOAction = Q_NULLPTR, *mpARAction = Q_NULLPTR; //remove mpVOAction if vo.id() is supported
+    QAction *mpRepeatEnableAction = Q_NULLPTR;
+    QCheckBox *mpRepeatLoop = Q_NULLPTR;
+    QWidgetAction *mpRepeatAction = Q_NULLPTR;
+    QSpinBox *mpRepeatBox = Q_NULLPTR;
     QTimeEdit *mpRepeatA, *mpRepeatB;
-    QAction *mpAudioTrackAction;
-    QMenu *mpAudioTrackMenu;
-    QMenu *mpChannelMenu;
+    QAction *mpAudioTrackAction = Q_NULLPTR;
+    QMenu *mpAudioTrackMenu = Q_NULLPTR;
+    QMenu *mpChannelMenu = Q_NULLPTR;
     QMenu *mpClockMenu = Q_NULLPTR;
     QActionGroup *mpClockMenuAction = Q_NULLPTR;
-    QAction *mpChannelAction;
+    QAction *mpChannelAction = Q_NULLPTR;
     QList<QAction*> mVOActions;
 
-    QtAV::AVClock *mpClock;
-    QtAV::AVPlayer *mpPlayer;
-    QtAV::VideoRenderer *mpRenderer;
-    QtAV::LibAVFilterVideo *mpVideoFilter;
-    QtAV::LibAVFilterAudio *mpAudioFilter;
+    QtAV::AVClock *mpClock = Q_NULLPTR;
+    QtAV::AVPlayer *mpPlayer = Q_NULLPTR;
+    QtAV::VideoRenderer *mpRenderer = Q_NULLPTR;
+    QtAV::LibAVFilterVideo *mpVideoFilter = Q_NULLPTR;
+    QtAV::LibAVFilterAudio *mpAudioFilter = Q_NULLPTR;
     QString mFile;
     QString mTitle;
 
-    QLabel *mpPreview;
+    QLabel *mpPreview = Q_NULLPTR;
 
-    DecoderConfigPage *mpDecoderConfigPage;
-    VideoEQConfigPage *mpVideoEQ;
+    DecoderConfigPage *mpDecoderConfigPage = Q_NULLPTR;
+    VideoEQConfigPage *mpVideoEQ = Q_NULLPTR;
 
-    PlayList *mpPlayList, *mpHistory;
+    PlayList *mpPlayList = Q_NULLPTR, *mpHistory = Q_NULLPTR;
 
     QPointF mGlobalMouse;
-    StatisticsView *mpStatisticsView;
+    StatisticsView *mpStatisticsView = Q_NULLPTR;
 
-    OSDFilter *mpOSD;
-    QtAV::SubtitleFilter *mpSubtitle;
-    QtAV::VideoPreviewWidget *m_preview;
+    OSDFilter *mpOSD = Q_NULLPTR;
+    QtAV::SubtitleFilter *mpSubtitle = Q_NULLPTR;
+    QtAV::VideoPreviewWidget *m_preview = Q_NULLPTR;
 
     QString XUNOserverUrl;
     QString XUNOpresetUrl;

@@ -52,6 +52,7 @@ public:
         ColorSpacePreset() : name(""),brightness(0.0),contrast(0.0),hue(0.0),saturation(0.0),gammaRGB(0.0),filterSharp(0.0),loaded(false) {}
     };
     explicit VideoEQConfigPage(QWidget *parent = 0);
+    ~VideoEQConfigPage();
     void setEngines(const QVector<Engine>& engines);
     void setListPreset(int id);
     void setListPresets();
@@ -142,6 +143,8 @@ private:
     QString mFile,mURL,presetUrl;
     void parseJsonPressetData(QString &strReply);
     void reReadColorsCongig();
+    QNetworkReply* reply=Q_NULLPTR;
+    QNetworkAccessManager* nam=Q_NULLPTR;
     QString XunoVersion;
 };
 #endif // VIDEOEQCONFIGPAGE_H

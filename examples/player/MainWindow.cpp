@@ -287,7 +287,7 @@ void MainWindow::setupUi()
     }
 
     QString buttons_style_bg= "background-color: rgba(30, 30, 30, 0);";
-    //this->setStyleSheet(buttons_style_bg);
+    this->setStyleSheet(buttons_style_bg);
 
     mpControl->setMinimumWidth(865);
     mpControl->setMaximumHeight(25);
@@ -301,24 +301,24 @@ void MainWindow::setupUi()
     mpTimeSlider->setOrientation(Qt::Horizontal);
     mpTimeSlider->setMinimum(0);
     mpTimeSlider->setStyleSheet(" \
-                                QSlider::groove:horizontal { \
-                                    margin: 4px 0px 2px 0px;\
-                                    background-color: solid #F8F8F8; \
-                                } \
-                                QSlider::handle:horizontal { \
-                                    width: 7px;  \
-                                    border: 1px solid #5c5c5c; \
-                                    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #ffffff); \
-                                    border-radius: 2px;\
-                                    margin: -2px 0;\
-                                }\
-                                QSlider::sub-page:horizontal { \
-                                    margin: 2px 0px 3px 0px;\
-                                    background-color: #0066FF; \
-                                } \
-                                ");
-                                mpTimeSlider->addVisualLimits();
-            mpCurrent = new QLabel(mpControl);
+         QSlider::groove:horizontal { \
+             margin: 4px 0px 2px 0px;\
+             background-color: solid #F8F8F8; \
+         } \
+         QSlider::handle:horizontal { \
+             width: 7px;  \
+             border: 1px solid #5c5c5c; \
+             background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #ffffff); \
+             border-radius: 2px;\
+             margin: -2px 0;\
+         }\
+         QSlider::sub-page:horizontal { \
+             margin: 2px 0px 3px 0px;\
+             background-color: #0066FF; \
+         } \
+         ");
+    mpTimeSlider->addVisualLimits();
+    mpCurrent = new QLabel(mpControl);
     mpCurrent->setToolTip(tr("Current time"));
     mpCurrent->setContentsMargins(QMargins(2, 2, 2, 2));
     mpCurrent->setText(QString::fromLatin1("00:00:00"));
@@ -435,7 +435,7 @@ void MainWindow::setupUi()
     QMenu *subMenu = Q_NULLPTR;
     QWidgetAction *pWA = Q_NULLPTR;
     mpMenu = new QMenu(mpMenuBtn);
-    mpMenu->setStyleSheet("color:white;");
+    //mpMenu->setStyleSheet("color:white;");
     mpMenu->addAction(tr("Open File"), this, SLOT(openFile()));
     mpMenu->addAction(tr("Open Url"), this, SLOT(openUrl()));
     //mpMenu->addAction(tr("Online channels"), this, SLOT(onTVMenuClick()));

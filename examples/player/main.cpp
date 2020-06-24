@@ -98,7 +98,9 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     a.setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
 
-    a.setStyle(new DarkStyle);
+    //a.setStyle(new DarkStyle);
+    QApplication::setStyle(new DarkStyle);
+    QApplication::setPalette(QApplication::style()->standardPalette());
 
     qDebug() <<a.arguments();
     a.setApplicationName(QString::fromLatin1("Player"));
